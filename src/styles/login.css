@@ -1,0 +1,510 @@
+/* ============================================================
+   Login Page Styles — Keyvo Mint & Emerald Enterprise Green Theme
+   Inspired by 2-Column Product Passport reference layout
+   Features: Organic animated floating balloons/orbs, emerald green accents, crisp white glass cards
+   ============================================================ */
+
+.tein-login-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f2f9f5;
+  background-image: 
+    radial-gradient(at 10% 15%, rgba(209, 250, 229, 0.85) 0px, transparent 55%),
+    radial-gradient(at 90% 85%, rgba(167, 243, 208, 0.75) 0px, transparent 55%),
+    radial-gradient(at 50% 50%, rgba(240, 253, 244, 0.9) 0px, transparent 100%);
+  position: relative;
+  overflow-x: hidden;
+  padding: 40px 24px;
+  font-family: inherit;
+}
+
+/* ============================================================
+   ANIMATED FLOATING BALLOONS / ORBS
+   ============================================================ */
+.tein-login-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.tein-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+.tein-orb-1 {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.35) 0%, rgba(16, 185, 129, 0.15) 70%, transparent 100%);
+  top: -120px;
+  left: 5%;
+  animation: floatBalloon1 16s ease-in-out infinite alternate;
+}
+
+.tein-orb-2 {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.12) 70%, transparent 100%);
+  bottom: -100px;
+  right: 8%;
+  animation: floatBalloon2 19s ease-in-out infinite alternate;
+}
+
+.tein-orb-3 {
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(110, 231, 183, 0.4) 0%, rgba(16, 185, 129, 0.1) 70%, transparent 100%);
+  top: 35%;
+  left: 45%;
+  animation: floatBalloon3 14s ease-in-out infinite alternate;
+}
+
+.tein-orb-4 {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(5, 150, 105, 0.25) 0%, rgba(4, 120, 87, 0.08) 70%, transparent 100%);
+  bottom: 15%;
+  left: 8%;
+  animation: floatBalloon4 22s ease-in-out infinite alternate;
+}
+
+@keyframes floatBalloon1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(35px, 45px) scale(1.08); }
+  100% { transform: translate(-25px, 20px) scale(0.96); }
+}
+
+@keyframes floatBalloon2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, -35px) scale(1.05); }
+  100% { transform: translate(30px, -15px) scale(0.94); }
+}
+
+@keyframes floatBalloon3 {
+  0% { transform: translate(0, 0) scale(0.95); }
+  50% { transform: translate(-30px, 30px) scale(1.1); }
+  100% { transform: translate(25px, -35px) scale(1); }
+}
+
+@keyframes floatBalloon4 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(25px, -40px) scale(1.06); }
+  100% { transform: translate(-20px, 15px) scale(0.92); }
+}
+
+/* Main Split Wrapper */
+.tein-login-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1140px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: 60px;
+}
+
+/* ============================================================
+   LEFT COLUMN: BRAND & HERO STORY (GREEN ACCENTS)
+   ============================================================ */
+.tein-left-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-right: 20px;
+}
+
+.tein-tagline-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #047857;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+}
+
+.tein-hero-title {
+  font-size: 3.4rem;
+  line-height: 1.15;
+  font-weight: 900;
+  color: #062612;
+  letter-spacing: -0.035em;
+  margin: 0 0 20px 0;
+}
+
+.tein-hero-highlight {
+  color: #059669;
+  position: relative;
+  display: inline-block;
+}
+
+.tein-hero-desc {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #374151;
+  max-width: 470px;
+  margin: 0 0 36px 0;
+  font-weight: 450;
+}
+
+/* Feature Floating Badges */
+.tein-badges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 40px;
+}
+
+.tein-badge-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(220, 240, 228, 0.9);
+  box-shadow: 0 8px 24px rgba(6, 38, 18, 0.04);
+  padding: 14px 20px;
+  border-radius: 18px;
+  max-width: 350px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tein-badge-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tein-badge-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tein-badge-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.tein-badge-title {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: #062612;
+}
+
+.tein-badge-desc {
+  font-size: 0.77rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.tein-left-footer {
+  font-size: 0.825rem;
+  font-style: italic;
+  color: #4b5563;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   RIGHT COLUMN: LOGIN CARD (EMERALD GREEN THEME)
+   ============================================================ */
+.tein-right-col {
+  display: flex;
+  justify-content: center;
+}
+
+.tein-login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 44px 38px;
+  box-shadow: 
+    0 24px 60px rgba(6, 38, 18, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(209, 235, 221, 0.9);
+  display: flex;
+  flex-direction: column;
+}
+
+.tein-card-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.tein-workspace-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #059669;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.tein-card-title {
+  font-size: 1.75rem;
+  font-weight: 850;
+  color: #062612;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px 0;
+}
+
+.tein-card-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Error message */
+.tein-error-alert {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #991b1b;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* Form */
+.tein-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tein-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tein-label {
+  font-size: 0.775rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.tein-required {
+  color: #ef4444;
+}
+
+.tein-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tein-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: #f0f7f3;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 550;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.tein-input::placeholder {
+  color: #94a3b8;
+}
+
+.tein-input:focus {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+
+.tein-toggle-pw {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  cursor: pointer;
+  padding: 4px;
+  color: #64748b;
+  line-height: 1;
+}
+
+/* Submit Button: Emerald Forest Green (#047857 -> #065f46) */
+.tein-submit-btn {
+  width: 100%;
+  padding: 15px;
+  margin-top: 6px;
+  background: #047857;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 750;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 20px rgba(4, 120, 87, 0.25);
+}
+
+.tein-submit-btn:hover:not(:disabled) {
+  background: #065f46;
+  box-shadow: 0 10px 24px rgba(6, 95, 70, 0.35);
+  transform: translateY(-1px);
+}
+
+.tein-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.tein-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.tein-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Quick Demo Chips */
+.tein-demo-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #eef6f1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tein-demo-hint {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.tein-demo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tein-demo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f7faf8;
+  border: 1px solid #dbebe2;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.775rem;
+  font-weight: 650;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.tein-demo-chip:hover {
+  background: #eef7f2;
+  border-color: #10b981;
+  color: #047857;
+  transform: translateY(-1px);
+}
+
+.tein-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.tein-card-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.tein-card-footer p {
+  font-size: 0.775rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+@media (max-width: 960px) {
+  .tein-login-wrapper {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    max-width: 480px;
+  }
+
+  .tein-left-col {
+    padding-right: 0;
+    text-align: center;
+    align-items: center;
+  }
+
+  .tein-hero-title {
+    font-size: 2.5rem;
+  }
+
+  .tein-hero-desc {
+    max-width: 100%;
+  }
+
+  .tein-badges-list {
+    align-items: center;
+    width: 100%;
+  }
+
+  .tein-badge-card {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .tein-login-page {
+    padding: 24px 16px;
+  }
+
+  .tein-login-card {
+    padding: 30px 20px;
+    border-radius: 22px;
+  }
+
+  .tein-hero-title {
+    font-size: 2.1rem;
+  }
+}

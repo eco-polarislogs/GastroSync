@@ -1,0 +1,141 @@
+{
+  "info": {
+    "name": "GastroSync Enterprise REST API",
+    "_postman_id": "gastrosync-api-v1",
+    "description": "GastroSync Restoran ve Gastronomi İşletim Sistemi API Test Koleksiyonu (Postman uyumlu)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Stok ve Envanter",
+      "item": [
+        {
+          "name": "Tüm Stok Kalemlerini Getir",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/inventory",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "inventory"]
+            }
+          }
+        },
+        {
+          "name": "Barkod ile Ürün Sorgula",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/inventory/barcode/8690123456781",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "inventory", "barcode", "8690123456781"]
+            }
+          }
+        },
+        {
+          "name": "Mal Kabul Yap (Stok Artır)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 10,\n  \"recordedBy\": \"Depo Şefi\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/inventory/1/receive",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "inventory", "1", "receive"]
+            }
+          }
+        },
+        {
+          "name": "Zayiat / Fire Kaydet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1.5,\n  \"reason\": \"Bozulma / Son Kullanma\",\n  \"recordedBy\": \"Mutfak Şefi\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/inventory/1/waste",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "inventory", "1", "waste"]
+            }
+          }
+        },
+        {
+          "name": "Son Depo Hareketleri",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/inventory/transactions/recent",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "inventory", "transactions", "recent"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Finans ve Analitik",
+      "item": [
+        {
+          "name": "Finansal KPI ve Food Cost Özeti",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/analytics/summary",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "analytics", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reçeteler",
+      "item": [
+        {
+          "name": "Tüm Reçeteleri Listele",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/recipes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "recipes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
