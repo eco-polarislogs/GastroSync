@@ -54,7 +54,7 @@ export const apiLogin = async (username, password) => {
 export const apiFetchInventory = async () => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
 
     const res = await fetch(`${API_BASE_URL}/inventory`, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -76,7 +76,7 @@ export const apiFetchInventory = async () => {
       }
     }
   } catch (err) {
-    console.log('[Mobile API] Envanter API çağrısı yerel belleğe düştü:', err.message);
+    // Mobil cihaz tünel/Wi-Fi erişemediğinde sorunsuz yerel hafızaya döner (offline fallback)
   }
   return INITIAL_INVENTORY;
 };
@@ -121,7 +121,7 @@ export const apiRecordWaste = async (itemId, quantity, reason = 'Mobil Zayiat', 
 export const apiFetchUsers = async () => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
 
     const res = await fetch(`${API_BASE_URL}/users`, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -141,7 +141,7 @@ export const apiFetchUsers = async () => {
       }
     }
   } catch (err) {
-    console.log('[Mobile API] Kullanıcı API başarısız, yerel kullanıcılar:', err.message);
+    // Mobil cihaz tünel/Wi-Fi erişemediğinde sorunsuz yerel kullanıcı hafızasına döner
   }
   return DEMO_USERS;
 };

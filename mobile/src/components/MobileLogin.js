@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 import { THEME } from '../theme/tokens';
