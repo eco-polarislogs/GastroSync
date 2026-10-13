@@ -104,7 +104,31 @@ graph TD
 
 ---
 
-## 🚀 Kurulum & Çalıştırma Rehberi
+## 🚀 Hızlı Başlangıç & Tek Tıkla Çalıştırma (All-in-One)
+
+Projeyi indiren bir geliştiricinin saniyeler içinde tüm ekosistemi (Backend, Web, Mobil) canlı ve senkronize başlatması için hazır başlatıcılar eklenmiştir:
+
+### 🟢 Windows İçin (Tek Tıkla Başlatma):
+Klasör içerisindeki **`start-all.bat`** dosyasına çift tıklayın veya terminalden çalıştırın:
+```cmd
+start-all.bat
+```
+Bu betik:
+1. `backend` dizininde Spring Boot sunucusunu (`:8080`) ve PostgreSQL bağlantısını açar.
+2. `GastroSync` web arayüzünü (`:3000` / `:3001`) başlatır.
+3. `mobile` dizininde Expo Metro sunucusunu ve mobil tüneli açar.
+
+---
+
+### 🍎 macOS / Linux İçin:
+```bash
+chmod +x start-all.sh
+./start-all.sh
+```
+
+---
+
+## 🛠️ Manuel Kurulum & Adım Adım Çalıştırma
 
 ### Gereksinimler
 - **Node.js**: v18.0.0 veya üzeri ([İndir](https://nodejs.org/))
@@ -113,39 +137,36 @@ graph TD
 
 ---
 
-### 1. Depoyu Klonlayın
-```bash
-git clone https://github.com/KULLANICI_ADINIZ/GastroSync.git
-cd GastroSync
-```
-
-### 2. Veritabanını Hazırlayın
+### 1. Veritabanını Hazırlayın
 PostgreSQL üzerinde `gastrosync` adında bir veritabanı oluşturun:
 ```sql
 CREATE DATABASE gastrosync;
 ```
-`backend/src/main/resources/application.properties` dosyasındaki veritabanı kullanıcı adı ve şifresini kontrol edin:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/gastrosync
-spring.datasource.username=postgres
-spring.datasource.password=123456
-```
+`backend/src/main/resources/application.properties` dosyasından şifrenizi kontrol edin (Varsayılan: `postgres` kullanıcısı).
 
-### 3. Backend Sunucusunu Başlatın
+### 2. Backend Sunucusunu Başlatın
 ```bash
 cd backend
 mvn spring-boot:run
 ```
-> Sunucu varsayılan olarak **`http://localhost:8080`** portunda başlayacak ve `DataSeeder` sınıfı örnek kullanıcıları ve malzemeleri otomatik olarak yükleyecektir.
+> Sunucu **`http://localhost:8080`** portunda başlar. `DataSeeder` sınıfı örnek kullanıcıları, menü reçetelerini ve 21 hammaddeyi otomatik olarak veritabanına ekler.
 
-### 4. Frontend Web Uygulamasını Başlatın
-Yeni bir terminal penceresinde:
+### 3. Frontend Web Uygulamasını Başlatın
+Yeni bir terminalde:
 ```bash
-cd GastroSync
 npm install
 npm run dev
 ```
-> Web arayüzü **`http://localhost:3001`** (veya `http://localhost:5173`) portunda açılacaktır.
+> Web arayüzü **`http://localhost:3000`** veya `http://localhost:3001` portunda açılır.
+
+### 4. Mobil Uygulamayı Başlatın (Expo)
+Yeni bir terminalde:
+```bash
+cd mobile
+npm install
+npx expo start --tunnel
+```
+> Terminaldeki QR kodu iOS için Kamera veya Android için Expo Go uygulaması ile okutarak test edebilirsiniz. Web ve Mobil aynı veritabanına bağlıdır; birinde yapılan stok veya yetki değişikliği diğerine canlı olarak yansır.
 
 ---
 

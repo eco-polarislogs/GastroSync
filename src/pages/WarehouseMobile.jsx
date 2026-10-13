@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore, useInventoryStore, ROLE_COLORS } from '../store'
-import { FiCamera, FiAlertTriangle, FiSearch, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft } from 'react-icons/fi'
+import { FiCamera, FiAlertTriangle, FiSearch, FiFilter, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft } from 'react-icons/fi'
 import { notifySuccess } from '../utils/notify'
 import Html5BarcodeScanner from '../components/Html5BarcodeScanner'
 import '../styles/warehouse.css'
@@ -15,6 +15,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false)
   const [showWasteModal, setShowWasteModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [stockSearchQuery, setStockSearchQuery] = useState('')
+  const [stockCategoryFilter, setStockCategoryFilter] = useState('all')
   const [selectedItem, setSelectedItem] = useState(null)
   const [quantity, setQuantity] = useState('')
   const [wasteReason, setWasteReason] = useState('')
@@ -86,6 +88,16 @@ export default function WarehouseMobile({ isEmbedded = false }) {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.barcode.includes(searchQuery)
   )
+
+  const warehouseCategories = ['all', ...new Set(items.map((i) => i.category))]
+
+  const filteredStockItems = items.filter((item) => {
+    const matchSearch =
+      item.name.toLowerCase().includes(stockSearchQuery.toLowerCase()) ||
+      item.barcode.includes(stockSearchQuery)
+    const matchCat = stockCategoryFilter === 'all' || item.category === stockCategoryFilter
+    return matchSearch && matchCat
+  })
 
   const todayActions = recentActions.filter((a) => a.date === new Date().toISOString().split('T')[0] || a.date === '2026-10-13')
 
@@ -232,11 +244,57 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
         {activeTab === 'stock' && (
           <div className="wh-stock-list">
-            <div className="wh-stock-header-row">
-              <h2 className="wh-stock-title">Depo Durumu</h2>
-              <span className="wh-stock-count">{items.length} ürün</span>
+            <div className="wh-stock-header-row" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: '1', minWidth: '180px' }}>
+                  <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    placeholder="Depoda ara (isim/barkod)..."
+                    value={stockSearchQuery}
+                    onChange={(e) => setStockSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 36px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '13px',
+                      outline: 'none',
+                      background: '#ffffff'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FiFilter style={{ color: '#64748b' }} size={14} />
+                  <select
+                    value={stockCategoryFilter}
+                    onChange={(e) => setStockCategoryFilter(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '13px',
+                      outline: 'none',
+                      background: '#ffffff',
+                      color: '#334155',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {warehouseCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat === 'all' ? 'Tüm Kategoriler' : cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            {items.map((item) => (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+              <span className="wh-stock-count" style={{ fontSize: '12px', color: '#64748b' }}>
+                <strong>{filteredStockItems.length}</strong> / {items.length} ürün listelendi
+              </span>
+            </div>
+            {filteredStockItems.map((item) => (
               <div key={item.id} className={`wh-stock-item ${item.stock <= item.minStock ? 'wh-stock-item--low' : ''}`}>
                 <div className="wh-stock-item-top">
                   <span className="wh-stock-item-name">{item.name}</span>

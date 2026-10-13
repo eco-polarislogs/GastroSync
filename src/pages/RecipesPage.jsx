@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useRecipeStore, useInventoryStore } from '../store'
-import { FiPlus, FiEdit3, FiTrash2, FiChevronDown, FiChevronUp } from 'react-icons/fi'
+import { FiPlus, FiEdit3, FiTrash2, FiChevronDown, FiChevronUp, FiSearch, FiFilter } from 'react-icons/fi'
 import { notifySuccess } from '../utils/notify'
 import '../styles/pages.css'
 
@@ -9,6 +9,19 @@ export default function RecipesPage() {
   const { items } = useInventoryStore()
   const [expandedId, setExpandedId] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+
+  // Categories list
+  const categories = ['all', ...new Set(recipes.map((r) => r.category))]
+
+  // Filtered recipes
+  const filteredRecipes = recipes.filter((r) => {
+    const matchSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.ingredients.some(ing => ing.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    const matchCat = categoryFilter === 'all' || r.category === categoryFilter
+    return matchSearch && matchCat
+  })
 
   // New recipe form state
   const [newRecipe, setNewRecipe] = useState({
@@ -80,21 +93,47 @@ export default function RecipesPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header-row">
-        <div>
-          <h2 className="page-title">Reçete Merkezi</h2>
-          <p className="page-subtitle">
-            Reçeteleri yönetin — POS entegrasyonu için referans gramajları buradan güncellenir
-          </p>
-        </div>
+      {/* Action Row */}
+      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
         <button className="btn-primary" onClick={() => setShowAddModal(true)}>
           <FiPlus /> Yeni Reçete
         </button>
       </div>
 
+      {/* Filters Bar */}
+      <div className="filters-bar">
+        <div className="search-wrapper">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Reçete adı veya malzeme ile arayın..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="filter-group">
+          <FiFilter className="filter-icon" />
+          <select
+            className="filter-select"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat === 'all' ? 'Tüm Kategoriler' : cat}
+              </option>
+            ))}
+          </select>
+        </div>
+        <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginLeft: 'auto' }}>
+          <strong>{filteredRecipes.length}</strong> / {recipes.length} reçete
+        </span>
+      </div>
+
       {/* Recipe Cards */}
       <div className="recipe-grid">
-        {recipes.map((recipe) => (
+        {filteredRecipes.map((recipe) => (
           <div key={recipe.id} className="recipe-card animate-fade-in">
             <div className="recipe-card-top" onClick={() => toggleExpand(recipe.id)}>
               <div className="recipe-card-info">

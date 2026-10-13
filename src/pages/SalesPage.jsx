@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useSalesStore } from '../store'
-import { FiTrendingUp, FiClock, FiDollarSign, FiDownload, FiFileText } from 'react-icons/fi'
+import { FiTrendingUp, FiClock, FiDollarSign, FiDownload, FiFileText, FiSearch, FiFilter } from 'react-icons/fi'
 import { notifySuccess } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
 import '../styles/pages.css'
 
 export default function SalesPage() {
   const { todaySales, summary } = useSalesStore()
-  const [activeTab, setActiveTab] = React.useState('product') // 'product' veya 'timeline'
+  const [activeTab, setActiveTab] = useState('product') // 'product' veya 'timeline'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [profitFilter, setProfitFilter] = useState('all') // 'all', 'high_profit', 'high_cost'
 
   // Satışı gruplama (recipe bazında)
   const salesByRecipe = todaySales.reduce((acc, sale) => {
@@ -21,7 +23,25 @@ export default function SalesPage() {
   }, {})
 
   const sortedSalesByRevenue = Object.entries(salesByRecipe)
+    .filter(([name, data]) => {
+      const matchSearch = name.toLowerCase().includes(searchQuery.toLowerCase())
+      const foodCost = (data.cost / data.revenue) * 100
+      let matchFilter = true
+      if (profitFilter === 'high_profit') matchFilter = foodCost < 30
+      if (profitFilter === 'high_cost') matchFilter = foodCost >= 40
+      return matchSearch && matchFilter
+    })
     .sort(([, a], [, b]) => b.revenue - a.revenue)
+
+  const filteredTimelineSales = todaySales.filter((sale) => {
+    const matchSearch = sale.recipeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sale.time.includes(searchQuery)
+    const foodCost = (sale.totalCost / sale.totalRevenue) * 100
+    let matchFilter = true
+    if (profitFilter === 'high_profit') matchFilter = foodCost < 30
+    if (profitFilter === 'high_cost') matchFilter = foodCost >= 40
+    return matchSearch && matchFilter
+  })
 
   const handleExportSalesExcel = () => {
     const exportData = todaySales.map(s => ({
@@ -57,13 +77,8 @@ export default function SalesPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header-row">
-        <div>
-          <h2 className="page-title">Satış Analizi</h2>
-          <p className="page-subtitle">
-            POS entegrasyonu ile otomatik oluşturulan günlük satış verileri
-          </p>
-        </div>
+      {/* Action Row */}
+      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
         <div className="export-btn-group">
           <button
             className="export-tile-btn export-tile-btn--excel"
@@ -103,42 +118,73 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Segmented View Switcher (Keyvo Style Pill Tabs) */}
-      <div style={{ display: 'flex', gap: '8px', background: '#eef6f0', padding: '6px', borderRadius: '12px', width: 'fit-content' }}>
-        <button
-          onClick={() => setActiveTab('product')}
-          style={{
-            padding: '8px 20px',
-            borderRadius: '8px',
-            border: 'none',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: activeTab === 'product' ? '#ffffff' : 'transparent',
-            color: activeTab === 'product' ? '#0a1f11' : '#64748b',
-            boxShadow: activeTab === 'product' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
-          }}
-        >
-          📊 Ürün Bazlı Satış Özeti
-        </button>
-        <button
-          onClick={() => setActiveTab('timeline')}
-          style={{
-            padding: '8px 20px',
-            borderRadius: '8px',
-            border: 'none',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: activeTab === 'timeline' ? '#ffffff' : 'transparent',
-            color: activeTab === 'timeline' ? '#0a1f11' : '#64748b',
-            boxShadow: activeTab === 'timeline' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
-          }}
-        >
-          ⏱️ Detaylı Zaman Kayıtları ({todaySales.length})
-        </button>
+      {/* Segmented View Switcher & Filters */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', background: '#eef6f0', padding: '6px', borderRadius: '12px', width: 'fit-content' }}>
+          <button
+            onClick={() => setActiveTab('product')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: '8px',
+              border: 'none',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              background: activeTab === 'product' ? '#ffffff' : 'transparent',
+              color: activeTab === 'product' ? '#0a1f11' : '#64748b',
+              boxShadow: activeTab === 'product' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+            }}
+          >
+            📊 Ürün Bazlı Satış Özeti
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: '8px',
+              border: 'none',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              background: activeTab === 'timeline' ? '#ffffff' : 'transparent',
+              color: activeTab === 'timeline' ? '#0a1f11' : '#64748b',
+              boxShadow: activeTab === 'timeline' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+            }}
+          >
+            ⏱️ Detaylı Zaman Kayıtları ({todaySales.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="filters-bar">
+        <div className="search-wrapper">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder={activeTab === 'product' ? 'Yemek adına göre arayın...' : 'Yemek adı veya saate göre arayın...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="filter-group">
+          <FiFilter className="filter-icon" />
+          <select
+            className="filter-select"
+            value={profitFilter}
+            onChange={(e) => setProfitFilter(e.target.value)}
+          >
+            <option value="all">Tüm Satışlar</option>
+            <option value="high_profit">Yüksek Kârlı (Food Cost &lt; %30)</option>
+            <option value="high_cost">Yüksek Maliyet / Zarar Riski (Food Cost ≥ %40)</option>
+          </select>
+        </div>
+        <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginLeft: 'auto' }}>
+          <strong>{activeTab === 'product' ? sortedSalesByRevenue.length : filteredTimelineSales.length}</strong> kayıt listelendi
+        </span>
       </div>
 
       {/* Sales by Product Tab */}
@@ -205,7 +251,7 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {todaySales.map((sale) => (
+                {filteredTimelineSales.map((sale) => (
                   <tr key={sale.id}>
                     <td>
                       <span className="time-badge">{sale.time}</span>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore } from '../store'
-import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi'
+import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import '../styles/pages.css'
 
@@ -32,6 +32,28 @@ export default function UsersPage() {
   // Role editing state
   const [editingUserId, setEditingUserId] = useState(null)
   const [selectedRole, setSelectedRole] = useState('')
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterRole, setFilterRole] = useState('all')
+
+  // Filtered users based on search and role filter
+  const filteredUsers = useMemo(() => {
+    let result = users
+    if (filterRole !== 'all') {
+      result = result.filter((u) => u.role === filterRole)
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.username.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [users, searchQuery, filterRole])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -165,15 +187,8 @@ export default function UsersPage() {
 
   return (
     <div className="page-container">
-      {/* Header Row with Actions */}
-      <div className="page-header-row">
-        <div>
-          <h2 className="page-title">Kullanıcı & Rol Yönetimi</h2>
-          <p className="page-subtitle">
-            Restoran yöneticisi yetkileriyle personel ekleyin, görev rollerini backend üzerinde dinamik olarak eşleştirin
-          </p>
-        </div>
-
+      {/* Action Buttons Row */}
+      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             className="action-btn action-btn--secondary"
@@ -196,9 +211,42 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <div className="users-toolbar">
+        <div className="users-search-wrapper">
+          <FiSearch className="users-search-icon" />
+          <input
+            type="text"
+            className="users-search-input"
+            placeholder="Personel adı, e-posta veya kullanıcı adı ara..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="users-filter-group">
+          <FiFilter className="users-filter-icon" size={15} />
+          <select
+            className="users-filter-select"
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+          >
+            <option value="all">Tüm Roller</option>
+            <option value={ROLES.ADMIN}>{ROLE_LABELS[ROLES.ADMIN]}</option>
+            <option value={ROLES.MANAGER}>{ROLE_LABELS[ROLES.MANAGER]}</option>
+            <option value={ROLES.CHEF}>{ROLE_LABELS[ROLES.CHEF]}</option>
+            <option value={ROLES.WAREHOUSE}>{ROLE_LABELS[ROLES.WAREHOUSE]}</option>
+          </select>
+        </div>
+
+        <span className="users-result-count">
+          <strong>{filteredUsers.length}</strong> / {users.length} personel
+        </span>
+      </div>
+
       {/* Users Grid */}
       <div className="users-grid">
-        {users.map((user) => (
+        {filteredUsers.map((user) => (
           <div key={user.id} className="user-card animate-fade-in">
             <div className="user-card-top">
               <div
@@ -357,10 +405,34 @@ export default function UsersPage() {
       {showAddModal && (
         <div className="modal-overlay animate-fade-in" onClick={() => setShowAddModal(false)}>
           <div className="modal-card animate-scale-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h3>Yeni Kullanıcı Ekle & Rol Ata</h3>
-              <button className="modal-close-btn" onClick={() => setShowAddModal(false)}>
-                <FiX />
+            <div className="modal-header" style={{
+              background: 'linear-gradient(135deg, #081c0f 0%, #0a1f11 30%, #153d24 70%, #1b4d30 100%)',
+              borderBottom: '3px solid #10b981',
+              padding: '24px 28px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 1, position: 'relative' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FiUserPlus size={18} style={{ color: '#34d399' }} />
+                </div>
+                <div>
+                  <h3 style={{ color: '#ffffff', margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Yeni Kullanıcı Ekle & Rol Ata</h3>
+                  <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', marginTop: '2px', display: 'block' }}>Personel bilgilerini girin ve görev rolü atayın</span>
+                </div>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowAddModal(false)} style={{
+                zIndex: 1, position: 'relative',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.7)',
+                borderRadius: '8px',
+                width: '34px', height: '34px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer'
+              }}>
+                <FiX size={16} />
               </button>
             </div>
 

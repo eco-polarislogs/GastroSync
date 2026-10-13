@@ -84,12 +84,8 @@ export default function InventoryPage() {
 
   return (
     <div className="page-container">
-      {/* Page Header */}
-      <div className="page-header-row">
-        <div>
-          <h2 className="page-title">Stok Yönetimi</h2>
-          <p className="page-subtitle">Tüm envanter kalemlerini görüntüleyin ve yönetin</p>
-        </div>
+      {/* Actions Row */}
+      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
         <div className="export-btn-group">
           <button 
             className="export-tile-btn export-tile-btn--excel" 

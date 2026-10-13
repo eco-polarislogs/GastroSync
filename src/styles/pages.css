@@ -845,3 +845,311 @@
   border-color: #fca5a5;
   transform: translateY(-1px);
 }
+
+/* ============================================================
+   Action Buttons (Theme-Aligned Primary & Secondary)
+   ============================================================ */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.action-btn--primary {
+  background: linear-gradient(135deg, #0a1f11 0%, #153d24 50%, #10b981 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(10, 31, 17, 0.25), 0 1px 3px rgba(16, 185, 129, 0.15);
+  letter-spacing: 0.02em;
+}
+
+.action-btn--primary:hover {
+  background: linear-gradient(135deg, #0e2b19 0%, #1b4d30 50%, #34d399 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(10, 31, 17, 0.3), 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.action-btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(10, 31, 17, 0.2);
+}
+
+.action-btn--secondary {
+  background: #ffffff;
+  color: #0a1f11;
+  border: 1.5px solid #dbe7df;
+  box-shadow: 0 1px 3px rgba(6, 38, 18, 0.05);
+}
+
+.action-btn--secondary:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #eef6f0 100%);
+  border-color: #10b981;
+  color: #065f46;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+}
+
+.action-btn--secondary:active {
+  transform: translateY(0);
+  background: #eef6f0;
+}
+
+/* ============================================================
+   Users Page — Search & Filter Toolbar
+   ============================================================ */
+.users-toolbar {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.users-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.users-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-light);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.users-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 42px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  outline: none;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.users-search-input::placeholder {
+  color: var(--color-text-light);
+}
+
+.users-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  background: #ffffff;
+}
+
+.users-filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.users-filter-icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.users-filter-select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  min-width: 160px;
+}
+
+.users-filter-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.users-result-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: auto;
+  padding: 6px 14px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-light);
+}
+
+.users-result-count strong {
+  color: #10b981;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Modal Card — Theme-Aligned User Creation Modal
+   ============================================================ */
+.modal-card {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 24px 48px -12px rgba(10, 31, 17, 0.25),
+    0 12px 24px -8px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.modal-card .modal-header {
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  background: linear-gradient(135deg, #0a1f11, #153d24);
+  border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.modal-card .modal-header h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.modal-close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 1rem;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+/* Modal Form */
+.modal-form {
+  padding: var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-field label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.modal-field input,
+.modal-field select {
+  padding: 11px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  outline: none;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.modal-field input::placeholder {
+  color: var(--color-text-light);
+}
+
+.modal-field input:focus,
+.modal-field select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  background: #ffffff;
+}
+
+.modal-field select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* ============================================================
+   Scale-Up Animation for Modal
+   ============================================================ */
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Spin animation for refresh button */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
