@@ -347,7 +347,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   <FiSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                   <input
                     type="text"
-                    placeholder="Depoda ara (isim/barkod)..."
+                    placeholder={t.manualSearchPlaceholder}
                     value={stockSearchQuery}
                     onChange={(e) => setStockSearchQuery(e.target.value)}
                     style={{
@@ -382,14 +382,14 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   >
                     {warehouseCategories.map((cat) => (
                       <option key={cat} value={cat}>
-                        {cat === 'all' ? 'Tüm Kategoriler' : cat}
+                        {cat === 'all' ? t.allCategories : getCategoryLabel(cat, currentLanguage)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div style={{ marginLeft: 'auto', flexShrink: 0, paddingLeft: '8px', borderLeft: '1px solid #e2e8f0' }}>
                   <span className="wh-stock-count" style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
-                    <strong>{filteredStockItems.length}</strong> / {items.length} ürün
+                    <strong>{filteredStockItems.length}</strong> / {items.length} {t.productsListedCount}
                   </span>
                 </div>
               </div>
@@ -403,11 +403,11 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   </span>
                 </div>
                 <div className="wh-stock-item-bottom">
-                  <span className="wh-stock-item-cat">{item.category}</span>
+                  <span className="wh-stock-item-cat">{getCategoryLabel(item.category, currentLanguage)}</span>
                   <span className="wh-stock-item-min">Min: {item.minStock} {item.unit}</span>
                 </div>
                 {item.stock <= item.minStock && (
-                  <div className="wh-stock-item-warning">⚠️ Kritik stok seviyesi!</div>
+                  <div className="wh-stock-item-warning">{t.criticalStockAlert}</div>
                 )}
               </div>
             ))}
@@ -463,7 +463,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         <div className="wh-modal-overlay" onClick={() => setShowBarcodeModal(false)}>
           <div className="wh-modal wh-modal--wide animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
             <div className="wh-modal-header">
-              <h3>Mal Kabul — Barkod / QR Terminali</h3>
+              <h3>{t.barcodeTerminalTitle}</h3>
               <button className="wh-modal-close" onClick={() => setShowBarcodeModal(false)}>
                 <FiX />
               </button>
@@ -475,17 +475,17 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#065f46', fontWeight: '700', fontSize: '15px' }}>
                     <FiCheck style={{ fontSize: '20px', color: '#10b981' }} />
-                    Barkod Başarıyla Okundu: <span style={{ fontFamily: 'monospace', letterSpacing: '1px', background: '#d1fae5', padding: '2px 8px', borderRadius: '6px' }}>{unrecognizedBarcode}</span>
+                    {t.unrecognizedBarcodeTitle} <span style={{ fontFamily: 'monospace', letterSpacing: '1px', background: '#d1fae5', padding: '2px 8px', borderRadius: '6px' }}>{unrecognizedBarcode}</span>
                   </div>
                   <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#047857' }}>
-                    Bu barkod henüz hiçbir hammaddeye atanmamış. Aşağıdaki depodaki ürünlerden birine bu barkodu tek tıkla tanımlayabilir ve mal kabulünü hemen yapabilirsiniz:
+                    {t.unrecognizedBarcodeDesc}
                   </p>
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
                   <input
                     type="text"
-                    placeholder="Ürün ara (Örn: Domates, Un, Kolonya)..."
+                    placeholder={t.searchProductOrBarcodePlaceholder}
                     value={assignSearch}
                     onChange={(e) => setAssignSearch(e.target.value)}
                     style={{
@@ -520,7 +520,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         <div>
                           <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '14px' }}>{item.name}</div>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>
-                            Mevcut Stok: <strong>{item.stock} {item.unit}</strong> | Eski Barkod: {item.barcode || 'Yok'}
+                            {t.stockCol}: <strong>{item.stock} {item.unit}</strong> | {t.barcodeCol}: {item.barcode || '—'}
                           </div>
                         </div>
                         <button
@@ -539,7 +539,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                             const updatedItem = { ...item, barcode: unrecognizedBarcode }
                             setSelectedItem(updatedItem)
                             setUnrecognizedBarcode(null)
-                            notifySuccess(`"${item.name}" ürününe ${unrecognizedBarcode} barkodu tanımlandı!`, 'Barkod Eşleştirildi')
+                            notifySuccess(`"${item.name}" : ${unrecognizedBarcode}`, t.goodsReceiptSuccess)
                           }}
                           style={{
                             padding: '8px 16px',
@@ -552,7 +552,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                             cursor: 'pointer'
                           }}
                         >
-                          Bu Ürüne Tanımla ve Mal Kabul Et
+                          {t.assignBarcodeAndReceiveBtn}
                         </button>
                       </div>
                     ))}
@@ -574,7 +574,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                       padding: '8px 4px'
                     }}
                   >
-                    ← Yeniden Barkod Tara
+                    {t.rescanBarcodeBtn}
                   </button>
 
                   <button
@@ -606,7 +606,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                       boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
                     }}
                   >
-                    ➕ Bu Barkod ile Yeni Ürün Kaydet ({unrecognizedBarcode})
+                    {t.registerNewWithBarcodeBtn} ({unrecognizedBarcode})
                   </button>
                 </div>
               </div>
@@ -616,12 +616,12 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   {/* Sol Sütun: Manuel Barkod Giriş Kutusu (Kamerasız) */}
                   <div style={{ background: '#ffffff', padding: '16px', borderRadius: '12px', border: '1px solid #dbe7df' }}>
                     <p className="wh-modal-info" style={{ textAlign: 'left', marginBottom: '10px', fontWeight: 800, color: '#0f172a' }}>
-                      ⌨️ Barkod Numarasını Girin:
+                      {t.enterBarcodePrompt}
                     </p>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <input
                         type="text"
-                        placeholder="Örn: 8691234567890"
+                        placeholder={t.barcodePlaceholder}
                         className="wh-modal-input"
                         style={{ flex: 1, fontSize: '15px', fontFamily: 'monospace' }}
                         value={searchQuery}
@@ -653,7 +653,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                             }
                             if (found) {
                               setSelectedItem(found)
-                              notifySuccess(`Ürün bulundu: ${found.name}`, 'Barkod Eşleşti')
+                              notifySuccess(`${found.name}`, t.goodsReceiptSuccess)
                               setSearchQuery('')
                             } else {
                               setUnrecognizedBarcode(cleanCode)
@@ -693,7 +693,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           }
                           if (found) {
                             setSelectedItem(found)
-                            notifySuccess(`Ürün bulundu: ${found.name}`, 'Barkod Eşleşti')
+                            notifySuccess(`${found.name}`, t.goodsReceiptSuccess)
                             setSearchQuery('')
                           } else {
                             setUnrecognizedBarcode(cleanCode)
@@ -701,18 +701,18 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           }
                         }}
                       >
-                        Getir
+                        {t.fetchBarcodeBtn}
                       </button>
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      Barkod numarasını elle yazıp <strong>Enter</strong> veya <strong>Getir</strong> butonuna basarak mal kabul miktarını girebilirsiniz.
+                      {t.barcodeManualTip}
                     </div>
                   </div>
 
                   {/* Sağ Sütun: Hızlı Seçim Listesi */}
                   <div style={{ background: '#f8faf9', padding: '14px', borderRadius: '12px', border: '1px solid #dbe7df' }}>
                     <p style={{ fontSize: '13px', fontWeight: '700', color: '#0a1f11', marginBottom: '8px' }}>
-                      Hızlı Ürün Seçimi:
+                      {t.quickProductSelect}
                     </p>
                     <div className="wh-modal-list" style={{ maxHeight: '250px' }}>
                       {items.slice(0, 7).map((item) => (
@@ -739,15 +739,15 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 <div className="wh-modal-selected">
                   <span className="wh-modal-selected-name">{selectedItem.name}</span>
                   <span className="wh-modal-selected-stock">
-                    Mevcut: {selectedItem.stock} {selectedItem.unit}
+                    {t.stockCol}: {selectedItem.stock} {selectedItem.unit}
                   </span>
                 </div>
                 <div className="wh-modal-field">
-                  <label>Gelen Miktar ({selectedItem.unit})</label>
+                  <label>{t.incomingQuantityLabel} ({selectedItem.unit})</label>
                   <input
                     type="number"
                     className="wh-modal-input"
-                    placeholder={`Örn: 25`}
+                    placeholder={`25`}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     min="0"
@@ -760,7 +760,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   onClick={handleReceive}
                   disabled={!quantity || quantity <= 0}
                 >
-                  <FiCheck /> Stoğa Ekle
+                  <FiCheck /> {t.addToStockBtn}
                 </button>
               </div>
             )}
@@ -773,7 +773,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         <div className="wh-modal-overlay" onClick={() => setShowWasteModal(false)}>
           <div className="wh-modal animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
             <div className="wh-modal-header wh-modal-header--danger">
-              <h3>⚠️ Zayiat Bildirimi</h3>
+              <h3>{t.wasteModalTitle}</h3>
               <button className="wh-modal-close" onClick={() => setShowWasteModal(false)}>
                 <FiX />
               </button>
@@ -788,7 +788,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                         <input
                           type="text"
-                          placeholder="Ürün adı veya barkod ara..."
+                          placeholder={t.searchProductOrBarcodePlaceholder}
                           value={wasteSearchQuery}
                           onChange={(e) => setWasteSearchQuery(e.target.value)}
                           style={{
@@ -822,16 +822,16 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         >
                           {warehouseCategories.map((cat) => (
                             <option key={cat} value={cat}>
-                              {cat === 'all' ? 'Tüm Kategoriler' : cat}
+                              {cat === 'all' ? t.allCategories : getCategoryLabel(cat, currentLanguage)}
                             </option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px' }}>
-                      <p className="wh-modal-info" style={{ margin: 0 }}>Hasarlı / Zayiat ürünü seçiniz:</p>
+                      <p className="wh-modal-info" style={{ margin: 0 }}>{t.selectWasteProductPrompt}</p>
                       <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-                        {filteredWasteItems.length} ürün listelendi
+                        {filteredWasteItems.length} {t.productsListedCount}
                       </span>
                     </div>
                   </div>
@@ -839,7 +839,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   <div className="wh-modal-list" style={{ maxHeight: '240px', overflowY: 'auto' }}>
                     {filteredWasteItems.length === 0 ? (
                       <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', padding: '16px' }}>
-                        Aramanızla eşleşen ürün bulunamadı.
+                        {t.noProductFound}
                       </p>
                     ) : (
                       filteredWasteItems.map((item) => (
@@ -855,7 +855,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         >
                           <div>
                             <div style={{ fontWeight: '600', color: '#0f172a' }}>{item.name}</div>
-                            <small style={{ color: '#64748b', fontSize: '11px' }}>{item.category}</small>
+                            <small style={{ color: '#64748b', fontSize: '11px' }}>{getCategoryLabel(item.category, currentLanguage)}</small>
                           </div>
                           <span className="wh-modal-list-stock" style={{ fontWeight: '700', color: '#ef4444' }}>
                             {item.stock} {item.unit}
@@ -871,7 +871,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                     <div>
                       <div className="wh-modal-selected-name">{selectedItem.name}</div>
                       <div className="wh-modal-selected-stock" style={{ color: '#ef4444', fontWeight: '700' }}>
-                        Mevcut Stok: {selectedItem.stock} {selectedItem.unit}
+                        {t.stockCol}: {selectedItem.stock} {selectedItem.unit}
                       </div>
                     </div>
                     <button
@@ -892,16 +892,16 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         fontWeight: '600'
                       }}
                     >
-                      Ürünü Değiştir
+                      {t.changeSelectedProductBtn}
                     </button>
                   </div>
 
                   <div className="wh-modal-field">
-                    <label>Zayi Miktar ({selectedItem.unit}) - <small style={{ color: '#64748b' }}>Maksimum: {selectedItem.stock} {selectedItem.unit}</small></label>
+                    <label>{t.wasteQuantityLabel} ({selectedItem.unit}) - <small style={{ color: '#64748b' }}>{t.maxStockLabel}: {selectedItem.stock} {selectedItem.unit}</small></label>
                     <input
                       type="number"
                       className="wh-modal-input"
-                      placeholder={`Örn: 1`}
+                      placeholder={`1`}
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       min="0.001"
@@ -912,19 +912,19 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   </div>
 
                   <div className="wh-modal-field">
-                    <label>Zayiat Nedeni</label>
+                    <label>{t.wasteReasonLabel}</label>
                     <select
                       className="wh-modal-input"
                       value={wasteReason}
                       onChange={(e) => setWasteReason(e.target.value)}
                     >
-                      <option value="">Neden seçiniz...</option>
-                      <option value="Ezilme / Bozulma">Ezilme / Bozulma</option>
-                      <option value="Son Kullanma Tarihi Geçmiş">Son Kullanma Tarihi Geçmiş</option>
-                      <option value="Kırık / Ambalaj Hasarı">Kırık / Ambalaj Hasarı</option>
-                      <option value="Donma / Çözülme Sorunu">Donma / Çözülme Sorunu</option>
-                      <option value="Mutfak Hazırlık Firesi">Mutfak Hazırlık Firesi</option>
-                      <option value="Diğer">Diğer</option>
+                      <option value="">{t.selectReasonPlaceholder}</option>
+                      <option value="Ezilme / Bozulma">{t.reasonSpoiled}</option>
+                      <option value="Son Kullanma Tarihi Geçmiş">{t.reasonExpired}</option>
+                      <option value="Kırık / Ambalaj Hasarı">{t.reasonDamagedPkg}</option>
+                      <option value="Donma / Çözülme Sorunu">{t.reasonFreezeThaw}</option>
+                      <option value="Mutfak Hazırlık Firesi">{t.reasonPrepWaste}</option>
+                      <option value="Diğer">{t.reasonOther}</option>
                     </select>
                   </div>
 
@@ -949,7 +949,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                         setWasteReason('')
                       }}
                     >
-                      Vazgeç
+                      {t.cancel}
                     </button>
                     <button
                       type="button"
@@ -958,7 +958,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                       onClick={handleWaste}
                       disabled={!quantity || parseFloat(quantity) <= 0 || !wasteReason}
                     >
-                      <FiAlertTriangle /> Zayiat Kaydet
+                      <FiAlertTriangle /> {t.saveWasteBtn}
                     </button>
                   </div>
                 </>
@@ -973,7 +973,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         <div className="wh-modal-overlay" onClick={() => setShowNewItemModal(false)}>
           <div className="wh-modal animate-fade-in-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px' }}>
             <div className="wh-modal-header" style={{ background: '#ecfdf5' }}>
-              <h3 style={{ color: '#065f46' }}>➕ Depoya Yeni Ürün / Hammadde Ekle</h3>
+              <h3 style={{ color: '#065f46' }}>{t.addNewProductModalTitle}</h3>
               <button className="wh-modal-close" onClick={() => setShowNewItemModal(false)}>
                 <FiX />
               </button>
@@ -981,11 +981,11 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
             <form onSubmit={handleCreateNewItem} className="wh-modal-body" style={{ gap: '14px', padding: '20px' }}>
               <div className="wh-modal-field">
-                <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Ürün Adı *</label>
+                <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.productName} *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Örn: Rebul Mandarine Kolonya 50ml, Çam Fıstığı..."
+                  placeholder={t.productName}
                   value={newItemForm.name}
                   onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })}
                   className="wh-modal-input"
@@ -995,24 +995,24 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Kategori</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.category}</label>
                   <select
                     className="wh-modal-input"
                     value={newItemForm.category}
                     onChange={(e) => setNewItemForm({ ...newItemForm, category: e.target.value })}
                   >
-                    <option value="Kuru Gıda">Kuru Gıda</option>
-                    <option value="Et & Tavuk">Et & Tavuk</option>
-                    <option value="Sebze & Meyve">Sebze & Meyve</option>
-                    <option value="Süt Ürünleri">Süt Ürünleri</option>
-                    <option value="İçecek">İçecek</option>
-                    <option value="Temizlik & Hijyen">Temizlik & Hijyen</option>
-                    <option value="Genel">Genel</option>
+                    <option value="Kuru Gıda">{getCategoryLabel('Kuru Gıda', currentLanguage)}</option>
+                    <option value="Et & Tavuk">{getCategoryLabel('Et & Tavuk', currentLanguage)}</option>
+                    <option value="Sebze & Meyve">{getCategoryLabel('Sebze & Meyve', currentLanguage)}</option>
+                    <option value="Süt Ürünleri">{getCategoryLabel('Süt Ürünleri', currentLanguage)}</option>
+                    <option value="İçecek">{getCategoryLabel('İçecek', currentLanguage)}</option>
+                    <option value="Temizlik & Hijyen">{getCategoryLabel('Temizlik & Hijyen', currentLanguage)}</option>
+                    <option value="Genel">{getCategoryLabel('Genel', currentLanguage)}</option>
                   </select>
                 </div>
 
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Birim</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.unit}</label>
                   <select
                     className="wh-modal-input"
                     value={newItemForm.unit}
@@ -1029,7 +1029,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Başlangıç Stoğu</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.initialStockLabel}</label>
                   <input
                     type="number"
                     step="any"
@@ -1042,7 +1042,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 </div>
 
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Kritik Min. Stok</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.criticalMinStockLabel}</label>
                   <input
                     type="number"
                     step="any"
@@ -1057,7 +1057,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Birim Maliyet (₺)</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.unitCostLabel}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1070,10 +1070,10 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 </div>
 
                 <div className="wh-modal-field">
-                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>Tedarikçi</label>
+                  <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{t.supplier}</label>
                   <input
                     type="text"
-                    placeholder="Örn: Metro Grossmarket"
+                    placeholder={t.supplier}
                     value={newItemForm.supplier}
                     onChange={(e) => setNewItemForm({ ...newItemForm, supplier: e.target.value })}
                     className="wh-modal-input"
@@ -1083,12 +1083,12 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
               <div className="wh-modal-field">
                 <label style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>
-                  Barkod Numarası <small style={{ color: '#64748b', fontWeight: 'normal' }}>(Boş bırakılırsa otomatik üretilir)</small>
+                  {t.barcodeNumber} <small style={{ color: '#64748b', fontWeight: 'normal' }}>{t.barcodeOptionalNotice}</small>
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="text"
-                    placeholder="Örn: 8691226631707 veya 86940573..."
+                    placeholder="8690123456789"
                     value={newItemForm.barcode}
                     onChange={(e) => setNewItemForm({ ...newItemForm, barcode: e.target.value })}
                     className="wh-modal-input"
@@ -1114,9 +1114,9 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                       cursor: 'pointer',
                       whiteSpace: 'nowrap'
                     }}
-                    title="Kamerayla Tara"
+                    title={t.cameraScanBtn}
                   >
-                    <FiCamera /> Kamera ile Oku
+                    <FiCamera /> {t.cameraScanBtn}
                   </button>
                 </div>
               </div>
@@ -1137,14 +1137,14 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                   }}
                   onClick={() => setShowNewItemModal(false)}
                 >
-                  Vazgeç
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   className="wh-modal-submit wh-modal-submit--primary"
                   style={{ flex: 2, margin: 0 }}
                 >
-                  <FiCheck /> Ürünü Depoya Kaydet
+                  <FiCheck /> {t.saveProductToWarehouseBtn}
                 </button>
               </div>
             </form>
