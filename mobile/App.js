@@ -6,55 +6,27 @@ import AndroidApp from './src/android/AndroidApp';
 import MobileLogin from './src/components/MobileLogin';
 import { THEME } from './src/theme/tokens';
 
+import { DEMO_USERS } from './src/data/inventoryData';
+
 function MainApp() {
-  const insets = useSafeAreaInsets();
-  const [platformMode, setPlatformMode] = useState(Platform.OS === 'ios' ? 'ios' : 'android');
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  const [authenticatedUser, setAuthenticatedUser] = useState(DEMO_USERS[0]);
 
   const handleLogout = () => {
     setAuthenticatedUser(null);
   };
 
+  // Cihazın işletim sistemi donanım düzeyinde otomatik algılanır (iOS ise iOS, Android ise Android)
+  const isIOS = Platform.OS === 'ios';
+
   return (
-    <View style={[styles.root, { paddingTop: Math.max(insets.top, 0) }]}>
+    <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={THEME.colors.headerBg} translucent={false} />
-
-      {/* Platform Değiştirici Header Bar */}
-      <View style={styles.switchBar}>
-        <View style={styles.switchRow}>
-          <View style={styles.brandRow}>
-            <View style={styles.brandBadge}>
-              <Text style={styles.brandBadgeText}>GS</Text>
-            </View>
-            <Text style={styles.switchTitle}>GastroSync</Text>
-          </View>
-          <View style={styles.toggleGroup}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, platformMode === 'ios' && styles.toggleActive]}
-              onPress={() => setPlatformMode('ios')}
-            >
-              <Text style={[styles.toggleText, platformMode === 'ios' && styles.toggleTextActive]}>
-                🍎 iOS
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toggleBtn, platformMode === 'android' && styles.toggleActive]}
-              onPress={() => setPlatformMode('android')}
-            >
-              <Text style={[styles.toggleText, platformMode === 'android' && styles.toggleTextActive]}>
-                🤖 Android
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
 
       {/* Uygulama Ekranı */}
       <View style={styles.appContainer}>
         {!authenticatedUser ? (
           <MobileLogin onLoginSuccess={(user) => setAuthenticatedUser(user)} />
-        ) : platformMode === 'ios' ? (
+        ) : isIOS ? (
           <IOSApp initialUser={authenticatedUser} onLogout={handleLogout} />
         ) : (
           <AndroidApp initialUser={authenticatedUser} onLogout={handleLogout} />

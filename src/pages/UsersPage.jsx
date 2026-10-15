@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore } from '../store'
-import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter } from 'react-icons/fi'
+import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter, FiAlertTriangle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
+import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
 import '../styles/pages.css'
 
 const ROLE_MODULES = {
   [ROLES.ADMIN]: 'Tüm Sayfalar, Kullanıcı Yönetimi, Rol Atama, Sistem Logları',
   [ROLES.MANAGER]: 'Dashboard, Finansal Raporlar, Satış Analizleri, Tüm Reçeteler',
+  [ROLES.ACCOUNTANT]: 'Muhasebe & Kasa, Gider ve Kira Ödemeleri, Fatura Girişleri',
+  [ROLES.FINANCIAL_ADVISOR]: 'Resmi Muhasebe Defteri, Vergi ve SGK Tahakkukları, Mali Raporlama',
   [ROLES.CHEF]: 'Reçete Yönetimi, Üretim Planlama, Menü Tasarımı, Stok (Görüntüleme)',
-  [ROLES.WAREHOUSE]: 'Mobil Mal Kabul (Barkod), Zayiat Bildirimi, Sayım Ekranı',
+  [ROLES.WAREHOUSE]: 'Mal Kabul Terminali (Elle / Barkod Girişi), Zayiat Bildirimi, Sayım',
 }
 
 export default function UsersPage() {
+  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
+
   const currentUser = useAuthStore((s) => s.user)
   const isSuperAdmin = currentUser?.role === ROLES.ADMIN
 
@@ -19,6 +25,10 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Custom confirmation modal (alert/confirm yerine modern message box)
+  const [userToDelete, setUserToDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -88,6 +98,8 @@ export default function UsersPage() {
         { id: 2, name: 'Zeynep Kaya', username: 'manager', email: 'manager@gastrosync.com', role: ROLES.MANAGER, avatar: 'ZK', lastLogin: 'Bugün, 08:30' },
         { id: 3, name: 'Mehmet Şef', username: 'chef', email: 'chef@gastrosync.com', role: ROLES.CHEF, avatar: 'MŞ', lastLogin: 'Dün, 17:45' },
         { id: 4, name: 'Ali Depocu', username: 'warehouse', email: 'warehouse@gastrosync.com', role: ROLES.WAREHOUSE, avatar: 'AD', lastLogin: 'Bugün, 14:00' },
+        { id: 5, name: 'Canan Kasa', username: 'accountant', email: 'accountant@gastrosync.com', role: ROLES.ACCOUNTANT, avatar: 'CK', lastLogin: 'Bugün, 09:00' },
+        { id: 6, name: 'Selahattin Müşavir', username: 'advisor', email: 'advisor@gastrosync.com', role: ROLES.FINANCIAL_ADVISOR, avatar: 'SM', lastLogin: 'Bugün, 10:00' },
       ])
     } finally {
       setLoading(false)
@@ -96,6 +108,11 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers()
+    // Mobilde veya webde rol güncellendiğinde senkronize kalması için periyodik kontrol
+    const timer = setInterval(() => {
+      fetchUsers()
+    }, 4000)
+    return () => clearInterval(timer)
   }, [])
 
   const handleCreateUser = async (e) => {
@@ -125,11 +142,28 @@ export default function UsersPage() {
         setNewUser({ name: '', username: '', email: '', role: ROLES.MANAGER, password: '123456' })
         fetchUsers()
       } else {
-        const errData = await res.json()
-        notifyError(errData.message || 'Kullanıcı eklenemedi')
+        let errMessage = 'Kullanıcı eklenemedi'
+        try {
+          const errData = await res.json()
+          errMessage = errData.message || errMessage
+        } catch (_) {}
+        notifyError(errMessage)
       }
     } catch (err) {
-      notifyError('Sunucuya bağlanırken bir sorun oluştu')
+      // Offline fallback: yerel listeye ekle ve kullanıcıyı uyar
+      const createdUser = {
+        id: Date.now(),
+        name: newUser.name.trim(),
+        username: newUser.username.trim().toLowerCase(),
+        email: newUser.email.trim() || `${newUser.username.trim().toLowerCase()}@gastrosync.com`,
+        role: newUser.role.toLowerCase(),
+        avatar: newUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
+        lastLogin: 'Yeni Kayıt'
+      }
+      setUsers(prev => [createdUser, ...prev])
+      setShowAddModal(false)
+      setNewUser({ name: '', username: '', email: '', role: ROLES.MANAGER, password: '123456' })
+      notifySuccess(`${newUser.name} eklendi (Backend çevrimdışı, yerel kaydedildi)`, 'Kullanıcı Eklendi')
     } finally {
       setSubmitting(false)
     }
@@ -159,29 +193,38 @@ export default function UsersPage() {
     }
   }
 
-  const handleDeleteUser = async (user) => {
+  const handleDeleteUser = (user) => {
     if (user.role === ROLES.ADMIN || user.username === 'admin') {
       notifyError('Ana yönetici hesabı sistemden silinemez!')
       return
     }
+    setUserToDelete(user)
+  }
 
-    const confirmed = window.confirm(`${user.name} (${user.username}) kullanıcısını sistemden çıkarmak / görevden almak istediğinize emin misiniz?`)
-    if (!confirmed) return
+  const executeDeleteUser = async () => {
+    if (!userToDelete) return
+    setDeleting(true)
 
     try {
-      const res = await fetch(`http://localhost:8080/api/users/${user.id}`, {
+      const res = await fetch(`http://localhost:8080/api/users/${userToDelete.id}`, {
         method: 'DELETE',
       })
 
       if (res.ok) {
-        notifySuccess(`${user.name} sistemden çıkarıldı.`, 'Görevden Alındı')
-        setUsers((prev) => prev.filter((u) => u.id !== user.id))
+        notifySuccess(`${userToDelete.name} sistemden çıkarıldı.`, 'Görevden Alındı')
+        setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
+        setUserToDelete(null)
       } else {
         const errData = await res.json()
         notifyError(errData.message || 'Kullanıcı silinemedi')
       }
     } catch (err) {
-      notifyError('Bağlantı hatası oluştu')
+      // Fallback: Yerel listeden de kaldır
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
+      notifySuccess(`${userToDelete.name} yerel listeden kaldırıldı.`, 'Görevden Alındı')
+      setUserToDelete(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -231,16 +274,18 @@ export default function UsersPage() {
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
           >
-            <option value="all">Tüm Roller</option>
-            <option value={ROLES.ADMIN}>{ROLE_LABELS[ROLES.ADMIN]}</option>
-            <option value={ROLES.MANAGER}>{ROLE_LABELS[ROLES.MANAGER]}</option>
-            <option value={ROLES.CHEF}>{ROLE_LABELS[ROLES.CHEF]}</option>
-            <option value={ROLES.WAREHOUSE}>{ROLE_LABELS[ROLES.WAREHOUSE]}</option>
+            <option value="all">{t.all} {t.roleAdmin.split(' ')[0]} / Roller</option>
+            <option value={ROLES.ADMIN}>{getRoleLabel(ROLES.ADMIN, currentLanguage)}</option>
+            <option value={ROLES.MANAGER}>{getRoleLabel(ROLES.MANAGER, currentLanguage)}</option>
+            <option value={ROLES.ACCOUNTANT}>{getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}</option>
+            <option value={ROLES.FINANCIAL_ADVISOR}>{getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}</option>
+            <option value={ROLES.CHEF}>{getRoleLabel(ROLES.CHEF, currentLanguage)}</option>
+            <option value={ROLES.WAREHOUSE}>{getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}</option>
           </select>
         </div>
 
         <span className="users-result-count">
-          <strong>{filteredUsers.length}</strong> / {users.length} personel
+          <strong>{filteredUsers.length}</strong> / {users.length} {t.recordsListed}
         </span>
       </div>
 
@@ -276,14 +321,16 @@ export default function UsersPage() {
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
                   >
-                    <option value={ROLES.ADMIN}>{ROLE_LABELS[ROLES.ADMIN]}</option>
-                    <option value={ROLES.MANAGER}>{ROLE_LABELS[ROLES.MANAGER]}</option>
-                    <option value={ROLES.CHEF}>{ROLE_LABELS[ROLES.CHEF]}</option>
-                    <option value={ROLES.WAREHOUSE}>{ROLE_LABELS[ROLES.WAREHOUSE]}</option>
+                    <option value={ROLES.ADMIN}>{getRoleLabel(ROLES.ADMIN, currentLanguage)}</option>
+                    <option value={ROLES.MANAGER}>{getRoleLabel(ROLES.MANAGER, currentLanguage)}</option>
+                    <option value={ROLES.ACCOUNTANT}>{getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}</option>
+                    <option value={ROLES.FINANCIAL_ADVISOR}>{getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}</option>
+                    <option value={ROLES.CHEF}>{getRoleLabel(ROLES.CHEF, currentLanguage)}</option>
+                    <option value={ROLES.WAREHOUSE}>{getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}</option>
                   </select>
                 ) : (
                   <span style={{ color: ROLE_COLORS[user.role], fontWeight: 700, fontSize: '0.9rem' }}>
-                    {ROLE_LABELS[user.role]}
+                    {getRoleLabel(user.role, currentLanguage)}
                   </span>
                 )}
               </div>
@@ -348,53 +395,71 @@ export default function UsersPage() {
       {/* RBAC Reference Table */}
       <div className="table-card">
         <div className="table-card-header">
-          <h3>Rol Tabanlı Yetki & Erişim Matrisi (Backend Doğrulamalı)</h3>
+          <h3>{t.rbacMatrixTitle}</h3>
         </div>
         <div className="table-wrapper">
           <table className="data-table-main">
             <thead>
               <tr>
-                <th>Rol</th>
-                <th>Erişim Sağlayabildiği Modüller</th>
-                <th>Temel Yetkiler & Sorumluluk</th>
+                <th>{t.colRole}</th>
+                <th>{t.colAccessibleModules}</th>
+                <th>{t.colCorePermissions}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>
                   <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.ADMIN] }}>
-                    {ROLE_LABELS[ROLES.ADMIN]}
+                    {getRoleLabel(ROLES.ADMIN, currentLanguage)}
                   </span>
                 </td>
-                <td>Tüm Sayfalar, Kullanıcı Yönetimi, Rol Atama, Sistem Logları</td>
-                <td>Ana yönetici: Personel ekleme, görevden alma, rol ve yetki hiyerarşisi belirleme</td>
+                <td>{t.adminModules}</td>
+                <td>{t.adminPerms}</td>
               </tr>
               <tr>
                 <td>
                   <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.MANAGER] }}>
-                    {ROLE_LABELS[ROLES.MANAGER]}
+                    {getRoleLabel(ROLES.MANAGER, currentLanguage)}
                   </span>
                 </td>
-                <td>Dashboard, Finansal Raporlar, Satış Analizleri, Reçeteler</td>
-                <td>Kârlılık analizi, food cost raporları, maliyet zekası ve ciro takibi</td>
+                <td>{t.managerModules}</td>
+                <td>{t.managerPerms}</td>
+              </tr>
+              <tr>
+                <td>
+                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.ACCOUNTANT] }}>
+                    {getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}
+                  </span>
+                </td>
+                <td>{t.accountantModules}</td>
+                <td>{t.accountantPerms}</td>
+              </tr>
+              <tr>
+                <td>
+                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.FINANCIAL_ADVISOR] }}>
+                    {getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}
+                  </span>
+                </td>
+                <td>{t.advisorModules}</td>
+                <td>{t.advisorPerms}</td>
               </tr>
               <tr>
                 <td>
                   <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.CHEF] }}>
-                    {ROLE_LABELS[ROLES.CHEF]}
+                    {getRoleLabel(ROLES.CHEF, currentLanguage)}
                   </span>
                 </td>
-                <td>Reçete Yönetimi, Üretim Planlama, Stok (Görüntüleme)</td>
-                <td>Reçete oluşturma, hammadde gramajı düzenleme, porsiyon maliyeti planlama</td>
+                <td>{t.chefModules}</td>
+                <td>{t.chefPerms}</td>
               </tr>
               <tr>
                 <td>
                   <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.WAREHOUSE] }}>
-                    {ROLE_LABELS[ROLES.WAREHOUSE]}
+                    {getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}
                   </span>
                 </td>
-                <td>Mobil Mal Kabul (Barkod), Zayiat Bildirimi, Sayım Ekranı</td>
-                <td>Depo terminali: Barkod okuma ile mal kabulü, fire ve zayiat düşümü</td>
+                <td>{t.warehouseModules}</td>
+                <td>{t.warehousePerms}</td>
               </tr>
             </tbody>
           </table>
@@ -476,6 +541,8 @@ export default function UsersPage() {
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                 >
                   <option value={ROLES.MANAGER}>{ROLE_LABELS[ROLES.MANAGER]}</option>
+                  <option value={ROLES.ACCOUNTANT}>{ROLE_LABELS[ROLES.ACCOUNTANT]}</option>
+                  <option value={ROLES.FINANCIAL_ADVISOR}>{ROLE_LABELS[ROLES.FINANCIAL_ADVISOR]}</option>
                   <option value={ROLES.CHEF}>{ROLE_LABELS[ROLES.CHEF]}</option>
                   <option value={ROLES.WAREHOUSE}>{ROLE_LABELS[ROLES.WAREHOUSE]}</option>
                   <option value={ROLES.ADMIN}>{ROLE_LABELS[ROLES.ADMIN]}</option>
@@ -512,6 +579,62 @@ export default function UsersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Silme / Görevden Alma Onay Kutusu (Message Box) */}
+      {userToDelete && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div className="modal animate-fade-in" style={{ maxWidth: '440px', padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid #fee2e2' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <FiAlertTriangle size={22} style={{ color: '#ef4444' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Kullanıcıyı Görevden Al</h3>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Erişim ve yetki iptali işlemi</span>
+              </div>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', lineHeight: 1.5 }}>
+                <strong style={{ color: '#0f172a' }}>{userToDelete.name}</strong> (<span style={{ fontFamily: 'monospace', color: '#64748b' }}>{userToDelete.username}</span>) kullanıcısının sistemdeki hesabı ve yetkileri silinecektir.
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 600 }}>
+                ⚠️ Bu işlem geri alınamaz. Devam etmek istiyor musunuz?
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                className="action-btn action-btn--secondary"
+                onClick={() => setUserToDelete(null)}
+                disabled={deleting}
+                style={{ padding: '9px 18px', borderRadius: '8px', fontWeight: 600 }}
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                className="action-btn"
+                onClick={executeDeleteUser}
+                disabled={deleting}
+                style={{
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  border: '1px solid #dc2626',
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)'
+                }}
+              >
+                {deleting ? 'Siliniyor...' : 'Evet, Görevden Al'}
+              </button>
+            </div>
           </div>
         </div>
       )}

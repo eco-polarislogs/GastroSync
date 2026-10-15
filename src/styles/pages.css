@@ -355,8 +355,8 @@
 /* --- Recipe Cards --- */
 .recipe-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--spacing-xl);
   align-items: start;
 }
 

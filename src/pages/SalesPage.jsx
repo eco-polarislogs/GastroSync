@@ -1,12 +1,21 @@
-import React, { useState } from 'react'
-import { useSalesStore } from '../store'
+import React, { useState, useEffect } from 'react'
+import { useSalesStore, useAuthStore } from '../store'
 import { FiTrendingUp, FiClock, FiDollarSign, FiDownload, FiFileText, FiSearch, FiFilter } from 'react-icons/fi'
 import { notifySuccess } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
+import { TRANSLATIONS } from '../utils/translations'
 import '../styles/pages.css'
 
 export default function SalesPage() {
-  const { todaySales, summary } = useSalesStore()
+  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
+
+  const { todaySales, summary, fetchSales } = useSalesStore()
+
+  useEffect(() => {
+    if (fetchSales) fetchSales()
+  }, [fetchSales])
+
   const [activeTab, setActiveTab] = useState('product') // 'product' veya 'timeline'
   const [searchQuery, setSearchQuery] = useState('')
   const [profitFilter, setProfitFilter] = useState('all') // 'all', 'high_profit', 'high_cost'
@@ -45,34 +54,34 @@ export default function SalesPage() {
 
   const handleExportSalesExcel = () => {
     const exportData = todaySales.map(s => ({
-      'Saat': s.time,
-      'Ürün': s.recipeName,
-      'Adet': s.quantity,
-      'Birim Satış (TL)': s.salePrice,
-      'Toplam Gelir (TL)': s.totalRevenue,
-      'Birim Maliyet (TL)': s.portionCost,
-      'Toplam Maliyet (TL)': s.totalCost,
-      'Brüt Kâr (TL)': s.totalRevenue - s.totalCost,
+      [t.timeSlotCol]: s.time,
+      [t.dishCol]: s.recipeName,
+      [t.portionCol]: s.quantity,
+      [`${t.saleLabel} (TL)`]: s.salePrice,
+      [`${t.totalRevenueCol} (TL)`]: s.totalRevenue,
+      [`${t.costLabel} (TL)`]: s.portionCost,
+      [`${t.totalCostCol} (TL)`]: s.totalCost,
+      [`${t.netProfitLabel} (TL)`]: s.totalRevenue - s.totalCost,
       'Food Cost %': ((s.totalCost / s.totalRevenue) * 100).toFixed(1) + '%'
     }))
-    const success = exportToExcel(exportData, 'GastroSync_Satis_Raporu', 'Günlük Satışlar')
-    if (success) notifySuccess('Satış raporu Excel (.xlsx) olarak oluşturuldu', 'Rapor Oluşturuldu')
+    const success = exportToExcel(exportData, 'GastroSync_Sales_Report', 'Sales List')
+    if (success) notifySuccess(t.exportExcel, t.appName)
   }
 
   const handleExportSalesCSV = () => {
     const exportData = todaySales.map(s => ({
-      'Saat': s.time,
-      'Ürün': s.recipeName,
-      'Adet': s.quantity,
-      'Birim Satış (TL)': s.salePrice,
-      'Toplam Gelir (TL)': s.totalRevenue,
-      'Birim Maliyet (TL)': s.portionCost,
-      'Toplam Maliyet (TL)': s.totalCost,
-      'Brüt Kâr (TL)': s.totalRevenue - s.totalCost,
+      [t.timeSlotCol]: s.time,
+      [t.dishCol]: s.recipeName,
+      [t.portionCol]: s.quantity,
+      [`${t.saleLabel} (TL)`]: s.salePrice,
+      [`${t.totalRevenueCol} (TL)`]: s.totalRevenue,
+      [`${t.costLabel} (TL)`]: s.portionCost,
+      [`${t.totalCostCol} (TL)`]: s.totalCost,
+      [`${t.netProfitLabel} (TL)`]: s.totalRevenue - s.totalCost,
       'Food Cost %': ((s.totalCost / s.totalRevenue) * 100).toFixed(1) + '%'
     }))
-    const success = exportToCSV(exportData, 'GastroSync_Satis_Raporu')
-    if (success) notifySuccess('Satış raporu CSV (.csv) olarak oluşturuldu', 'Rapor Oluşturuldu')
+    const success = exportToCSV(exportData, 'GastroSync_Sales_Report')
+    if (success) notifySuccess(t.exportCsv, t.appName)
   }
 
   return (
@@ -83,16 +92,16 @@ export default function SalesPage() {
           <button
             className="export-tile-btn export-tile-btn--excel"
             onClick={handleExportSalesExcel}
-            title="Günlük satış özetini Excel olarak indir"
+            title={t.exportExcel}
           >
-            <FiDownload className="export-tile-icon" /> Excel (.xlsx) İndir
+            <FiDownload className="export-tile-icon" /> {t.exportExcel}
           </button>
           <button
             className="export-tile-btn export-tile-btn--csv"
             onClick={handleExportSalesCSV}
-            title="Günlük satış özetini CSV olarak indir"
+            title={t.exportCsv}
           >
-            <FiFileText className="export-tile-icon" /> CSV İndir
+            <FiFileText className="export-tile-icon" /> {t.exportCsv}
           </button>
         </div>
       </div>
@@ -102,19 +111,19 @@ export default function SalesPage() {
         <div className="mini-stat">
           <span className="mini-stat-icon"><FiDollarSign /></span>
           <span className="mini-stat-value">{summary.totalRevenue.toLocaleString('tr-TR')} ₺</span>
-          <span className="mini-stat-label">Toplam Ciro</span>
+          <span className="mini-stat-label">{t.totalRevenueStat}</span>
         </div>
         <div className="mini-stat">
           <span className="mini-stat-icon"><FiTrendingUp /></span>
           <span className="mini-stat-value mini-stat-value--success">
             {summary.netProfit.toLocaleString('tr-TR')} ₺
           </span>
-          <span className="mini-stat-label">Net Kâr</span>
+          <span className="mini-stat-label">{t.netProfitStat}</span>
         </div>
         <div className="mini-stat">
           <span className="mini-stat-icon"><FiClock /></span>
           <span className="mini-stat-value">{todaySales.length}</span>
-          <span className="mini-stat-label">Satış Kalemi</span>
+          <span className="mini-stat-label">{t.salesItemsStat}</span>
         </div>
       </div>
 
@@ -136,7 +145,7 @@ export default function SalesPage() {
               boxShadow: activeTab === 'product' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
             }}
           >
-            📊 Ürün Bazlı Satış Özeti
+            {t.productBasedSummaryTab}
           </button>
           <button
             onClick={() => setActiveTab('timeline')}
@@ -153,7 +162,7 @@ export default function SalesPage() {
               boxShadow: activeTab === 'timeline' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
             }}
           >
-            ⏱️ Detaylı Zaman Kayıtları ({todaySales.length})
+            {t.detailedTimelineTab} ({todaySales.length})
           </button>
         </div>
       </div>
@@ -165,7 +174,7 @@ export default function SalesPage() {
           <input
             type="text"
             className="search-input"
-            placeholder={activeTab === 'product' ? 'Yemek adına göre arayın...' : 'Yemek adı veya saate göre arayın...'}
+            placeholder={activeTab === 'product' ? t.searchDishPlaceholder : t.searchTimelinePlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -177,13 +186,13 @@ export default function SalesPage() {
             value={profitFilter}
             onChange={(e) => setProfitFilter(e.target.value)}
           >
-            <option value="all">Tüm Satışlar</option>
-            <option value="high_profit">Yüksek Kârlı (Food Cost &lt; %30)</option>
-            <option value="high_cost">Yüksek Maliyet / Zarar Riski (Food Cost ≥ %40)</option>
+            <option value="all">{t.allSalesFilter}</option>
+            <option value="high_profit">{t.highProfitFilter}</option>
+            <option value="high_cost">{t.highCostFilter}</option>
           </select>
         </div>
         <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginLeft: 'auto' }}>
-          <strong>{activeTab === 'product' ? sortedSalesByRevenue.length : filteredTimelineSales.length}</strong> kayıt listelendi
+          <strong>{activeTab === 'product' ? sortedSalesByRevenue.length : filteredTimelineSales.length}</strong> {t.recordsListed}
         </span>
       </div>
 
@@ -191,18 +200,18 @@ export default function SalesPage() {
       {activeTab === 'product' && (
         <div className="table-card animate-fade-in">
           <div className="table-card-header">
-            <h3>Ürün Bazlı Kârlılık ve Gelir Dağılımı</h3>
+            <h3>{t.productProfitHeader}</h3>
           </div>
           <div className="table-wrapper">
             <table className="data-table-main">
               <thead>
                 <tr>
-                  <th>Yemek</th>
-                  <th>Toplam Porsiyon</th>
-                  <th>Toplam Gelir</th>
-                  <th>Toplam Maliyet</th>
-                  <th>Kâr</th>
-                  <th>Food Cost</th>
+                  <th>{t.dishCol}</th>
+                  <th>{t.totalPortionCol}</th>
+                  <th>{t.totalRevenueCol}</th>
+                  <th>{t.totalCostCol}</th>
+                  <th>{t.profitCol}</th>
+                  <th>{t.foodCostTh}</th>
                 </tr>
               </thead>
               <tbody>
@@ -236,18 +245,18 @@ export default function SalesPage() {
       {activeTab === 'timeline' && (
         <div className="table-card animate-fade-in">
           <div className="table-card-header">
-            <h3>Detaylı Satış Kaydı (Zaman Dilimlerine Göre)</h3>
+            <h3>{t.timelineSalesHeader}</h3>
           </div>
           <div className="table-wrapper">
             <table className="data-table-main">
               <thead>
                 <tr>
-                  <th>Zaman Dilimi</th>
-                  <th>Yemek</th>
-                  <th>Porsiyon</th>
-                  <th>Gelir</th>
-                  <th>Maliyet</th>
-                  <th>Kâr</th>
+                  <th>{t.timeSlotCol}</th>
+                  <th>{t.dishCol}</th>
+                  <th>{t.portionCol}</th>
+                  <th>{t.saleLabel}</th>
+                  <th>{t.costLabel}</th>
+                  <th>{t.profitCol}</th>
                 </tr>
               </thead>
               <tbody>

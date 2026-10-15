@@ -19,16 +19,17 @@ export const notifySuccess = (message, title = 'İşlem Başarılı') => {
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
-        minWidth: '280px',
-        maxWidth: '380px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
+        minWidth: '300px',
+        maxWidth: '480px',
+        width: 'max-content',
       }}
     >
       {/* Yeşil Tik Rozeti */}
       <div
         style={{
-          width: '26px',
-          height: '26px',
+          width: '28px',
+          height: '28px',
           borderRadius: '50%',
           background: 'rgba(16, 185, 129, 0.15)',
           border: '1.5px solid #10b981',
@@ -36,7 +37,7 @@ export const notifySuccess = (message, title = 'İşlem Başarılı') => {
           alignItems: 'center',
           justifyContent: 'center',
           color: '#10b981',
-          fontSize: '14px',
+          fontSize: '15px',
           fontWeight: '900',
           flexShrink: 0,
         }}
@@ -48,11 +49,11 @@ export const notifySuccess = (message, title = 'İşlem Başarılı') => {
         {title && (
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '12.5px',
               fontWeight: '700',
               color: '#10b981',
               lineHeight: 1.2,
-              marginBottom: '2px',
+              marginBottom: '3px',
             }}
           >
             {title}
@@ -63,10 +64,9 @@ export const notifySuccess = (message, title = 'İşlem Başarılı') => {
             fontSize: '13px',
             color: '#f8fafc',
             fontWeight: '500',
-            lineHeight: 1.3,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            lineHeight: 1.4,
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
           }}
         >
           {message}
@@ -74,7 +74,7 @@ export const notifySuccess = (message, title = 'İşlem Başarılı') => {
       </div>
     </div>
   ), {
-    duration: 3500,
+    duration: 4000,
     position: 'top-right'
   })
 }
@@ -93,15 +93,16 @@ export const notifyError = (message, title = 'Hata') => {
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
-        minWidth: '280px',
-        maxWidth: '380px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
+        minWidth: '300px',
+        maxWidth: '480px',
+        width: 'max-content',
       }}
     >
       <div
         style={{
-          width: '26px',
-          height: '26px',
+          width: '28px',
+          height: '28px',
           borderRadius: '50%',
           background: 'rgba(239, 68, 68, 0.15)',
           border: '1.5px solid #ef4444',
@@ -109,7 +110,7 @@ export const notifyError = (message, title = 'Hata') => {
           alignItems: 'center',
           justifyContent: 'center',
           color: '#ef4444',
-          fontSize: '14px',
+          fontSize: '15px',
           fontWeight: '900',
           flexShrink: 0,
         }}
@@ -121,11 +122,11 @@ export const notifyError = (message, title = 'Hata') => {
         {title && (
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '12.5px',
               fontWeight: '700',
               color: '#ef4444',
               lineHeight: 1.2,
-              marginBottom: '2px',
+              marginBottom: '3px',
             }}
           >
             {title}
@@ -136,10 +137,9 @@ export const notifyError = (message, title = 'Hata') => {
             fontSize: '13px',
             color: '#f8fafc',
             fontWeight: '500',
-            lineHeight: 1.3,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            lineHeight: 1.4,
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
           }}
         >
           {message}

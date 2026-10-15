@@ -30,6 +30,10 @@ export default function LoginPage() {
         case ROLES.MANAGER:
           navigate('/dashboard')
           break
+        case ROLES.ACCOUNTANT:
+        case ROLES.FINANCIAL_ADVISOR:
+          navigate('/accounting')
+          break
         case ROLES.CHEF:
           navigate('/recipes')
           break
@@ -47,6 +51,8 @@ export default function LoginPage() {
   const demoAccounts = [
     { username: 'admin', role: ROLES.ADMIN, realPass: 'admin123' },
     { username: 'mudur', role: ROLES.MANAGER, realPass: 'mudur123' },
+    { username: 'muhasebe', role: ROLES.ACCOUNTANT, realPass: 'muhasebe123' },
+    { username: 'malimusavir', role: ROLES.FINANCIAL_ADVISOR, realPass: 'musavir123' },
     { username: 'sef', role: ROLES.CHEF, realPass: 'sef123' },
     { username: 'depocu', role: ROLES.WAREHOUSE, realPass: 'depo123' },
   ]

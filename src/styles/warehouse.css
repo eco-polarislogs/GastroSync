@@ -392,18 +392,33 @@
 /* Bottom Navigation */
 .wh-bottom-nav {
   position: fixed;
-  bottom: 0;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  width: auto;
+  min-width: 320px;
+  max-width: 460px;
+  background: #ffffff;
+  border: 1px solid #dbe7df;
+  border-radius: 9999px;
   display: flex;
-  justify-content: space-around;
-  padding: var(--spacing-md) 0;
-  padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 24px;
   z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(10, 31, 17, 0.15), 0 8px 10px -6px rgba(10, 31, 17, 0.1);
+}
+
+/* Sidebar açıkken menüyü kalan içerik alanına göre tam ortala */
+.layout .wh-bottom-nav {
+  left: calc(50% + (var(--sidebar-width) / 2));
+  transform: translateX(-50%);
+}
+
+.layout--collapsed .wh-bottom-nav {
+  left: calc(50% + (var(--sidebar-collapsed-width) / 2));
+  transform: translateX(-50%);
 }
 
 .wh-nav-item {
@@ -663,28 +678,21 @@
 #interactive-qr-reader {
   width: 100% !important;
   border: none !important;
+  position: relative !important;
 }
 
 #interactive-qr-reader video {
   width: 100% !important;
-  max-height: 280px !important;
-  object-fit: cover !important;
+  display: block !important;
 }
 
-/* Html5-Qrcode scanner viewfinder border styling (yatay barkod lazer efekti) */
+#interactive-qr-reader video ~ video {
+  display: none !important; /* Çift video montajı varsa ikinci videoyu gizle */
+}
+
+/* Html5-Qrcode scanner viewfinder border styling */
 #interactive-qr-reader img[alt="Info icon"] {
   display: none !important;
-}
-
-#interactive-qr-reader__scan_region {
-  min-height: 220px !important;
-}
-
-#interactive-qr-reader__scan_region div {
-  border-color: #10b981 !important;
-  border-width: 3px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4) !important;
 }
 
 .wh-modal-body {

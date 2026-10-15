@@ -42,6 +42,23 @@ public class RecipeController {
         return ResponseEntity.ok(ApiResponse.ok("Reçete başarıyla kaydedildi", saved));
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Mevcut reçeteyi güncelle")
+    public ResponseEntity<ApiResponse<Recipe>> update(@PathVariable Long id, @RequestBody Recipe updated) {
+        return recipeService.getRecipeById(id).map(r -> {
+            r.setName(updated.getName());
+            r.setCategory(updated.getCategory());
+            r.setSalePrice(updated.getSalePrice());
+            r.setPortions(updated.getPortions());
+            r.setDescription(updated.getDescription());
+            if (updated.getIngredientsJson() != null) {
+                r.setIngredientsJson(updated.getIngredientsJson());
+            }
+            Recipe saved = recipeService.saveRecipe(r);
+            return ResponseEntity.ok(ApiResponse.ok("Reçete başarıyla güncellendi", saved));
+        }).orElse(ResponseEntity.status(404).body(ApiResponse.error("Reçete bulunamadı: " + id)));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Reçeteyi sil")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

@@ -9,12 +9,14 @@ import RecipesPage from './pages/RecipesPage'
 import SalesPage from './pages/SalesPage'
 import WarehouseMobile from './pages/WarehouseMobile'
 import UsersPage from './pages/UsersPage'
+import AccountingPage from './pages/AccountingPage'
 
 import UnauthorizedPage from './pages/UnauthorizedPage'
 
 // Koruma katmanı: giriş yapmamış kullanıcıları login'e yönlendir, yetkisizleri 403 ekranına yönlendir
 function ProtectedRoute({ children, allowedRoles }) {
   const { isAuthenticated, user } = useAuthStore()
+  const location = window.location.pathname
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -22,7 +24,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     // Tarayıcı URL'sini elle değiştiren yetkisiz kullanıcıyı 403 sayfasına yönlendir
-    return <Navigate to="/unauthorized" replace />
+    return <Navigate to="/unauthorized" state={{ from: location }} replace />
   }
 
   return children
@@ -35,6 +37,10 @@ function getDefaultRoute(role) {
       return '/dashboard'
     case ROLES.MANAGER:
       return '/dashboard'
+    case ROLES.ACCOUNTANT:
+      return '/cashier'
+    case ROLES.FINANCIAL_ADVISOR:
+      return '/advisor-ledger'
     case ROLES.CHEF:
       return '/recipes'
     case ROLES.WAREHOUSE:
@@ -92,9 +98,44 @@ export default function App() {
       />
 
       <Route
+        path="/accounting"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR]}>
+            <DashboardLayout>
+              <AccountingPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 1. Kasa & Muhasebe Ekranı (Gelir/Gider & Müşavire Gönderme) */}
+      <Route
+        path="/cashier"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT]}>
+            <DashboardLayout>
+              <AccountingPage viewMode="cashier" />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 2. Mali Müşavir Defter & Onay Ekranı (Resmi Defter & Vergi/SGK) */}
+      <Route
+        path="/advisor-ledger"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.FINANCIAL_ADVISOR]}>
+            <DashboardLayout>
+              <AccountingPage viewMode="advisor" />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/inventory"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF]}>
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR]}>
             <DashboardLayout>
               <InventoryPage />
             </DashboardLayout>
@@ -116,7 +157,7 @@ export default function App() {
       <Route
         path="/sales"
         element={
-          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]}>
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR]}>
             <DashboardLayout>
               <SalesPage />
             </DashboardLayout>

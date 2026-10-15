@@ -1,12 +1,21 @@
 import React, { useState } from 'react'
-import { useInventoryStore } from '../store'
+import { useInventoryStore, useAuthStore } from '../store'
 import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText } from 'react-icons/fi'
 import { notifySuccess } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
+import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
 import '../styles/pages.css'
 
 export default function InventoryPage() {
-  const { items } = useInventoryStore()
+  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
+
+  const { items, fetchItems } = useInventoryStore()
+  
+  React.useEffect(() => {
+    if (fetchItems) fetchItems()
+  }, [fetchItems])
+
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [sortBy, setSortBy] = useState('name')
@@ -15,38 +24,38 @@ export default function InventoryPage() {
   const handleExportExcel = () => {
     const exportData = filtered.map(i => ({
       'ID': i.id,
-      'Ürün Adı': i.name,
-      'Kategori': i.category,
-      'Barkod': i.barcode,
-      'Mevcut Stok': `${i.stock} ${i.unit}`,
-      'Min. Stok': `${i.minStock} ${i.unit}`,
-      'Birim Fiyat (TL)': i.price,
-      'Toplam Değer (TL)': (i.stock * i.price),
-      'Tedarikçi': i.supplier || '',
-      'Durum': i.stock <= i.minStock ? 'Kritik' : 'Yeterli'
+      [t.productNameCol]: i.name,
+      [t.categoryCol]: i.category,
+      [t.barcodeCol]: i.barcode,
+      [t.stockCol]: `${i.stock} ${i.unit}`,
+      [t.minStockCol]: `${i.minStock} ${i.unit}`,
+      [`${t.unitPriceCol} (TL)`]: i.price,
+      [`${t.totalValueCol} (TL)`]: (i.stock * i.price),
+      [t.supplier]: i.supplier || '',
+      [t.statusTh]: i.stock <= i.minStock ? t.statusCritical : t.statusSufficient
     }))
-    const success = exportToExcel(exportData, 'GastroSync_Stok_Raporu', 'Stok Listesi')
+    const success = exportToExcel(exportData, 'GastroSync_Inventory_Report', 'Inventory')
     if (success) {
-      notifySuccess('Stok listesi Excel (.xlsx) olarak oluşturuldu', 'Rapor Oluşturuldu')
+      notifySuccess(t.exportExcel, t.appName)
     }
   }
 
   const handleExportCSV = () => {
     const exportData = filtered.map(i => ({
       'ID': i.id,
-      'Ürün Adı': i.name,
-      'Kategori': i.category,
-      'Barkod': i.barcode,
-      'Mevcut Stok': `${i.stock} ${i.unit}`,
-      'Min. Stok': `${i.minStock} ${i.unit}`,
-      'Birim Fiyat (TL)': i.price,
-      'Toplam Değer (TL)': (i.stock * i.price),
-      'Tedarikçi': i.supplier || '',
-      'Durum': i.stock <= i.minStock ? 'Kritik' : 'Yeterli'
+      [t.productNameCol]: i.name,
+      [t.categoryCol]: i.category,
+      [t.barcodeCol]: i.barcode,
+      [t.stockCol]: `${i.stock} ${i.unit}`,
+      [t.minStockCol]: `${i.minStock} ${i.unit}`,
+      [`${t.unitPriceCol} (TL)`]: i.price,
+      [`${t.totalValueCol} (TL)`]: (i.stock * i.price),
+      [t.supplier]: i.supplier || '',
+      [t.statusTh]: i.stock <= i.minStock ? t.statusCritical : t.statusSufficient
     }))
-    const success = exportToCSV(exportData, 'GastroSync_Stok_Raporu')
+    const success = exportToCSV(exportData, 'GastroSync_Inventory_Report')
     if (success) {
-      notifySuccess('Stok listesi CSV (.csv) olarak oluşturuldu', 'Rapor Oluşturuldu')
+      notifySuccess(t.exportCsv, t.appName)
     }
   }
 
@@ -57,8 +66,9 @@ export default function InventoryPage() {
       const matchSearch =
         item.name.toLowerCase().includes(search.toLowerCase()) ||
         item.barcode.includes(search)
-      const matchCat = categoryFilter === 'all' || item.category === categoryFilter
-      return matchSearch && matchCat
+      const matchCategory =
+        categoryFilter === 'all' || item.category === categoryFilter
+      return matchSearch && matchCategory
     })
     .sort((a, b) => {
       let cmp = 0
@@ -90,16 +100,16 @@ export default function InventoryPage() {
           <button 
             className="export-tile-btn export-tile-btn--excel" 
             onClick={handleExportExcel}
-            title="Envanter listesini Excel tablosu olarak indir"
+            title={t.exportExcel}
           >
-            <FiDownload className="export-tile-icon" /> Excel (.xlsx) İndir
+            <FiDownload className="export-tile-icon" /> {t.exportExcel}
           </button>
           <button 
             className="export-tile-btn export-tile-btn--csv" 
             onClick={handleExportCSV}
-            title="Envanter listesini CSV formatında indir"
+            title={t.exportCsv}
           >
-            <FiFileText className="export-tile-icon" /> CSV İndir
+            <FiFileText className="export-tile-icon" /> {t.exportCsv}
           </button>
         </div>
       </div>
@@ -111,7 +121,7 @@ export default function InventoryPage() {
           <input
             type="text"
             className="search-input"
-            placeholder="Ürün adı veya barkod ile arayın..."
+            placeholder={t.searchInventoryPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -125,7 +135,7 @@ export default function InventoryPage() {
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
-                {cat === 'all' ? 'Tüm Kategoriler' : cat}
+                {cat === 'all' ? t.allCategories : getCategoryLabel(cat, currentLanguage)}
               </option>
             ))}
           </select>
@@ -136,19 +146,19 @@ export default function InventoryPage() {
       <div className="mini-stats">
         <div className="mini-stat">
           <span className="mini-stat-value">{items.length}</span>
-          <span className="mini-stat-label">Toplam Ürün</span>
+          <span className="mini-stat-label">{t.totalProductsStat}</span>
         </div>
         <div className="mini-stat">
           <span className="mini-stat-value mini-stat-value--warning">
             {items.filter((i) => i.stock <= i.minStock).length}
           </span>
-          <span className="mini-stat-label">Kritik Stok</span>
+          <span className="mini-stat-label">{t.criticalStockStat}</span>
         </div>
         <div className="mini-stat">
           <span className="mini-stat-value">
             {items.reduce((sum, i) => sum + i.stock * i.price, 0).toLocaleString('tr-TR')} ₺
           </span>
-          <span className="mini-stat-label">Toplam Stok Değeri</span>
+          <span className="mini-stat-label">{t.totalInventoryValueStat}</span>
         </div>
       </div>
 
@@ -159,19 +169,19 @@ export default function InventoryPage() {
             <thead>
               <tr>
                 <th onClick={() => toggleSort('name')} className="th-sortable">
-                  Ürün Adı <SortIcon field="name" />
+                  {t.productNameCol} <SortIcon field="name" />
                 </th>
-                <th>Kategori</th>
-                <th>Barkod</th>
+                <th>{t.categoryCol}</th>
+                <th>{t.barcodeCol}</th>
                 <th onClick={() => toggleSort('stock')} className="th-sortable">
-                  Stok <SortIcon field="stock" />
+                  {t.stockCol} <SortIcon field="stock" />
                 </th>
-                <th>Min. Stok</th>
+                <th>{t.minStockCol}</th>
                 <th onClick={() => toggleSort('price')} className="th-sortable">
-                  Birim Fiyat <SortIcon field="price" />
+                  {t.unitPriceCol} <SortIcon field="price" />
                 </th>
-                <th>Toplam Değer</th>
-                <th>Durum</th>
+                <th>{t.totalValueCol}</th>
+                <th>{t.statusTh}</th>
               </tr>
             </thead>
             <tbody>
@@ -179,7 +189,7 @@ export default function InventoryPage() {
                 <tr key={item.id} className={item.stock <= item.minStock ? 'row-warning' : ''}>
                   <td className="td-bold">{item.name}</td>
                   <td>
-                    <span className="category-badge">{item.category}</span>
+                    <span className="category-badge">{getCategoryLabel(item.category, currentLanguage)}</span>
                   </td>
                   <td className="td-mono">{item.barcode}</td>
                   <td className={item.stock <= item.minStock ? 'td-warning-text' : ''}>
@@ -191,11 +201,11 @@ export default function InventoryPage() {
                   <td>
                     {item.stock <= item.minStock ? (
                       <span className="status-badge status-badge--warning">
-                        <FiAlertCircle size={12} /> Kritik
+                        <FiAlertCircle size={12} /> {t.statusCritical}
                       </span>
                     ) : (
                       <span className="status-badge status-badge--tier">
-                        <span className="tier-dot"></span> Tier A • Yeterli
+                        <span className="tier-dot"></span> {t.statusSufficient}
                       </span>
                     )}
                   </td>

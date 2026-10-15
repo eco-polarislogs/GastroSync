@@ -1,12 +1,24 @@
-import React from 'react'
-import { useSalesStore, useInventoryStore, useRecipeStore } from '../store'
-import { FiTrendingUp, FiTrendingDown, FiAlertTriangle, FiDollarSign, FiPackage, FiAlertCircle } from 'react-icons/fi'
+import React, { useEffect } from 'react'
+import { useSalesStore, useInventoryStore, useRecipeStore, useExpenseStore, useAuthStore } from '../store'
+import { FiTrendingUp, FiTrendingDown, FiAlertTriangle, FiDollarSign, FiPackage, FiAlertCircle, FiLayers } from 'react-icons/fi'
+import { TRANSLATIONS } from '../utils/translations'
 import '../styles/dashboard.css'
 
 export default function ManagerDashboard() {
-  const { summary, todaySales } = useSalesStore()
-  const { items } = useInventoryStore()
-  const { recipes } = useRecipeStore()
+  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
+
+  const { summary, todaySales, fetchSales } = useSalesStore()
+  const { items, fetchItems } = useInventoryStore()
+  const { recipes, fetchRecipes } = useRecipeStore()
+  const { summary: expenseSummary, fetchExpenses } = useExpenseStore()
+
+  useEffect(() => {
+    if (fetchSales) fetchSales()
+    if (fetchItems) fetchItems()
+    if (fetchRecipes) fetchRecipes()
+    if (fetchExpenses) fetchExpenses()
+  }, [fetchSales, fetchItems, fetchRecipes, fetchExpenses])
 
   // Kritik stok uyarıları
   const lowStockItems = items.filter((item) => item.stock <= item.minStock)
@@ -21,21 +33,10 @@ export default function ManagerDashboard() {
   }
 
   const getFoodCostLabel = (percent) => {
-    if (percent >= 40) return 'Zarar Riski'
-    if (percent >= 30) return 'Sınırda'
-    return 'Kârlı'
+    if (percent >= 40) return t.statusRisk
+    if (percent >= 30) return t.statusBorderline
+    return t.statusProfitable
   }
-
-  // Satış verisini gruplama
-  const salesByRecipe = todaySales.reduce((acc, sale) => {
-    if (!acc[sale.recipeName]) {
-      acc[sale.recipeName] = { quantity: 0, revenue: 0, cost: 0 }
-    }
-    acc[sale.recipeName].quantity += sale.quantity
-    acc[sale.recipeName].revenue += sale.totalRevenue
-    acc[sale.recipeName].cost += sale.totalCost
-    return acc
-  }, {})
 
   return (
     <div className="dashboard">
@@ -44,22 +45,22 @@ export default function ManagerDashboard() {
         <div className="executive-hero-left">
           <div className="executive-hero-pill">
             <span className="executive-hero-dot"></span>
-            Restoran İşletim & Maliyet Zekası
+            {t.heroBadge}
           </div>
           <h1 className="executive-hero-title">
-            GastroSync Akıllı Reçete & Karlılık Motoru
+            {t.heroTitle}
           </h1>
           <p className="executive-hero-desc">
-            Canlı POS satışları, anlık gramaj ve depocu mal kabul faturalarıyla tam senkronize. Otomatik food cost ve fire marjı takibiyle sıfır kayıp, maksimum kârlılık.
+            {t.heroDesc}
           </p>
           <div className="executive-hero-badges">
             <div className="hero-stat-badge">
               <span className="hero-stat-num">%68.4</span>
-              <span className="hero-stat-label">Ort. Brüt Kâr Marjı</span>
+              <span className="hero-stat-label">{t.heroAvgGrossMargin}</span>
             </div>
             <div className="hero-stat-badge hero-stat-badge--green">
               <span className="hero-stat-num">Tier A</span>
-              <span className="hero-stat-label">Verimlilik Skoru: 97</span>
+              <span className="hero-stat-label">{t.heroEfficiencyScore}</span>
             </div>
           </div>
         </div>
@@ -72,24 +73,24 @@ export default function ManagerDashboard() {
                 alt="Gourmet Poke Bowl" 
                 className="hero-bowl-img"
               />
-              <span className="hero-bowl-badge">Günün Yıldız Reçetesi</span>
+              <span className="hero-bowl-badge">{t.starRecipeBadge}</span>
             </div>
             <div className="hero-bowl-meta">
               <div className="hero-bowl-title-row">
-                <span className="hero-bowl-name">Somon & Kinoa Salata Kasesi</span>
-                <span className="hero-bowl-tier">Tier A • %22.4 Cost</span>
+                <span className="hero-bowl-name">{t.recipeSalmonBowl}</span>
+                <span className="hero-bowl-tier">{t.tierACost}</span>
               </div>
               <div className="hero-bowl-pricing">
                 <div>
-                  <span className="hero-bowl-lbl">Maliyet:</span>
+                  <span className="hero-bowl-lbl">{t.costLabel}:</span>
                   <strong>62.80 ₺</strong>
                 </div>
                 <div>
-                  <span className="hero-bowl-lbl">Satış:</span>
+                  <span className="hero-bowl-lbl">{t.saleLabel}:</span>
                   <strong>280.00 ₺</strong>
                 </div>
                 <div>
-                  <span className="hero-bowl-lbl">Net Kâr:</span>
+                  <span className="hero-bowl-lbl">{t.netProfitLabel}:</span>
                   <span className="text-emerald font-bold">+217.20 ₺</span>
                 </div>
               </div>
@@ -102,31 +103,31 @@ export default function ManagerDashboard() {
       <div className="dashboard-metrics">
         <div className="metric-card animate-fade-in-up stagger-1">
           <div className="metric-card-header">
-            <span className="metric-label">Bugünkü Satış (Ciro)</span>
+            <span className="metric-label">{t.todaySalesRevenue}</span>
             <div className="metric-icon metric-icon--primary">
               <FiDollarSign />
             </div>
           </div>
           <div className="metric-value">{summary.totalRevenue.toLocaleString('tr-TR')} ₺</div>
           <div className="metric-change metric-change--up">
-            <FiTrendingUp /> %12.5 dünden fazla
+            <FiTrendingUp /> {t.moreThanYesterday}
           </div>
         </div>
 
         <div className="metric-card animate-fade-in-up stagger-2">
           <div className="metric-card-header">
-            <span className="metric-label">Gerçekleşen Gıda Maliyeti</span>
+            <span className="metric-label">{t.actualFoodCost}</span>
             <div className="metric-icon metric-icon--danger">
               <FiPackage />
             </div>
           </div>
           <div className="metric-value">{summary.totalCost.toLocaleString('tr-TR')} ₺</div>
-          <div className="metric-sub">POS sisteminden otomatik düşülen stok</div>
+          <div className="metric-sub">{t.autoDeductedStock}</div>
         </div>
 
         <div className="metric-card animate-fade-in-up stagger-3">
           <div className="metric-card-header">
-            <span className="metric-label">Ortalama Food Cost</span>
+            <span className="metric-label">{t.averageFoodCost}</span>
             <div className={`metric-icon metric-icon--${summary.foodCostPercent > summary.targetFoodCost ? 'warning' : 'success'}`}>
               <FiAlertTriangle />
             </div>
@@ -136,20 +137,20 @@ export default function ManagerDashboard() {
           </div>
           {summary.foodCostPercent > summary.targetFoodCost && (
             <div className="metric-change metric-change--down">
-              <FiAlertTriangle /> Hedeflenen %{summary.targetFoodCost}'un üzerinde!
+              <FiAlertTriangle /> {t.aboveTargetFoodCost.replace('{target}', summary.targetFoodCost)}
             </div>
           )}
         </div>
 
         <div className="metric-card animate-fade-in-up stagger-4">
           <div className="metric-card-header">
-            <span className="metric-label">Zayiat Maliyeti</span>
-            <div className="metric-icon metric-icon--danger">
-              <FiTrendingDown />
+            <span className="metric-label">{t.generalOperatingExpenses}</span>
+            <div className="metric-icon" style={{ backgroundColor: '#e0e7ff', color: '#4338ca' }}>
+              <FiLayers />
             </div>
           </div>
-          <div className="metric-value metric-value--danger">{summary.wasteAmount.toLocaleString('tr-TR')} ₺</div>
-          <div className="metric-sub">Bugünkü fire ve zayiat toplam maliyeti</div>
+          <div className="metric-value">{((expenseSummary?.totalFixed || 138500) + (expenseSummary?.totalVariable || 82100)).toLocaleString('tr-TR')} ₺</div>
+          <div className="metric-sub">{t.fixedPlusVariableCosts}</div>
         </div>
       </div>
 
@@ -159,21 +160,21 @@ export default function ManagerDashboard() {
         <div className="dashboard-card animate-fade-in-up stagger-3">
           <div className="dashboard-card-header">
             <div>
-              <h2 className="dashboard-card-title">Kârlılık & Risk Takibi</h2>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Yüksek maliyetli ilk 3 menü kalemi</span>
+              <h2 className="dashboard-card-title">{t.profitRiskTracking}</h2>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>{t.top3CostItems}</span>
             </div>
-            <span className="dashboard-card-badge dashboard-card-badge--danger">Öncelikli</span>
+            <span className="dashboard-card-badge dashboard-card-badge--danger">{t.priorityBadge}</span>
           </div>
 
           <div className="dashboard-table-wrapper">
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>Yemek Adı</th>
-                  <th>Maliyet</th>
-                  <th>Satış</th>
-                  <th>Food Cost</th>
-                  <th>Durum</th>
+                  <th>{t.dishNameTh}</th>
+                  <th>{t.costTh}</th>
+                  <th>{t.saleTh}</th>
+                  <th>{t.foodCostTh}</th>
+                  <th>{t.statusTh}</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,11 +202,11 @@ export default function ManagerDashboard() {
         <div className="dashboard-card animate-fade-in-up stagger-4">
           <div className="dashboard-card-header">
             <div>
-              <h2 className="dashboard-card-title">Depo & Envanter Durumu</h2>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Otomatik kritik eşik kontrolü</span>
+              <h2 className="dashboard-card-title">{t.warehouseInventoryStatus}</h2>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>{t.autoThresholdControl}</span>
             </div>
             <span className="status-badge status-badge--tier">
-              <span className="tier-dot"></span> Canlı İzleme
+              <span className="tier-dot"></span> {t.liveMonitoring}
             </span>
           </div>
 
@@ -225,8 +226,8 @@ export default function ManagerDashboard() {
               }}>
                 ✓
               </div>
-              <h4 style={{ margin: '0 0 4px 0', color: '#0a1f11', fontWeight: '700' }}>Tüm Stok Seviyeleri Yeterli</h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Kritik eşiğin altına düşen herhangi bir malzeme bulunmuyor.</p>
+              <h4 style={{ margin: '0 0 4px 0', color: '#0a1f11', fontWeight: '700' }}>{t.allStockLevelsSufficient}</h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{t.noCriticalStock}</p>
             </div>
           ) : (
             <div className="dashboard-alerts-list">
@@ -237,7 +238,7 @@ export default function ManagerDashboard() {
                     <div>
                       <div className="alert-item-name">{item.name}</div>
                       <div className="alert-item-detail">
-                        Min: {item.minStock} {item.unit} | Birim: {item.price.toFixed(2)} ₺
+                        {t.minTh}: {item.minStock} {item.unit} | {t.unitPriceTh}: {item.price.toFixed(2)} ₺
                       </div>
                     </div>
                   </div>

@@ -5,6 +5,8 @@ export const ROLES = {
   MANAGER: 'manager',
   CHEF: 'chef',
   WAREHOUSE: 'warehouse',
+  ACCOUNTANT: 'accountant',
+  FINANCIAL_ADVISOR: 'financial_advisor',
 };
 
 export const ROLE_LABELS = {
@@ -12,6 +14,8 @@ export const ROLE_LABELS = {
   [ROLES.MANAGER]: 'İşletme Yöneticisi',
   [ROLES.CHEF]: 'Mutfak Şefi',
   [ROLES.WAREHOUSE]: 'Depo Sorumlusu',
+  [ROLES.ACCOUNTANT]: 'Muhasebeci (Kasa & Ödemeler)',
+  [ROLES.FINANCIAL_ADVISOR]: 'Mali Müşavir (Resmi Defter & Vergi)',
 };
 
 export const ROLE_COLORS = {
@@ -19,13 +23,17 @@ export const ROLE_COLORS = {
   [ROLES.MANAGER]: '#10b981',
   [ROLES.CHEF]: '#f59e0b',
   [ROLES.WAREHOUSE]: '#0ea5e9',
+  [ROLES.ACCOUNTANT]: '#8b5cf6',
+  [ROLES.FINANCIAL_ADVISOR]: '#ec4899',
 };
 
 export const ROLE_MODULES = {
   [ROLES.ADMIN]: 'Tüm Sayfalar, Kullanıcı Yönetimi, Rol Atama, Sistem Logları',
   [ROLES.MANAGER]: 'Dashboard, Finansal Raporlar, Satış Analizleri, Tüm Reçeteler',
+  [ROLES.ACCOUNTANT]: 'Muhasebe & Kasa, Gider ve Kira Ödemeleri, Fatura Girişleri',
+  [ROLES.FINANCIAL_ADVISOR]: 'Resmi Muhasebe Defteri, Vergi ve SGK Tahakkukları, Mali Raporlama',
   [ROLES.CHEF]: 'Reçete Yönetimi, Üretim Planlama, Menü Tasarımı, Stok (Görüntüleme)',
-  [ROLES.WAREHOUSE]: 'Mobil Mal Kabul (Barkod), Zayiat Bildirimi, Sayım Ekranı',
+  [ROLES.WAREHOUSE]: 'Mal Kabul Terminali (Elle / Barkod Girişi), Zayiat Bildirimi, Sayım',
 };
 
 export const DEMO_USERS = [
@@ -33,6 +41,8 @@ export const DEMO_USERS = [
   { id: 2, name: 'Mehmet Demir', username: 'mudur', role: ROLES.MANAGER, email: 'mudur@lezzetrotasi.com', avatar: 'MD' },
   { id: 3, name: 'Fatma Kaya', username: 'sef', role: ROLES.CHEF, email: 'sef@lezzetrotasi.com', avatar: 'FK' },
   { id: 4, name: 'Ali Çelik', username: 'depocu', role: ROLES.WAREHOUSE, email: 'depo@lezzetrotasi.com', avatar: 'AÇ' },
+  { id: 5, name: 'Canan Öztürk (Kasa)', username: 'muhasebe', role: ROLES.ACCOUNTANT, email: 'muhasebe@lezzetrotasi.com', avatar: 'CÖ' },
+  { id: 6, name: 'SMMM Selim Aydın', username: 'malimusavir', role: ROLES.FINANCIAL_ADVISOR, email: 'malimusavir@lezzetrotasi.com', avatar: 'SA' },
 ];
 
 export const INITIAL_INVENTORY = [

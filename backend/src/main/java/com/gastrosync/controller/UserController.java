@@ -18,6 +18,16 @@ public class UserController {
 
     public UserController(AppUserRepository repository) {
         this.repository = repository;
+        seedAccountingUsersIfMissing();
+    }
+
+    private void seedAccountingUsersIfMissing() {
+        if (repository.findByUsernameIgnoreCase("muhasebe").isEmpty()) {
+            repository.save(new AppUser("muhasebe", "muhasebe123", "Canan Öztürk (Kasa & Muhasebe)", "ACCOUNTANT", "muhasebe@gastrosync.com"));
+        }
+        if (repository.findByUsernameIgnoreCase("malimusavir").isEmpty()) {
+            repository.save(new AppUser("malimusavir", "musavir123", "SMMM Selim Aydın (Mali Müşavir)", "FINANCIAL_ADVISOR", "malimusavir@gastrosync.com"));
+        }
     }
 
     @GetMapping
@@ -36,14 +46,22 @@ public class UserController {
         }
 
         String cleanId = identifier.trim();
-        Optional<AppUser> userOpt = repository.findByUsernameIgnoreCase(cleanId);
-        if (userOpt.isEmpty()) {
-            userOpt = repository.findByEmailIgnoreCase(cleanId);
+        String cleanPassword = password.trim();
+
+        // 1. Önce kullanıcı adına göre ara
+        Optional<AppUser> userByUsername = repository.findByUsernameIgnoreCase(cleanId);
+        if (userByUsername.isPresent() && userByUsername.get().getPassword().equals(cleanPassword)) {
+            return ResponseEntity.ok(userByUsername.get());
         }
 
-        if (userOpt.isPresent() && userOpt.get().getPassword().equals(password.trim())) {
-            return ResponseEntity.ok(userOpt.get());
+        // 2. E-postaya göre ara (birden fazla aynı e-posta varsa doğru şifreli olanı eşleştir)
+        List<AppUser> usersByEmail = repository.findByEmailIgnoreCase(cleanId);
+        for (AppUser u : usersByEmail) {
+            if (u.getPassword().equals(cleanPassword)) {
+                return ResponseEntity.ok(u);
+            }
         }
+
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("message", "Geçersiz kullanıcı adı/e-posta veya şifre"));
     }

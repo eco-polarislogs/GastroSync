@@ -46,7 +46,9 @@ public class DataSeeder implements CommandLineRunner {
                 new AppUser("admin", "123456", "Ahmet Yılmaz", "ADMIN", "admin@gastrosync.com"),
                 new AppUser("manager", "123456", "Zeynep Kaya", "MANAGER", "manager@gastrosync.com"),
                 new AppUser("chef", "123456", "Mehmet Şef", "CHEF", "chef@gastrosync.com"),
-                new AppUser("warehouse", "123456", "Ali Depocu", "WAREHOUSE", "warehouse@gastrosync.com")
+                new AppUser("warehouse", "123456", "Ali Depocu", "WAREHOUSE", "warehouse@gastrosync.com"),
+                new AppUser("accountant", "123456", "Canan Kasa", "ACCOUNTANT", "accountant@gastrosync.com"),
+                new AppUser("advisor", "123456", "Selahattin Müşavir", "FINANCIAL_ADVISOR", "advisor@gastrosync.com")
             ));
             System.out.println("✅ Mock Users seeded successfully.");
         }
@@ -79,7 +81,22 @@ public class DataSeeder implements CommandLineRunner {
                     "[{\"name\":\"Un (Tip 550)\",\"quantity\":0.22,\"unit\":\"kg\",\"unitCost\":28.00,\"cost\":6.16},{\"name\":\"Domates (Salkım)\",\"quantity\":0.15,\"unit\":\"kg\",\"unitCost\":45.00,\"cost\":6.75},{\"name\":\"Mozzarella Peyniri\",\"quantity\":0.14,\"unit\":\"kg\",\"unitCost\":320.00,\"cost\":44.80},{\"name\":\"Zeytinyağı\",\"quantity\":0.02,\"unit\":\"lt\",\"unitCost\":290.00,\"cost\":5.80}]"),
                 new Recipe("Tavuklu Fettuccine Alfredo", "Pizza & Makarna", new BigDecimal("390.00"), 1,
                     "Taze el yapımı fettuccine makarna, ızgara tavuk dilimleri ve zengin parmesan kremalı sos.",
-                    "[{\"name\":\"Tavuk Göğsü\",\"quantity\":0.18,\"unit\":\"kg\",\"unitCost\":180.00,\"cost\":32.40},{\"name\":\"Krema (%35)\",\"quantity\":0.1,\"unit\":\"lt\",\"unitCost\":115.00,\"cost\":11.50},{\"name\":\"Un (Tip 550)\",\"quantity\":0.15,\"unit\":\"kg\",\"unitCost\":28.00,\"cost\":4.20}]")
+                    "[{\"name\":\"Tavuk Göğsü\",\"quantity\":0.18,\"unit\":\"kg\",\"unitCost\":180.00,\"cost\":32.40},{\"name\":\"Krema (%35)\",\"quantity\":0.1,\"unit\":\"lt\",\"unitCost\":115.00,\"cost\":11.50},{\"name\":\"Un (Tip 550)\",\"quantity\":0.15,\"unit\":\"kg\",\"unitCost\":28.00,\"cost\":4.20}]"),
+                new Recipe("Odun Ateşinde Izgara Köfte", "Ana Yemek", new BigDecimal("350.00"), 1,
+                    "Geleneksel yoğrulmuş dana kıyma, közlenmiş çeri domates, taze biber ve bazlama eşliğinde.",
+                    "[{\"name\":\"Dana Antrikot\",\"quantity\":0.20,\"unit\":\"kg\",\"unitCost\":450.00,\"cost\":90.00},{\"name\":\"Domates (Salkım)\",\"quantity\":0.08,\"unit\":\"kg\",\"unitCost\":45.00,\"cost\":3.60},{\"name\":\"Zeytinyağı (Sızma)\",\"quantity\":0.01,\"unit\":\"lt\",\"unitCost\":290.00,\"cost\":2.90}]"),
+                new Recipe("Fırın Somon Fileto", "Deniz Ürünleri", new BigDecimal("540.00"), 1,
+                    "Kuşkonmaz yatağında fırınlanmış Norveç somonu, kapari ve taze limonlu tereyağ sos ile.",
+                    "[{\"name\":\"Zeytinyağı (Sızma)\",\"quantity\":0.02,\"unit\":\"lt\",\"unitCost\":290.00,\"cost\":5.80},{\"name\":\"Domates (Salkım)\",\"quantity\":0.10,\"unit\":\"kg\",\"unitCost\":45.00,\"cost\":4.50}]"),
+                new Recipe("Trüflü Yabani Mantarlı Risotto", "Ana Yemek", new BigDecimal("420.00"), 1,
+                    "Kestane ve istiridye mantarları, Arborio pirinci, trüf aromalı zeytinyağı ve parmesan.",
+                    "[{\"name\":\"Krema (%35)\",\"quantity\":0.08,\"unit\":\"lt\",\"unitCost\":115.00,\"cost\":9.20},{\"name\":\"Zeytinyağı (Sızma)\",\"quantity\":0.03,\"unit\":\"lt\",\"unitCost\":290.00,\"cost\":8.70}]"),
+                new Recipe("Klasik Sezar Salata", "Salata", new BigDecimal("260.00"), 1,
+                    "Çıtır marul yaprakları, ızgara tavuk göğsü, kruton ekmekler ve ev yapımı sezar sos.",
+                    "[{\"name\":\"Tavuk Göğsü\",\"quantity\":0.15,\"unit\":\"kg\",\"unitCost\":180.00,\"cost\":27.00},{\"name\":\"Zeytinyağı (Sızma)\",\"quantity\":0.02,\"unit\":\"lt\",\"unitCost\":290.00,\"cost\":5.80},{\"name\":\"Domates (Salkım)\",\"quantity\":0.05,\"unit\":\"kg\",\"unitCost\":45.00,\"cost\":2.25}]"),
+                new Recipe("İtalyan Tiramisu", "Tatlı", new BigDecimal("220.00"), 1,
+                    "Espresso ile ıslatılmış Savoiardi kedi dili, zengin mascarpone kreması ve kakao tozu.",
+                    "[{\"name\":\"Espresso Çekirdeği\",\"quantity\":0.02,\"unit\":\"kg\",\"unitCost\":520.00,\"cost\":10.40},{\"name\":\"Krema (%35)\",\"quantity\":0.12,\"unit\":\"lt\",\"unitCost\":115.00,\"cost\":13.80}]")
             ));
             System.out.println("✅ Mock Recipes seeded successfully.");
         }

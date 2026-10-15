@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/tokens';
 import { ROLES, ROLE_LABELS, ROLE_COLORS, DEMO_USERS } from '../data/inventoryData';
 
@@ -21,6 +22,8 @@ export default function MobileLogin({ onLoginSuccess }) {
   const demoAccounts = [
     { username: 'admin', role: ROLES.ADMIN, realPass: 'admin123' },
     { username: 'mudur', role: ROLES.MANAGER, realPass: 'mudur123' },
+    { username: 'muhasebe', role: ROLES.ACCOUNTANT, realPass: 'muhasebe123' },
+    { username: 'malimusavir', role: ROLES.FINANCIAL_ADVISOR, realPass: 'musavir123' },
     { username: 'sef', role: ROLES.CHEF, realPass: 'sef123' },
     { username: 'depocu', role: ROLES.WAREHOUSE, realPass: 'depo123' },
   ];
@@ -44,15 +47,14 @@ export default function MobileLogin({ onLoginSuccess }) {
     const found = DEMO_USERS.find(
       (u) =>
         u.username.toLowerCase() === rawInput ||
-        u.email.toLowerCase() === rawInput ||
-        (rawInput === 'mudur' && u.username === 'mudur') ||
-        (rawInput === 'sef' && u.username === 'sef') ||
-        (rawInput === 'depocu' && u.username === 'depocu')
+        u.email.toLowerCase() === rawInput
     );
 
     const isMatch =
       (rawInput === 'admin' && (cleanPassword === 'admin123' || cleanPassword === '123456')) ||
       (rawInput === 'mudur' && (cleanPassword === 'mudur123' || cleanPassword === '123456')) ||
+      (rawInput === 'muhasebe' && (cleanPassword === 'muhasebe123' || cleanPassword === '123456')) ||
+      (rawInput === 'malimusavir' && (cleanPassword === 'musavir123' || cleanPassword === '123456')) ||
       (rawInput === 'sef' && (cleanPassword === 'sef123' || cleanPassword === '123456')) ||
       (rawInput === 'depocu' && (cleanPassword === 'depo123' || cleanPassword === '123456'));
 
@@ -181,8 +183,10 @@ export default function MobileLogin({ onLoginSuccess }) {
             <Text style={styles.roleInfoTitle}>ROL YETKİLERİ (WEB MATRİSİ):</Text>
             <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.ADMIN] }}>Yönetici (admin):</Text> Tüm Sayfalar & Personel Yönetimi</Text>
             <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.MANAGER] }}>Restoran Müdürü (mudur):</Text> Finans, Ciro, Stok & Reçeteler</Text>
+            <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.ACCOUNTANT] }}>Muhasebeci (muhasebe):</Text> Kasa, Kira & Gider Ödemeleri</Text>
+            <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.FINANCIAL_ADVISOR] }}>Mali Müşavir (malimusavir):</Text> Defter Kayıtları, Vergi & Beyan</Text>
             <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.CHEF] }}>Mutfak Şefi (sef):</Text> Reçeteler & Malzeme Stokları</Text>
-            <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.WAREHOUSE] }}>Depocu (depocu):</Text> Kamera Barkod Terminali & Fire</Text>
+            <Text style={styles.roleInfoItem}>• <Text style={{ fontWeight: '700', color: ROLE_COLORS[ROLES.WAREHOUSE] }}>Depocu (depocu):</Text> Mal Kabul & Sayım (Elle Barkod)</Text>
           </View>
         </View>
       </ScrollView>
