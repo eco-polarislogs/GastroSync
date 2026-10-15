@@ -76,6 +76,9 @@ export default function AccountingPage({ viewMode }) {
       else if (activeTab === 'RENT') matchCat = e.subType === 'RENT'
       else if (activeTab === 'DEBT') matchCat = e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier
       else if (activeTab === 'REJECTED') matchCat = e.status === 'REJECTED'
+      else if (activeTab === 'AWAITING_ADVISOR') {
+        matchCat = !e.recordedInLedger && e.status !== 'REJECTED'
+      }
       else if (activeTab === 'LEDGER') {
         matchCat = isAdvisorMode ? (e.sentToAdvisor !== false) : true
       }
@@ -319,8 +322,8 @@ export default function AccountingPage({ viewMode }) {
             </button>
           </div>
 
-          {/* Muhasebeci / Kasa için Hızlı Kasa Dağıtım Butonu */}
-          {(isAccountant || isCashierMode) && (
+          {/* Muhasebeci / Kasa için Hızlı Kasa Dağıtım Butonu (Mali Müşavir ekranında ASLA görünmez) */}
+          {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (isAccountant || isCashierMode) && (
             <button
               className="action-btn action-btn--secondary"
               onClick={() => setShowCashAllocationModal(true)}
@@ -611,77 +614,100 @@ export default function AccountingPage({ viewMode }) {
       <div className="filters-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '16px' }}>
         {/* Category Tabs */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => { setActiveTab('all'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'all' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-          >
-            {t.all} ({expenses.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('DAILY_SALES'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'DAILY_SALES' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'DAILY_SALES' ? '#059669' : '#ecfdf5', borderColor: '#a7f3d0', color: activeTab === 'DAILY_SALES' ? '#ffffff' : '#065f46', fontWeight: 800 }}
-          >
-            💵 {t.dailyRevenue} ({todaySales.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('DEBT'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'DEBT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'DEBT' ? '#dc2626' : '#fef2f2', borderColor: '#fca5a5', color: activeTab === 'DEBT' ? '#ffffff' : '#b91c1c', fontWeight: 800 }}
-          >
-            ⏳ {t.unpaidDebt} ({expenses.filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier).length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('RENT'); setSelectedSubType('RENT') }}
-            className={`action-btn ${activeTab === 'RENT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'RENT' ? '#059669' : undefined, borderColor: activeTab === 'RENT' ? '#059669' : undefined }}
-          >
-            🏢 {t.rent} ({expenses.filter(e => e.subType === 'RENT').length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('FIXED'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'FIXED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-          >
-            🏢 {t.fixedExpenses} ({expenses.filter(e => e.category === 'FIXED').length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('VARIABLE'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'VARIABLE' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-          >
-            ⚡ {t.variableExpenses} ({expenses.filter(e => e.category === 'VARIABLE').length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('LEDGER'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'LEDGER' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined, borderColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined }}
-          >
-            📖 {t.advisorDefter} ({expenses.filter(e => e.recordedInLedger).length} / {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED').length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('TDHP_ERP'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'TDHP_ERP' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'TDHP_ERP' ? '#0f766e' : '#f0fdfa', borderColor: '#99f6e4', color: activeTab === 'TDHP_ERP' ? '#ffffff' : '#115e59', fontWeight: 800 }}
-          >
-            🏛️ {t.tdhpTab}
-          </button>
-          <button
-            onClick={() => { setActiveTab('Z_REPORT'); setSelectedSubType('all') }}
-            className={`action-btn ${activeTab === 'Z_REPORT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-            style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'Z_REPORT' ? '#b45309' : '#fffbeb', borderColor: '#fde68a', color: activeTab === 'Z_REPORT' ? '#ffffff' : '#92400e', fontWeight: 800 }}
-          >
-            🧾 {t.zReportTab}
-          </button>
-          {expenses.filter(e => e.status === 'REJECTED').length > 0 && (
-            <button
-              onClick={() => { setActiveTab('REJECTED'); setSelectedSubType('all') }}
-              className={`action-btn ${activeTab === 'REJECTED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
-              style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'REJECTED' ? '#475569' : '#f1f5f9', borderColor: '#94a3b8', color: activeTab === 'REJECTED' ? '#ffffff' : '#334155', fontWeight: 800 }}
-            >
-              ❌ {t.reject} ({expenses.filter(e => e.status === 'REJECTED').length})
-            </button>
+          {/* MALİ MÜŞAVİR EKRANI SEKMELERİ */}
+          {isAdvisorMode ? (
+            <>
+              <button
+                onClick={() => { setActiveTab('LEDGER'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'LEDGER' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined, borderColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined }}
+              >
+                📖 {t.advisorDefter} ({expenses.filter(e => e.recordedInLedger).length} Onaylı / {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED').length} Bekleyen)
+              </button>
+              <button
+                onClick={() => { setActiveTab('AWAITING_ADVISOR'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'AWAITING_ADVISOR' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'AWAITING_ADVISOR' ? '#d97706' : '#fffbeb', borderColor: '#fde68a', color: activeTab === 'AWAITING_ADVISOR' ? '#ffffff' : '#b45309', fontWeight: 800 }}
+              >
+                ✍️ Onay Masası ({expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED').length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('TDHP_ERP'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'TDHP_ERP' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'TDHP_ERP' ? '#0f766e' : '#f0fdfa', borderColor: '#99f6e4', color: activeTab === 'TDHP_ERP' ? '#ffffff' : '#115e59', fontWeight: 800 }}
+              >
+                🏛️ {t.tdhpTab}
+              </button>
+              <button
+                onClick={() => { setActiveTab('Z_REPORT'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'Z_REPORT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'Z_REPORT' ? '#b45309' : '#fffbeb', borderColor: '#fde68a', color: activeTab === 'Z_REPORT' ? '#ffffff' : '#92400e', fontWeight: 800 }}
+              >
+                🧾 {t.zReportTab}
+              </button>
+              <button
+                onClick={() => { setActiveTab('REJECTED'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'REJECTED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'REJECTED' ? '#be123c' : '#fff1f2', borderColor: '#fecdd3', color: activeTab === 'REJECTED' ? '#ffffff' : '#9f1239', fontWeight: 800 }}
+              >
+                ❌ Reddedilen Belgeler ({expenses.filter(e => e.status === 'REJECTED').length})
+              </button>
+            </>
+          ) : (
+            /* KASA & MUHASEBE EKRANI SEKMELERİ */
+            <>
+              <button
+                onClick={() => { setActiveTab('all'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'all' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+              >
+                {t.all} ({expenses.length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('DAILY_SALES'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'DAILY_SALES' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'DAILY_SALES' ? '#059669' : '#ecfdf5', borderColor: '#a7f3d0', color: activeTab === 'DAILY_SALES' ? '#ffffff' : '#065f46', fontWeight: 800 }}
+              >
+                💵 {t.dailyRevenue} ({todaySales.length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('DEBT'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'DEBT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'DEBT' ? '#dc2626' : '#fef2f2', borderColor: '#fca5a5', color: activeTab === 'DEBT' ? '#ffffff' : '#b91c1c', fontWeight: 800 }}
+              >
+                ⏳ {t.unpaidDebt} ({expenses.filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier).length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('RENT'); setSelectedSubType('RENT') }}
+                className={`action-btn ${activeTab === 'RENT' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'RENT' ? '#059669' : undefined, borderColor: activeTab === 'RENT' ? '#059669' : undefined }}
+              >
+                🏢 {t.rent} ({expenses.filter(e => e.subType === 'RENT').length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('FIXED'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'FIXED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+              >
+                🏢 {t.fixedExpenses} ({expenses.filter(e => e.category === 'FIXED').length})
+              </button>
+              <button
+                onClick={() => { setActiveTab('VARIABLE'); setSelectedSubType('all') }}
+                className={`action-btn ${activeTab === 'VARIABLE' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+              >
+                ⚡ {t.variableExpenses} ({expenses.filter(e => e.category === 'VARIABLE').length})
+              </button>
+              {expenses.filter(e => e.status === 'REJECTED').length > 0 && (
+                <button
+                  onClick={() => { setActiveTab('REJECTED'); setSelectedSubType('all') }}
+                  className={`action-btn ${activeTab === 'REJECTED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'REJECTED' ? '#be123c' : '#fff1f2', borderColor: '#fecdd3', color: activeTab === 'REJECTED' ? '#ffffff' : '#9f1239', fontWeight: 800 }}
+                >
+                  ❌ Müşavirin Reddettikleri ({expenses.filter(e => e.status === 'REJECTED').length})
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -1145,8 +1171,8 @@ export default function AccountingPage({ viewMode }) {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {/* Muhasebeci: Mali Müşavir Onayına Gönder Butonu */}
-                      {(!exp.recordedInLedger && (!exp.sentToAdvisor || isRejected)) && (
+                      {/* Muhasebeci / Kasa: Mali Müşavir Onayına Gönder Butonu (Mali Müşavir ekranında ASLA görünmez) */}
+                      {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (!exp.recordedInLedger && (!exp.sentToAdvisor || isRejected)) && (
                         <button
                           onClick={() => handleSendToAdvisor(exp)}
                           title="Mali Müşavir defter onayına gönder"

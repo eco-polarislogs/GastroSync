@@ -1129,52 +1129,75 @@ export const useExpenseStore = create((set, get) => ({
 }))
 
 // ==========================================
-// 8. BİLDİRİM VE ROL İLETİŞİM STORE (useNotificationStore)
+// 8. BİLDİRİM VE ROL İLETİŞİM STORE (useNotificationStore) - KALICI & GERÇEK
 // ==========================================
-export const useNotificationStore = create((set, get) => ({
-  notifications: [
-    {
-      id: 1,
-      title: '🚀 Yeni Gider Defter Onayı Bekliyor',
-      message: "Canan Kasa tarafından 'Sanayi Tipi Mutfak Elektrik Faturası (14.200 ₺)' ödendi ve Mali Müşavir resmi defter onayına iletildi.",
-      targetRole: 'FINANCIAL_ADVISOR',
-      senderName: 'Canan Kasa (Kasa / Muhasebe)',
-      type: 'EXPENSE_APPROVAL',
-      isRead: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 2,
-      title: '💵 Günlük Kasa Dağıtımı Yapıldı',
-      message: "Kasaya giren 5.000 ₺ tutar; Elektrik Avansı, Sarf Malzeme ve Soğuk Zincir Lojistik giderlerine paylaştırıldı.",
-      targetRole: 'FINANCIAL_ADVISOR',
-      senderName: 'Canan Kasa (Kasa / Muhasebe)',
-      type: 'CASH_ALLOCATED',
-      isRead: false,
-      createdAt: new Date(Date.now() - 3600000).toISOString()
-    },
-    {
-      id: 3,
-      title: '❌ Gider Onayı Reddedildi (Gerekçeli)',
-      message: "Selahattin Müşavir tarafından 'Instagram & Yerel Yemek Rehberi Reklamı (5.000 ₺)' faturası stopaj/tevkifat gerekçesiyle reddedildi. Düzeltme bekleniyor.",
-      targetRole: 'ACCOUNTANT',
-      senderName: 'Selahattin Müşavir (Mali Müşavir)',
-      type: 'EXPENSE_REJECTED',
-      isRead: false,
-      createdAt: new Date(Date.now() - 7200000).toISOString()
-    },
-    {
-      id: 4,
-      title: '⏳ Yaklaşan Kira Vadesi Hatırlatması',
-      message: "Merkez Restoran Kirası (45.000 ₺) için son ödeme vadesi yaklaşıyor. Kasa bakiyesi yeterli.",
-      targetRole: 'ALL',
-      senderName: 'Sistem Finans Botu',
-      type: 'DEBT_ALERT',
-      isRead: false,
-      createdAt: new Date(Date.now() - 14400000).toISOString()
+const NOTIFICATIONS_STORAGE_KEY = 'gastrosync_persistent_notifications'
+
+const INITIAL_NOTIFICATIONS = [
+  {
+    id: 1,
+    title: '🚀 Yeni Gider Defter Onayı Bekliyor',
+    message: "Canan Kasa tarafından 'Sanayi Tipi Mutfak Elektrik Faturası (14.200 ₺)' ödendi ve Mali Müşavir resmi defter onayına iletildi.",
+    targetRole: 'FINANCIAL_ADVISOR',
+    senderName: 'Canan Kasa (Kasa / Muhasebe)',
+    type: 'EXPENSE_APPROVAL',
+    isRead: false,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 2,
+    title: '💵 Günlük Kasa Dağıtımı Yapıldı',
+    message: "Kasaya giren 5.000 ₺ tutar; Elektrik Avansı, Sarf Malzeme ve Soğuk Zincir Lojistik giderlerine paylaştırıldı.",
+    targetRole: 'FINANCIAL_ADVISOR',
+    senderName: 'Canan Kasa (Kasa / Muhasebe)',
+    type: 'CASH_ALLOCATED',
+    isRead: false,
+    createdAt: new Date(Date.now() - 3600000).toISOString()
+  },
+  {
+    id: 3,
+    title: '❌ Gider Onayı Reddedildi (Gerekçeli)',
+    message: "Selahattin Müşavir tarafından 'Instagram & Yerel Yemek Rehberi Reklamı (5.000 ₺)' faturası stopaj/tevkifat gerekçesiyle reddedildi. Düzeltme bekleniyor.",
+    targetRole: 'ACCOUNTANT',
+    senderName: 'Selahattin Müşavir (Mali Müşavir)',
+    type: 'EXPENSE_REJECTED',
+    isRead: false,
+    createdAt: new Date(Date.now() - 7200000).toISOString()
+  },
+  {
+    id: 4,
+    title: '⏳ Yaklaşan Kira Vadesi Hatırlatması',
+    message: "Merkez Restoran Kirası (45.000 ₺) için son ödeme vadesi yaklaşıyor. Kasa bakiyesi yeterli.",
+    targetRole: 'ALL',
+    senderName: 'Sistem Finans Botu',
+    type: 'DEBT_ALERT',
+    isRead: false,
+    createdAt: new Date(Date.now() - 14400000).toISOString()
+  }
+]
+
+const loadSavedNotifications = () => {
+  try {
+    const raw = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
     }
-  ],
-  unreadCount: 4,
+  } catch (_) { }
+  return INITIAL_NOTIFICATIONS
+}
+
+const saveNotificationsToStorage = (list) => {
+  try {
+    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(list))
+  } catch (_) { }
+}
+
+const initialSaved = loadSavedNotifications()
+
+export const useNotificationStore = create((set, get) => ({
+  notifications: initialSaved,
+  unreadCount: initialSaved.filter(n => !n.isRead).length,
 
   fetchNotifications: async (role) => {
     try {
@@ -1182,9 +1205,23 @@ export const useNotificationStore = create((set, get) => ({
       const res = await fetch(url)
       const json = await res.json()
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        // Sunucudan gelen bildirimler ile yerel bildirimleri birleştir (id'ye göre tekil yap)
+        const currentLocal = get().notifications
+        const mergedMap = new Map()
+        
+        // Yerelde olanları koy
+        currentLocal.forEach(n => mergedMap.set(String(n.id), n))
+        // Sunucudan gelenleri üzerine yaz/ekle
+        json.data.forEach(n => mergedMap.set(String(n.id), n))
+        
+        const mergedList = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        )
+        
+        saveNotificationsToStorage(mergedList)
         set({
-          notifications: json.data,
-          unreadCount: json.data.filter(n => !n.isRead).length
+          notifications: mergedList,
+          unreadCount: mergedList.filter(n => !n.isRead).length
         })
       }
     } catch (_) { }
@@ -1197,10 +1234,14 @@ export const useNotificationStore = create((set, get) => ({
       isRead: false,
       createdAt: new Date().toISOString()
     }
-    set(state => ({
-      notifications: [temp, ...state.notifications],
-      unreadCount: state.unreadCount + 1
-    }))
+    set(state => {
+      const next = [temp, ...state.notifications]
+      saveNotificationsToStorage(next)
+      return {
+        notifications: next,
+        unreadCount: next.filter(n => !n.isRead).length
+      }
+    })
 
     try {
       await fetch('http://localhost:8080/api/notifications', {
@@ -1215,6 +1256,7 @@ export const useNotificationStore = create((set, get) => ({
   markAsRead: async (id) => {
     set(state => {
       const updated = state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n)
+      saveNotificationsToStorage(updated)
       return {
         notifications: updated,
         unreadCount: updated.filter(n => !n.isRead).length
@@ -1228,6 +1270,7 @@ export const useNotificationStore = create((set, get) => ({
   markAllAsRead: async (role) => {
     set(state => {
       const updated = state.notifications.map(n => ({ ...n, isRead: true }))
+      saveNotificationsToStorage(updated)
       return {
         notifications: updated,
         unreadCount: 0
@@ -1238,4 +1281,5 @@ export const useNotificationStore = create((set, get) => ({
     } catch (_) { }
   }
 }))
+
 
