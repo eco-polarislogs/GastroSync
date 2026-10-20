@@ -1022,7 +1022,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
           {(screenStack.length > 1 || selectedItem || cameraActive) ? (
             <TouchableOpacity style={styles.androidBackBtn} onPress={handleGoBack} activeOpacity={0.7}>
               <Text style={styles.androidBackArrow}>←</Text>
-              <Text style={styles.androidBackLabel}>{t.cancel || 'Geri'}</Text>
+              <Text style={styles.androidBackLabel}>{t.goBack || 'Geri'}</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.logoBadge}>
@@ -2822,7 +2822,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                               activeOpacity={0.7}
                             >
                               <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
-                                ✓ {t.recordedLedgerBadge || 'Deftere İşlendi'} ({t.cancel || 'Geri Al'})
+                                ✓ {t.recordedLedgerBadge || 'Deftere İşlendi'} ({t.undo || 'Geri Al'})
                               </Text>
                             </TouchableOpacity>
                           ) : (
