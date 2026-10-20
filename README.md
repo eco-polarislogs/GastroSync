@@ -260,4 +260,5 @@ Sisteme giriş yapabileceğiniz hazır roller (Tüm hesapların şifresi `123456
 ## 📄 Lisans
 Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.  
 GastroSync © 2026 Tüm Hakları Saklıdır.
+---
 Geliştirici - Ecren Solmazgül
