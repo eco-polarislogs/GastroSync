@@ -146,7 +146,21 @@ export default function LoginPage() {
         {/* RIGHT COLUMN: LOGIN CARD */}
         <div className="tein-right-col">
           <div className="tein-login-card">
-            <div className="tein-card-header">
+            <div className="tein-card-header" style={{ textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                <img
+                  src="/logo.jpg"
+                  alt="GastroSync Restaurant Management"
+                  style={{
+                    width: '74px',
+                    height: '74px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35), 0 2px 6px rgba(0,0,0,0.2)',
+                    border: '2px solid rgba(212, 175, 55, 0.8)'
+                  }}
+                />
+              </div>
               <span className="tein-workspace-tag">ÇALIŞMA ALANINIZ</span>
               <h2 className="tein-card-title">Tekrar hoş geldiniz</h2>
               <p className="tein-card-subtitle">Devam etmek için hesabınıza giriş yapın.</p>

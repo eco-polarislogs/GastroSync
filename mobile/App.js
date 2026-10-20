@@ -9,7 +9,7 @@ import { THEME } from './src/theme/tokens';
 import { DEMO_USERS } from './src/data/inventoryData';
 
 function MainApp() {
-  const [authenticatedUser, setAuthenticatedUser] = useState(DEMO_USERS[0]);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
 
   const handleLogout = () => {
     setAuthenticatedUser(null);

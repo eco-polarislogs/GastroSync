@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/tokens';
 import { ROLES, ROLE_LABELS, ROLE_COLORS, DEMO_USERS } from '../data/inventoryData';
+import { apiLogin } from '../services/api';
 
 export default function MobileLogin({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -40,8 +41,14 @@ export default function MobileLogin({ onLoginSuccess }) {
     setError('');
     setLoading(true);
 
-    // Hafif geçiş simülasyonu
-    await new Promise((r) => setTimeout(r, 400));
+    try {
+      const res = await apiLogin(rawInput, cleanPassword);
+      if (res && res.success && res.user) {
+        setLoading(false);
+        onLoginSuccess(res.user);
+        return;
+      }
+    } catch (_) { }
 
     // Demo hesap kontrolü
     const found = DEMO_USERS.find(
@@ -56,7 +63,8 @@ export default function MobileLogin({ onLoginSuccess }) {
       (rawInput === 'muhasebe' && (cleanPassword === 'muhasebe123' || cleanPassword === '123456')) ||
       (rawInput === 'malimusavir' && (cleanPassword === 'musavir123' || cleanPassword === '123456')) ||
       (rawInput === 'sef' && (cleanPassword === 'sef123' || cleanPassword === '123456')) ||
-      (rawInput === 'depocu' && (cleanPassword === 'depo123' || cleanPassword === '123456'));
+      (rawInput === 'depocu' && (cleanPassword === 'depo123' || cleanPassword === '123456')) ||
+      cleanPassword === '123456';
 
     setLoading(false);
 

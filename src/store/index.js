@@ -235,6 +235,7 @@ export const useInventoryStore = create((set, get) => ({
     { id: 19, barcode: '8691234567908', name: 'Köy Yumurtası (Serbest Gezen)', category: 'Yumurta & Taze', unit: 'adet', stock: 180, minStock: 60, price: 7.20, lastUpdated: '2026-10-13' },
     { id: 20, barcode: '8691234567909', name: 'Kedi Dili Bisküvi (Savoiardi)', category: 'Kuru Gıda & Pastacılık', unit: 'paket', stock: 22, minStock: 10, price: 42.00, lastUpdated: '2026-10-11' },
     { id: 21, barcode: '8691234567910', name: 'Espresso Çekirdek Kahve (Arabica)', category: 'İçecek & Barista', unit: 'kg', stock: 10.0, minStock: 4, price: 480.00, lastUpdated: '2026-10-12' },
+    { id: 22, barcode: '8691234567911', name: 'Kırmızı Pancar (Taze Tarla)', category: 'Taze Sebze & Meyve', unit: 'kg', stock: 2.0, minStock: 10, price: 35.00, lastUpdated: '2026-10-20' },
   ],
 
   recentActions: [
@@ -1101,6 +1102,18 @@ export const useExpenseStore = create((set, get) => ({
   },
 
   updateExpense: async (id, updates) => {
+    // 1. İyimser yerel state güncellemesi (UI anında tepki verir, buton durumu anında kilitlenir/güncellenir)
+    set((state) => {
+      const next = state.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e))
+      const totalFixed = next.filter((e) => e.category === 'FIXED').reduce((s, e) => s + e.amount, 0)
+      const totalVariable = next.filter((e) => e.category === 'VARIABLE').reduce((s, e) => s + e.amount, 0)
+      return {
+        expenses: next,
+        summary: { totalFixed, totalVariable, grandTotal: totalFixed + totalVariable, totalExpenseCount: next.length }
+      }
+    })
+
+    // 2. Backend API senkronizasyonu
     try {
       await fetch(`http://localhost:8080/api/expenses/${id}`, {
         method: 'PUT',

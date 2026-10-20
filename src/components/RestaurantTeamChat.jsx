@@ -36,10 +36,10 @@ const CHANNEL_DEFS = [
 ]
 
 const INITIAL_MESSAGES = [
-  { id: 1, channelId: 'kitchen', sender: 'Mehmet Şef', role: 'chef', text: 'Depoda kıyma stoğu 3 kg kaldı, akşama ızgara köfte için 10 kg takviye gerekiyor.', time: '11:45', avatar: 'MŞ', priority: 'high' },
-  { id: 2, channelId: 'kitchen', sender: 'Ali Depocu', role: 'warehouse', text: 'Toptancıdan 15 kg dana döş geldi, mal kabul terminalinden barkodla stoğa işledim şefim.', time: '12:02', avatar: 'AD', priority: 'normal' },
-  { id: 3, channelId: 'cashier', sender: 'Canan Kasa', role: 'accountant', text: 'Enerjisa elektrik faturasını vadeye bıraktım, kira ve personel maaşları ödendi.', time: '10:30', avatar: 'CK', priority: 'normal' },
-  { id: 4, channelId: 'cashier', sender: 'SMMM Selim', role: 'financial_advisor', text: 'Kira dekontlarını inceledim ve resmi deftere onayladım. Stopaj beyanı hazır.', time: '11:15', avatar: 'SS', priority: 'normal' },
+  { id: 1, channelId: 'kitchen', sender: 'Mehmet Şef', role: 'chef', text: 'Depoda pancar son 2 kg kaldı! Akşamki kış menüsü ve pancarlı meze servisi için acil 15 kg takviye gerekiyor.', time: '10:15', avatar: 'MŞ', priority: 'urgent' },
+  { id: 2, channelId: 'cashier', sender: 'Canan Kasa', role: 'accountant', text: 'Şefin pancar talebi üzerine toptancıya 1.500 TL nakit kasa çıkışı yapıldı ve fiilen ödendi. Onay masasına iletildi.', time: '10:45', avatar: 'CK', priority: 'normal' },
+  { id: 3, channelId: 'kitchen', sender: 'Ali Depocu', role: 'warehouse', text: 'Halden 15 kg taze pancar geldi, tartıp mal kabul terminalinden barkodla stoğa işledim şefim.', time: '11:30', avatar: 'AD', priority: 'normal' },
+  { id: 4, channelId: 'cashier', sender: 'SMMM Selim', role: 'financial_advisor', text: 'Pancar alım faturası ile elektrik faturası dekontunu inceledim ve resmi yevmiye defterine onayladım.', time: '12:00', avatar: 'SS', priority: 'normal' },
   { id: 5, channelId: 'shift', sender: 'Zeynep Müdür', role: 'manager', text: 'Akşam 20:00 için 8 kişilik VIP rezervasyon var (Masa 4-5 birleştirilecek). Tatlı porsiyonları kontrol edilsin.', time: '09:00', avatar: 'ZM', priority: 'urgent' },
 ]
 
@@ -62,12 +62,38 @@ export default function RestaurantTeamChat() {
   const [isUrgent, setIsUrgent] = useState(false)
   const [chatSearch, setChatSearch] = useState('')
 
-  // LocalStorage persist
+  // LocalStorage persist ve sekmeler arası anlık senkronizasyon
   useEffect(() => {
     try {
       localStorage.setItem('gastrosync_team_chat', JSON.stringify(messages))
     } catch (_) {}
   }, [messages])
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'gastrosync_team_chat' && e.newValue) {
+        try {
+          setMessages(JSON.parse(e.newValue))
+        } catch (_) {}
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    const interval = setInterval(() => {
+      try {
+        const saved = localStorage.getItem('gastrosync_team_chat')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.length !== messages.length) {
+            setMessages(parsed)
+          }
+        }
+      } catch (_) {}
+    }, 2500)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      clearInterval(interval)
+    }
+  }, [messages.length])
 
   // Kullanıcının rolüne göre erişebildiği kanalları filtrele
   const accessibleChannels = useMemo(() => {

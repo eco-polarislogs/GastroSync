@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore } from '../store'
+import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore, useNotificationStore } from '../store'
 import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter, FiAlertTriangle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
@@ -20,6 +20,7 @@ export default function UsersPage() {
 
   const currentUser = useAuthStore((s) => s.user)
   const isSuperAdmin = currentUser?.role === ROLES.ADMIN
+  const { sendNotification } = useNotificationStore()
 
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -180,6 +181,17 @@ export default function UsersPage() {
 
       if (res.ok) {
         notifySuccess(`Kullanıcı rolü ${ROLE_LABELS[selectedRole]} olarak güncellendi!`, 'Rol Güncellendi')
+        
+        const targetUser = users.find(u => u.id === userId)
+        sendNotification({
+          title: '👤 Personel Yetki / Rol Değişikliği',
+          message: `Sistem Yöneticisi tarafından "${targetUser?.name || 'Kullanıcı'}" unvanı "${ROLE_LABELS[selectedRole]}" olarak güncellendi. Sistem izinleri ve erişim ekranları anında senkronize edildi.`,
+          targetRole: 'ALL',
+          senderName: currentUser?.name || 'Sistem Yöneticisi',
+          type: 'ROLE_CHANGED',
+          relatedEntityId: userId
+        })
+
         setEditingUserId(null)
         setUsers((prev) =>
           prev.map((u) => (u.id === userId ? { ...u, role: selectedRole } : u))

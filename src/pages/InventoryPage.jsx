@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { useInventoryStore, useAuthStore } from '../store'
-import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText } from 'react-icons/fi'
-import { notifySuccess } from '../utils/notify'
+import { useInventoryStore, useAuthStore, useExpenseStore, useNotificationStore, ROLES } from '../store'
+import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText, FiShoppingCart, FiPlus, FiCheck, FiX } from 'react-icons/fi'
+import { notifySuccess, notifyError } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
 import '../styles/pages.css'
@@ -92,10 +92,104 @@ export default function InventoryPage() {
       sortDir === 'asc' ? <FiArrowUp size={12} /> : <FiArrowDown size={12} />
     ) : null
 
+  const { user } = useAuthStore()
+  const { addExpense } = useExpenseStore()
+  const { sendNotification } = useNotificationStore()
+
+  const [orderModalItem, setOrderModalItem] = useState(null)
+  const [orderQuantity, setOrderQuantity] = useState('15')
+  const [orderUrgent, setOrderUrgent] = useState(false)
+  const [orderNote, setOrderNote] = useState('')
+
+  const handleCreateOrder = async (e) => {
+    e.preventDefault()
+    if (!orderModalItem) return
+    const qty = parseFloat(orderQuantity) || 0
+    if (qty <= 0) {
+      notifyError('Lütfen geçerli bir sipariş miktarı giriniz.')
+      return
+    }
+
+    const estimatedCost = Math.round(qty * orderModalItem.price)
+    const orderTitle = `${orderModalItem.name} Malzeme Alımı (${qty} ${orderModalItem.unit})`
+
+    // 1. Kasa / Muhasebe ekranına bekleyen ödeme/harcama talebi olarak otomatik işle
+    await addExpense({
+      title: orderTitle,
+      category: 'VARIABLE',
+      subType: 'CONSUMABLES',
+      amount: estimatedCost,
+      period: new Date().toISOString().substring(0, 7),
+      expenseDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      recordedBy: user?.name || 'Mutfak Şefi',
+      note: `${orderUrgent ? '⚡ [ACİL TALEP] ' : ''}${user?.name || 'Mutfak'} tarafından sipariş talebi açıldı. Mevcut stok: ${orderModalItem.stock} ${orderModalItem.unit}. ${orderNote ? 'Not: ' + orderNote : ''}`,
+      counterparty: 'Toptancı Hal / Gıda Tedarik',
+      invoiceNumber: `SIP-${Date.now().toString().slice(-6)}`,
+      paymentStatus: 'UNPAID', // Muhasebe kasasından ödenmeyi bekliyor
+      paidByCashier: false,
+      recordedInLedger: false,
+      sentToAdvisor: true,
+      status: 'SENT_TO_ADVISOR'
+    })
+
+    // 2. Canlı Telsiz Mesajı oluştur (Tüm departmanlar anlık görsün)
+    try {
+      const savedChat = localStorage.getItem('gastrosync_team_chat')
+      const chatList = savedChat ? JSON.parse(savedChat) : []
+      const newChatMessage = {
+        id: Date.now(),
+        channelId: 'kitchen',
+        sender: user?.name || 'Mehmet Şef',
+        role: user?.role || 'chef',
+        text: `Depoda ${orderModalItem.name} stoğu ${orderModalItem.stock} ${orderModalItem.unit} kaldı! ${qty} ${orderModalItem.unit} acil sipariş talebi açtım, muhasebeden ${estimatedCost.toLocaleString('tr-TR')} ₺ kasa onayı bekleniyor.`,
+        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        avatar: user?.avatar || 'MŞ',
+        priority: orderUrgent ? 'urgent' : 'high'
+      }
+      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+    } catch (_) { }
+
+    // 3. Muhasebeci ve Kasaya anlık sistem bildirimi gönder
+    sendNotification({
+      title: orderUrgent ? '⚡ Acil Malzeme Tedarik Talebi' : '📦 Yeni Malzeme Sipariş Talebi',
+      message: `${user?.name || 'Mutfak Şefi'}, ${orderModalItem.name} (${qty} ${orderModalItem.unit}) için sipariş talebi açtı. Tahmini tutar: ${estimatedCost.toLocaleString('tr-TR')} ₺. Kasa onayı bekliyor.`,
+      targetRole: 'ACCOUNTANT',
+      senderName: user?.name || 'Mutfak Şefi',
+      type: 'EXPENSE_APPROVAL',
+      relatedEntityId: null
+    })
+
+    // 4. Depo Sorumlusuna anlık bildirim düşür (Depo haberdar olsun)
+    sendNotification({
+      title: orderUrgent ? '⚡ Depo: Acil Malzeme Siparişi Açıldı' : '📦 Depo: Yeni Malzeme Siparişi Açıldı',
+      message: `Mutfak tarafından ${orderModalItem.name} için ${qty} ${orderModalItem.unit} tedarik talebi açıldı. Kasa ödemesi ardından sevkiyat masanızda listelenecektir.`,
+      targetRole: 'WAREHOUSE',
+      senderName: user?.name || 'Mutfak Şefi',
+      type: 'PROCUREMENT_REQUESTED',
+      relatedEntityId: orderModalItem.id
+    })
+
+    notifySuccess(
+      `${orderModalItem.name} için ${qty} ${orderModalItem.unit} sipariş talebi oluşturuldu. Kasa, Muhasebe ve Depo ekranına iletildi!`,
+      'Tedarik Talebi Açıldı 🚀'
+    )
+
+    setOrderModalItem(null)
+    setOrderQuantity('15')
+    setOrderUrgent(false)
+    setOrderNote('')
+  }
+
   return (
     <div className="page-container">
       {/* Actions Row */}
-      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
+      <div className="page-header-row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '-8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+            Kritik stoktaki ürünler için anında <strong>Sipariş Talebi</strong> açabilir, Kasa ve Depo birimlerini eş zamanlı tetikleyebilirsiniz.
+          </span>
+        </div>
         <div className="export-btn-group">
           <button 
             className="export-tile-btn export-tile-btn--excel" 
@@ -182,6 +276,7 @@ export default function InventoryPage() {
                 </th>
                 <th>{t.totalValueCol}</th>
                 <th>{t.statusTh}</th>
+                <th style={{ textAlign: 'center' }}>Hızlı İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -209,12 +304,168 @@ export default function InventoryPage() {
                       </span>
                     )}
                   </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderModalItem(item)
+                        const needed = Math.max(10, Math.ceil(item.minStock * 2 - item.stock))
+                        setOrderQuantity(needed.toString())
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        borderRadius: '8px',
+                        border: item.stock <= item.minStock ? '1px solid #f87171' : '1px solid #a7f3d0',
+                        background: item.stock <= item.minStock ? '#fef2f2' : '#ecfdf5',
+                        color: item.stock <= item.minStock ? '#b91c1c' : '#065f46',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      title="Bu malzeme için satın alma talebi aç"
+                    >
+                      <FiShoppingCart size={13} /> Sipariş Talebi Aç
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* SİPARİŞ / SATIN ALMA TALEP MODALI */}
+      {orderModalItem && (
+        <div className="modal-overlay" onClick={() => setOrderModalItem(null)}>
+          <div
+            className="modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '520px',
+              background: '#ffffff',
+              border: '1px solid #dbe7df',
+              borderRadius: '16px',
+              boxShadow: '0 20px 45px rgba(10, 31, 17, 0.18)',
+              overflow: 'hidden'
+            }}
+          >
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e8f0ea', background: '#f8fbf9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '20px' }}>
+                  <FiShoppingCart size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '700' }}>
+                    Malzeme Tedarik Talebi
+                  </h3>
+                  <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                    Kasa/Muhasebeye ödeme talebi ve Ekip Telsizine anlık bildirim
+                  </span>
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setOrderModalItem(null)} style={{ color: '#64748b' }}>×</button>
+            </div>
+
+            <form onSubmit={handleCreateOrder} style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Ürün Bilgi Kartı */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong style={{ fontSize: '14px', color: '#0f172a', display: 'block' }}>{orderModalItem.name}</strong>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Barkod: {orderModalItem.barcode} | Kategori: {orderModalItem.category}</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Mevcut Depo Stoğu</span>
+                  <strong style={{ fontSize: '14px', color: orderModalItem.stock <= orderModalItem.minStock ? '#dc2626' : '#059669' }}>
+                    {orderModalItem.stock} {orderModalItem.unit} (Min: {orderModalItem.minStock})
+                  </strong>
+                </div>
+              </div>
+
+              {/* Sipariş Miktarı ve Birim Fiyat */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Talep Edilen Miktar ({orderModalItem.unit}) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    required
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', fontSize: '14px', fontWeight: 700 }}
+                    value={orderQuantity}
+                    onChange={(e) => setOrderQuantity(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Birim Maliyet / Tahmini Tutar
+                  </label>
+                  <div style={{ padding: '10px 12px', background: '#f1f5f9', borderRadius: '8px', fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                    {orderModalItem.price.toFixed(2)} ₺ / {orderModalItem.unit} ➔ <span style={{ color: '#059669' }}>{(parseFloat(orderQuantity || 0) * orderModalItem.price).toLocaleString('tr-TR')} ₺</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Acil Sipariş Checkbox */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, color: orderUrgent ? '#dc2626' : '#475569', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={orderUrgent}
+                  onChange={(e) => setOrderUrgent(e.target.checked)}
+                />
+                <span>⚡ Acil Tedarik (Akşam Servisi Öncesi Hemen Alınmalı)</span>
+              </label>
+
+              {/* Açıklama / Talep Notu */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Açıklama / Şef Notu
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Örn: Akşam ızgara ve meze porsiyonları için toptancıdan hemen temin edilmeli..."
+                  className="form-input"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical', background: '#f8fafc' }}
+                  value={orderNote}
+                  onChange={(e) => setOrderNote(e.target.value)}
+                />
+              </div>
+
+              {/* Canlı Akış Bilgi Kartı */}
+              <div style={{ backgroundColor: '#f0fdf4', padding: '12px 14px', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.2rem' }}>🔄</span>
+                <span style={{ fontSize: '12px', color: '#166534', lineHeight: '1.4' }}>
+                  Bu buton onaylandığında: <strong>Kasa & Muhasebe</strong> bekleyen borçlara eklenir, <strong>Ekip Telsizi</strong>'ne otomatik anons düşer ve depocu mal kabul ekranında ürünü beklemeye alır.
+                </span>
+              </div>
+
+              {/* Butonlar */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '12px', justifyContent: 'center', fontWeight: 700 }}
+                >
+                  🚀 Sipariş Talebini Aç & Birimleri Tetikle
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderModalItem(null)}
+                  className="btn-secondary"
+                  style={{ padding: '12px 20px', fontWeight: 600 }}
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

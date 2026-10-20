@@ -101,10 +101,11 @@
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  gap: 10px;
+  padding: 10px 14px;
   border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
+  font-size: 0.88rem;
+  font-weight: 500;
   color: var(--sidebar-text);
   background: transparent;
   border: 1px solid transparent;
@@ -114,6 +115,8 @@
   width: 100%;
   text-align: left;
   font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav-item:hover {

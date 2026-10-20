@@ -39,6 +39,13 @@ export default function AccountingPage({ viewMode }) {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showCashAllocationModal, setShowCashAllocationModal] = useState(false)
   const [cashAllocationAmount, setCashAllocationAmount] = useState('5000')
+  const [cashInflowPeriod, setCashInflowPeriod] = useState('DAILY') // 'DAILY' (Günlük TL) | 'MONTHLY' (Aylık TL)
+  const [cashInflowSource, setCashInflowSource] = useState('POS_CASH') // 'POS_CASH' (Günlük Kasa Hasılatı), 'PARTNER' (Ortak / Kasa Takviyesi), 'BANK_WITHDRAW' (Banka Çekimi)
+  const [cashTargetAccount, setCashTargetAccount] = useState('SPECIFIC') // 'SPECIFIC' (Belirli Kaleme Ödeme), 'BALANCED_SET' (İşletme İhtiyaçlarına Dağıt)
+  const [selectedTargetExpense, setSelectedTargetExpense] = useState('')
+  const [customExpenseTitle, setCustomExpenseTitle] = useState('')
+  const [customExpenseCategory, setCustomExpenseCategory] = useState('VARIABLE')
+  const [customExpenseSubType, setCustomExpenseSubType] = useState('CONSUMABLES')
   const [expenseToDelete, setExpenseToDelete] = useState(null)
   const [expenseToReject, setExpenseToReject] = useState(null)
   const [rejectReasonText, setRejectReasonText] = useState('')
@@ -238,18 +245,50 @@ export default function AccountingPage({ viewMode }) {
     setRejectReasonText('')
   }
 
-  // Muhasebeci / Kasa fiili ödeme veya borç durumu toggle'ı
-  const handleTogglePaymentStatus = async (exp) => {
-    const nextStatus = exp.paymentStatus === 'PAID' ? 'UNPAID' : 'PAID'
-    const isPaid = nextStatus === 'PAID'
+  // Muhasebeci / Kasa fiili borç ödeme işlemi (Geri alınamaz, kilitli işlem)
+  const handlePayDebtNow = async (exp) => {
+    if (exp.paymentStatus === 'PAID') {
+      notifyError('Bu gider kalemi kasadan zaten fiilen ödenmiştir.')
+      return
+    }
+
     await updateExpense(exp.id, {
-      paymentStatus: nextStatus,
-      paidByCashier: isPaid
+      paymentStatus: 'PAID',
+      paidByCashier: true,
+      note: `${exp.note ? exp.note + ' | ' : ''}Kasa tarafından ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} itibarıyla ödendi.`
     })
-    notifySuccess(
-      isPaid ? `"${exp.title}" kasadan fiilen ödendi.` : `"${exp.title}" bekleyen borç/vade statüsüne alındı.`,
-      isPaid ? 'Ödeme Yapıldı ✓' : 'Borca Alındı ⏳'
-    )
+
+    // Eğer hammadde/sarf alımı veya sipariş ise depoya anlık bildirim ve telsiz mesajı ilet
+    const isMaterialOrProcurement = exp.subType === 'CONSUMABLES' || exp.category === 'VARIABLE' || exp.counterparty?.includes('Hal') || exp.counterparty?.includes('Tedarik')
+    if (isMaterialOrProcurement) {
+      sendNotification({
+        title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
+        message: `Kasa tarafından "${exp.title}" (${exp.amount?.toLocaleString('tr-TR')} ₺) toptancıya ödendi. Depo terminalinden tek dokunuşla mal kabul edebilirsiniz.`,
+        targetRole: 'WAREHOUSE',
+        senderName: user?.name || 'Kasa / Muhasebe',
+        type: 'PROCUREMENT_PAID',
+        relatedEntityId: exp.id
+      })
+
+      // Ekip telsizine Canan Kasa'dan otomatik mesaj
+      try {
+        const savedChat = localStorage.getItem('gastrosync_team_chat')
+        const chatList = savedChat ? JSON.parse(savedChat) : []
+        const newChatMessage = {
+          id: Date.now(),
+          channelId: 'kitchen',
+          sender: user?.name || 'Canan Kasa',
+          role: 'accountant',
+          text: `"${exp.title}" için toptancıya ${exp.amount?.toLocaleString('tr-TR')} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Depocumuz geldiğinde terminalden onaylayabilir.`,
+          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          avatar: user?.avatar || 'CK',
+          priority: 'normal'
+        }
+        localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+      } catch (_) { }
+    }
+
+    notifySuccess(`"${exp.title}" kasadan fiilen ödendi ve kaydı kesinleşti.`, 'Ödeme Yapıldı ✓')
   }
 
   const handleExportAccountingExcel = () => {
@@ -300,15 +339,15 @@ export default function AccountingPage({ viewMode }) {
             {isAdvisorMode
               ? (t.advisorLedgerHeader || '📖 ' + t.advisorLedger)
               : isCashierMode
-              ? (t.cashierAccountingHeader || '💰 ' + t.cashierAccounting)
-              : t.cashierAccounting}
+                ? (t.cashierAccountingHeader || '💰 ' + t.cashierAccounting)
+                : t.cashierAccounting}
           </h1>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
             {isAdvisorMode
               ? (t.advisorSubHeader || 'Muhasebenin kasadan yaptığı harcamaları resmi yevmiye defterine inceleyip onaylayın.')
               : isCashierMode
-              ? (t.cashierSubHeader || 'Restoran kasasına gelen bütçeleri gider kalemlerine dağıtın, fiili ödemeleri yapıp Mali Müşavir onayına gönderin.')
-              : (t.accountingSubHeader || 'Sabit ve değişken işletme giderleri dökümü')}
+                ? (t.cashierSubHeader || 'Restoran kasasına gelen bütçeleri gider kalemlerine dağıtın, fiili ödemeleri yapıp Mali Müşavir onayına gönderin.')
+                : (t.accountingSubHeader || 'Sabit ve değişken işletme giderleri dökümü')}
           </p>
         </div>
 
@@ -1014,378 +1053,664 @@ export default function AccountingPage({ viewMode }) {
 
       {/* EXPENSE TABLE (Eğer 'DAILY_SALES', 'TDHP_ERP' veya 'Z_REPORT' sekmelerinde değilsek) */}
       {activeTab !== 'DAILY_SALES' && activeTab !== 'TDHP_ERP' && activeTab !== 'Z_REPORT' && (
-      <div className="table-card" style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #dbe7df', overflow: 'hidden' }}>
-        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f8faf9', borderBottom: '1px solid #dbe7df' }}>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colExpenseTitle}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCounterparty}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCategory}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCashPayment}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAdvisorApproval}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAmount}</th>
-              <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAction}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredExpenses.map((exp) => {
-              const def = EXPENSE_TYPES[exp.subType] || { label: exp.subType, icon: '📄' }
-              const isFixed = exp.category === 'FIXED'
-              const isUnpaid = exp.paymentStatus === 'UNPAID' || !exp.paidByCashier
-              const isPartial = exp.paymentStatus === 'PARTIAL'
-              const isRejected = exp.status === 'REJECTED'
+        <div className="table-card" style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #dbe7df', overflow: 'hidden' }}>
+          <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8faf9', borderBottom: '1px solid #dbe7df' }}>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colExpenseTitle}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCounterparty}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCategory}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colCashPayment}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAdvisorApproval}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAmount}</th>
+                <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#475569' }}>{t.colAction}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredExpenses.map((exp) => {
+                const def = EXPENSE_TYPES[exp.subType] || { label: exp.subType, icon: '📄' }
+                const isFixed = exp.category === 'FIXED'
+                const isUnpaid = exp.paymentStatus === 'UNPAID' || !exp.paidByCashier
+                const isPartial = exp.paymentStatus === 'PARTIAL'
+                const isRejected = exp.status === 'REJECTED'
 
-              return (
-                <tr key={exp.id} style={{ borderBottom: '1px solid #f1f5f3', backgroundColor: isRejected ? '#fffbfb' : undefined }}>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{exp.title}</div>
-                      {exp.isOwnedProperty && (
-                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 800, border: '1px solid #a7f3d0' }}>
-                          🏠 {t.ownedPropertyBadge}
+                return (
+                  <tr key={exp.id} style={{ borderBottom: '1px solid #f1f5f3', backgroundColor: isRejected ? '#fffbfb' : undefined }}>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{exp.title}</div>
+                        {exp.isOwnedProperty && (
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 800, border: '1px solid #a7f3d0' }}>
+                            🏠 {t.ownedPropertyBadge}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                        📅 {t.transactionLabel}: {exp.expenseDate} • {t.periodLabel}: {exp.period} {exp.recordedBy ? `• ${t.recordLabel}: ${exp.recordedBy}` : ''}
+                      </div>
+                      {exp.note && <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>📝 {exp.note}</div>}
+                      {isRejected && exp.rejectionReason && (
+                        <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700, backgroundColor: '#fef2f2', padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', marginTop: '4px' }}>
+                          ❌ {t.rejectionReasonPrefix}: {exp.rejectionReason}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+                        {exp.counterparty || t.notSpecified}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                        {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : t.noInvoice}
+                      </div>
+                      {exp.dueDate && (
+                        <div style={{ fontSize: '0.72rem', color: isUnpaid ? '#b91c1c' : '#047857', fontWeight: 700, marginTop: '2px' }}>
+                          ⏰ {t.dueDateLabel}: {exp.dueDate}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        backgroundColor: isFixed ? '#e0e7ff' : '#e0f2fe',
+                        color: isFixed ? '#4338ca' : '#0369a1',
+                        border: `1px solid ${isFixed ? '#c7d2fe' : '#bae6fd'}`
+                      }}>
+                        {isFixed ? `🏢 ${t.fixedLabel}` : `⚡ ${t.variableLabel}`}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#475569', marginTop: '4px' }}>
+                        <span>{def.icon}</span>
+                        <span>{getExpenseTypeLabel(exp.subType, currentLanguage)}</span>
+                      </div>
+                    </td>
+                    {/* Muhasebeci / Kasa Ödeme veya Borç Durumu */}
+                    <td style={{ padding: '14px 16px' }}>
+                      {isUnpaid ? (
+                        <div>
+                          <button
+                            onClick={() => handlePayDebtNow(exp)}
+                            title="Kasadan fiilen öde ve borcu kapat"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '5px 12px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              backgroundColor: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1.5px solid #f87171',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.15)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <span>💳</span> {t.debtUnpaid} — <strong>Öde</strong>
+                          </button>
+                          <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, marginTop: '3px' }}>
+                            {t.onCreditRemaining}
+                          </div>
+                        </div>
+                      ) : isPartial ? (
+                        <div>
+                          <button
+                            onClick={() => handlePayDebtNow(exp)}
+                            title="Kalan tutarı kasadan öde ve borcu tamamla"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '5px 12px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              backgroundColor: '#fffbeb',
+                              color: '#b45309',
+                              border: '1.5px solid #fde68a',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <span>⚡</span> {t.partialPaid} — <strong>Tamamla</strong>
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          title="Bu gider kasadan nakit/banka ile fiilen ödenmiştir (Kilitli)"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            backgroundColor: '#ecfdf5',
+                            color: '#047857',
+                            border: '1px solid #a7f3d0',
+                            userSelect: 'none'
+                          }}
+                        >
+                          ✓ {t.paidFromCashier}
                         </span>
                       )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                      📅 {t.transactionLabel}: {exp.expenseDate} • {t.periodLabel}: {exp.period} {exp.recordedBy ? `• ${t.recordLabel}: ${exp.recordedBy}` : ''}
-                    </div>
-                    {exp.note && <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>📝 {exp.note}</div>}
-                    {isRejected && exp.rejectionReason && (
-                      <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700, backgroundColor: '#fef2f2', padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', marginTop: '4px' }}>
-                        ❌ {t.rejectionReasonPrefix}: {exp.rejectionReason}
+                    </td>
+                    {/* Mali Müşavir Defter & Onay Durumu */}
+                    <td style={{ padding: '14px 16px' }}>
+                      {isRejected ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            backgroundColor: '#fee2e2',
+                            color: '#991b1b',
+                            border: '1px solid #f87171'
+                          }}>
+                            ❌ {t.rejectedBadge}
+                          </span>
+                          {exp.rejectionReason && (
+                            <span style={{ fontSize: '0.68rem', color: '#b91c1c', maxWidth: '180px', lineHeight: '1.2' }}>
+                              <strong>Neden:</strong> {exp.rejectionReason}
+                            </span>
+                          )}
+                        </div>
+                      ) : exp.recordedInLedger ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          backgroundColor: '#fdf2f8',
+                          color: '#be185d',
+                          border: '1px solid #fbcfe8'
+                        }}>
+                          📖 {t.recordedLedgerBadge} ✓
+                        </span>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          backgroundColor: '#fffbeb',
+                          color: '#b45309',
+                          border: '1px solid #fde68a'
+                        }}>
+                          ✍️ {t.awaitingApprovalBadge}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 900, color: isFixed ? '#1e1b4b' : '#0c4a6e' }}>
+                        {exp.isOwnedProperty ? t.ownedPropertyFree : `${exp.amount.toLocaleString('tr-TR')} ₺`}
                       </div>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
-                      {exp.counterparty || t.notSpecified}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                      {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : t.noInvoice}
-                    </div>
-                    {exp.dueDate && (
-                      <div style={{ fontSize: '0.72rem', color: isUnpaid ? '#b91c1c' : '#047857', fontWeight: 700, marginTop: '2px' }}>
-                        ⏰ {t.dueDateLabel}: {exp.dueDate}
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      backgroundColor: isFixed ? '#e0e7ff' : '#e0f2fe',
-                      color: isFixed ? '#4338ca' : '#0369a1',
-                      border: `1px solid ${isFixed ? '#c7d2fe' : '#bae6fd'}`
-                    }}>
-                      {isFixed ? `🏢 ${t.fixedLabel}` : `⚡ ${t.variableLabel}`}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#475569', marginTop: '4px' }}>
-                      <span>{def.icon}</span>
-                      <span>{getExpenseTypeLabel(exp.subType, currentLanguage)}</span>
-                    </div>
-                  </td>
-                  {/* Muhasebeci / Kasa Ödeme veya Borç Durumu */}
-                  <td style={{ padding: '14px 16px' }}>
-                    <button
-                      onClick={() => handleTogglePaymentStatus(exp)}
-                      title="Ödeme durumunu değiştir"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        backgroundColor: isUnpaid ? '#fef2f2' : isPartial ? '#fffbeb' : '#ecfdf5',
-                        color: isUnpaid ? '#b91c1c' : isPartial ? '#b45309' : '#047857',
-                        border: `1px solid ${isUnpaid ? '#fecaca' : isPartial ? '#fde68a' : '#a7f3d0'}`,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {isUnpaid ? `⏳ ${t.debtUnpaid}` : isPartial ? `⚡ ${t.partialPaid}` : `✓ ${t.paidFromCashier}`}
-                    </button>
-                    {isUnpaid && (
-                      <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, marginTop: '3px' }}>
-                        {t.onCreditRemaining}
-                      </div>
-                    )}
-                  </td>
-                  {/* Mali Müşavir Defter & Onay Durumu */}
-                  <td style={{ padding: '14px 16px' }}>
-                    {isRejected ? (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        backgroundColor: '#fee2e2',
-                        color: '#991b1b',
-                        border: '1px solid #f87171'
-                      }}>
-                        ❌ {t.rejectedBadge}
-                      </span>
-                    ) : exp.recordedInLedger ? (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        backgroundColor: '#fdf2f8',
-                        color: '#be185d',
-                        border: '1px solid #fbcfe8'
-                      }}>
-                        📖 {t.recordedLedgerBadge} ✓
-                      </span>
-                    ) : (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 10px',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        backgroundColor: '#fffbeb',
-                        color: '#b45309',
-                        border: '1px solid #fde68a'
-                      }}>
-                        ✍️ {t.awaitingApprovalBadge}
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 900, color: isFixed ? '#1e1b4b' : '#0c4a6e' }}>
-                      {exp.isOwnedProperty ? t.ownedPropertyFree : `${exp.amount.toLocaleString('tr-TR')} ₺`}
-                    </div>
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {/* Muhasebeci / Kasa: Mali Müşavir Onayına Gönder Butonu (Mali Müşavir ekranında ASLA görünmez) */}
-                      {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (!exp.recordedInLedger && (!exp.sentToAdvisor || isRejected)) && (
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* Muhasebeci / Kasa: Mali Müşavir Onayına Gönder Butonu */}
+                        {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (!exp.recordedInLedger && (!exp.sentToAdvisor || isRejected)) && (
+                          <button
+                            onClick={() => handleSendToAdvisor(exp)}
+                            title="Mali Müşavir defter onayına gönder"
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              color: '#1d4ed8',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            🚀 {t.sendToAdvisorBtn}
+                          </button>
+                        )}
+
+                        {/* Mali Müşavir: Sadece işlem yapılmamışsa butonları göster; onaylanmış veya reddedilmişse durum rozeti gösterip butonları kilitle */}
+                        {(isFinancialAdvisor || isAdvisorMode) && (
+                          exp.recordedInLedger ? (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#be185d', padding: '4px 8px', background: '#fdf2f8', borderRadius: '6px', border: '1px solid #fbcfe8' }}>
+                              ✓ Defter Kesinleşti
+                            </span>
+                          ) : isRejected ? (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991b1b', padding: '4px 8px', background: '#fee2e2', borderRadius: '6px', border: '1px solid #fca5a5' }}>
+                              ❌ Ret İşlendi
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleApproveLedger(exp)}
+                                title="Mali Müşavir defterini onayla"
+                                style={{
+                                  padding: '6px 10px',
+                                  backgroundColor: '#ecfdf5',
+                                  border: '1px solid #a7f3d0',
+                                  color: '#065f46',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <FiCheck /> {t.approveBtn}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setExpenseToReject(exp)
+                                  setRejectReasonText('')
+                                }}
+                                title="Gerekçe belirterek onayı reddet"
+                                style={{
+                                  padding: '6px 10px',
+                                  backgroundColor: '#fff1f2',
+                                  border: '1px solid #fecdd3',
+                                  color: '#be123c',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <FiX /> {t.rejectBtn}
+                              </button>
+                            </>
+                          )
+                        )}
+
                         <button
-                          onClick={() => handleSendToAdvisor(exp)}
-                          title="Mali Müşavir defter onayına gönder"
+                          onClick={() => setExpenseToDelete(exp)}
+                          title="Gider Kaydını Sil"
                           style={{
                             padding: '6px 10px',
-                            backgroundColor: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            color: '#1d4ed8',
+                            backgroundColor: '#fee2e2',
+                            border: '1px solid #fecaca',
+                            color: '#b91c1c',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '0.75rem',
-                            fontWeight: 800,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
+                            fontWeight: 700
                           }}
                         >
-                          🚀 {t.sendToAdvisorBtn}
+                          <FiTrash2 />
                         </button>
-                      )}
-
-                      {/* Mali Müşavir: Onayla veya Gerekçe İle Reddet */}
-                      {(isFinancialAdvisor || isAdvisorMode) && !exp.recordedInLedger && (
-                        <>
-                          <button
-                            onClick={() => handleApproveLedger(exp)}
-                            title="Mali Müşavir defterini onayla"
-                            style={{
-                              padding: '6px 10px',
-                              backgroundColor: '#ecfdf5',
-                              border: '1px solid #a7f3d0',
-                              color: '#065f46',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <FiCheck /> {t.approveBtn}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setExpenseToReject(exp)
-                              setRejectReasonText('')
-                            }}
-                            title="Gerekçe belirterek onayı reddet"
-                            style={{
-                              padding: '6px 10px',
-                              backgroundColor: '#fff1f2',
-                              border: '1px solid #fecdd3',
-                              color: '#be123c',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <FiX /> {t.rejectBtn}
-                          </button>
-                        </>
-                      )}
-
-                      <button
-                        onClick={() => setExpenseToDelete(exp)}
-                        title="Gider Kaydını Sil"
-                        style={{
-                          padding: '6px 10px',
-                          backgroundColor: '#fee2e2',
-                          border: '1px solid #fecaca',
-                          color: '#b91c1c',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          fontWeight: 700
-                        }}
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {/* KASAYA PARA GİRİŞİ & DAĞITIM MODALI (Muhasebe Kasası) */}
+      {/* KASAYA PARA GİRİŞİ & GİDER ÖDEME TERMİNALİ (Muhasebe Kasası) */}
       {showCashAllocationModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '500px', borderRadius: '18px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #eef4f0', paddingBottom: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#065f46' }}>
-                  💵 Kasaya Para Girişi & Giderlere Dağıt
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Örn: Kasaya gönderilen 5.000 TL bütçenin giderlere dağıtımı</span>
+        <div className="modal-overlay" onClick={() => setShowCashAllocationModal(false)}>
+          <div
+            className="modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '560px',
+              maxHeight: '94vh',
+              background: '#ffffff',
+              border: '1px solid #dbe7df',
+              borderRadius: '16px',
+              boxShadow: '0 20px 45px rgba(10, 31, 17, 0.18)',
+              overflow: 'hidden'
+            }}
+          >
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e8f0ea', background: '#f8fbf9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '20px' }}>
+                  💵
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '700' }}>
+                    Kasaya Para Girişi & Gider Ödemesi
+                  </h3>
+                  <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                    Kasa nakit girişi ve ilgili işletme gider kalemine ödeme aktarımı
+                  </span>
+                </div>
               </div>
-              <button onClick={() => setShowCashAllocationModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button className="modal-close" onClick={() => setShowCashAllocationModal(false)} style={{ color: '#64748b' }}>×</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+              {/* Dönem ve Kaynak Seçimi: Günlük TL / Aylık TL */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Dönem Türü
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCashInflowPeriod('DAILY')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 0',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: cashInflowPeriod === 'DAILY' ? '#ffffff' : 'transparent',
+                        color: cashInflowPeriod === 'DAILY' ? '#065f46' : '#64748b',
+                        boxShadow: cashInflowPeriod === 'DAILY' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      ☀️ Günlük Kasa TL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCashInflowPeriod('MONTHLY')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 0',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: cashInflowPeriod === 'MONTHLY' ? '#ffffff' : 'transparent',
+                        color: cashInflowPeriod === 'MONTHLY' ? '#065f46' : '#64748b',
+                        boxShadow: cashInflowPeriod === 'MONTHLY' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      📅 Aylık Bütçe TL
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Para Giriş Kaynağı
+                  </label>
+                  <select
+                    className="form-input"
+                    value={cashInflowSource}
+                    onChange={(e) => setCashInflowSource(e.target.value)}
+                    style={{ background: '#f8fafc', border: '1px solid #dbe7df', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  >
+                    <option value="POS_CASH">Nakit POS & Restoran Kasa Hasılatı</option>
+                    <option value="PARTNER">Ortak / İşletme Sermaye İlavesi</option>
+                    <option value="BANK_WITHDRAW">Ticari Banka Hesabından Nakit Çekim</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Tutar Girişi */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Kasaya Gelen Nakit Tutarı (TL)
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  {cashInflowPeriod === 'DAILY' ? 'Günlük Kasaya Giren Nakit Tutarı (TL)' : 'Aylık Tahsis Edilen Nakit Tutarı (TL)'} *
                 </label>
-                <input
-                  type="number"
-                  className="search-input"
-                  style={{ width: '100%', padding: '10px 12px', fontSize: '1.1rem', fontWeight: 800, borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                  value={cashAllocationAmount}
-                  onChange={(e) => setCashAllocationAmount(e.target.value)}
-                />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="form-input"
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      paddingRight: '40px',
+                      fontSize: '1.25rem',
+                      fontWeight: 800,
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a'
+                    }}
+                    value={cashAllocationAmount}
+                    onChange={(e) => setCashAllocationAmount(e.target.value)}
+                    placeholder="5000"
+                  />
+                  <span style={{ position: 'absolute', right: '14px', fontWeight: 800, color: '#64748b', fontSize: '1.1rem' }}>₺</span>
+                </div>
               </div>
 
-              <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#166534', marginBottom: '6px' }}>
-                  🎯 Otomatik Dağıtım Senaryosu (Örnek):
+              {/* Ödeme Hedefi: Belirli Bir Fatura/Kaleme mi, Yoksa İşletme Giderlerine mi? */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Paranın Aktarılacağı Gider Hesabı
+                </label>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCashTargetAccount('SPECIFIC')}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      border: cashTargetAccount === 'SPECIFIC' ? '1.5px solid #059669' : '1px solid #cbd5e1',
+                      background: cashTargetAccount === 'SPECIFIC' ? '#ecfdf5' : '#ffffff',
+                      color: cashTargetAccount === 'SPECIFIC' ? '#065f46' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🎯 Belirli Bekleyen Borca / Kaleme Öde
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCashTargetAccount('CUSTOM')}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      border: cashTargetAccount === 'CUSTOM' ? '1.5px solid #059669' : '1px solid #cbd5e1',
+                      background: cashTargetAccount === 'CUSTOM' ? '#ecfdf5' : '#ffffff',
+                      color: cashTargetAccount === 'CUSTOM' ? '#065f46' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ⚡ Yeni Doğrudan Gider Ödemesi Yap
+                  </button>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#15803d', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div>• 📦 Sarf Malzeme & Peçete: {(parseFloat(cashAllocationAmount || 0) * 0.3).toLocaleString('tr-TR')} ₺</div>
-                  <div>• ⚡ Günlük Elektrik & Enerji Avansı: {(parseFloat(cashAllocationAmount || 0) * 0.4).toLocaleString('tr-TR')} ₺</div>
-                  <div>• 🚚 Günlük Hal / Lojistik Nakliyesi: {(parseFloat(cashAllocationAmount || 0) * 0.3).toLocaleString('tr-TR')} ₺</div>
-                </div>
+
+                {cashTargetAccount === 'SPECIFIC' && (
+                  <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <span style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Ödenecek Kayıtlı Fatura veya Kalemi Seçin:
+                    </span>
+                    <select
+                      className="form-input"
+                      value={selectedTargetExpense}
+                      onChange={(e) => setSelectedTargetExpense(e.target.value)}
+                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '9px 12px', borderRadius: '8px', fontSize: '13px', width: '100%' }}
+                    >
+                      <option value="">-- Listeden Bekleyen Gider / Fatura Seçin --</option>
+                      {expenses
+                        .filter(e => e.status !== 'REJECTED')
+                        .map(exp => (
+                          <option key={exp.id} value={exp.id}>
+                            {exp.title} ({exp.amount?.toLocaleString('tr-TR')} ₺) - {exp.paidByCashier ? 'Ödendi' : 'Bekleyen Borç'}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {cashTargetAccount === 'CUSTOM' && (
+                  <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Ödeme Başlığı / Alıcı Kurum
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Örn: Hal Sebze-Meyve Nakit Alımı, Personel Günlük Yevmiye..."
+                        className="form-input"
+                        style={{ width: '100%', background: '#ffffff', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '8px', fontSize: '13px' }}
+                        value={customExpenseTitle}
+                        onChange={(e) => setCustomExpenseTitle(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#64748b', marginBottom: '3px' }}>Kategori</label>
+                        <select
+                          className="form-input"
+                          value={customExpenseCategory}
+                          onChange={(e) => setCustomExpenseCategory(e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', fontSize: '12px' }}
+                        >
+                          <option value="VARIABLE">⚡ Değişken Gider</option>
+                          <option value="FIXED">🏢 Sabit Gider</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#64748b', marginBottom: '3px' }}>Gider Türü</label>
+                        <select
+                          className="form-input"
+                          value={customExpenseSubType}
+                          onChange={(e) => setCustomExpenseSubType(e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', fontSize: '12px' }}
+                        >
+                          <option value="CONSUMABLES">📦 Sarf Malzeme</option>
+                          <option value="LOGISTICS">🚚 Hal / Lojistik</option>
+                          <option value="ELECTRICITY">⚡ Elektrik / Enerji</option>
+                          <option value="LABOR">👥 İşçilik / Personel</option>
+                          <option value="RENT">🏢 Kira</option>
+                          <option value="TAX">🏛️ Vergi / Stopaj</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              {/* Bilgilendirme Notu */}
+              <div style={{ backgroundColor: '#f0fdf4', padding: '12px 14px', borderRadius: '10px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.2rem' }}>ℹ️</span>
+                <span style={{ fontSize: '0.8rem', color: '#166534', lineHeight: '1.4' }}>
+                  Muhasebe kasasından yapılan bu nakit çıkışı doğrudan ilgili hesaba işlenecek, <strong>Mali Müşavir Onay Masası</strong>'na teyit için gönderilecektir.
+                </span>
+              </div>
+
+              {/* Aksiyon Butonları */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                 <button
                   type="button"
-                  className="action-btn action-btn--primary"
-                  style={{ flex: 1, padding: '12px', justifyContent: 'center' }}
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '12px', justifyContent: 'center', fontSize: '14px', fontWeight: 700 }}
                   onClick={async () => {
-                    const totalVal = parseFloat(cashAllocationAmount) || 5000
-                    const item1 = {
-                      title: `Günlük Sarf & Temizlik Çıkışı (Kasa Dağıtım)`,
-                      category: 'VARIABLE',
-                      subType: 'CONSUMABLES',
-                      amount: Math.round(totalVal * 0.3),
-                      period: '2026-10',
-                      expenseDate: new Date().toISOString().split('T')[0],
-                      recordedBy: user?.name || 'Kasa / Muhasebe',
-                      note: `Kasaya gelen ${totalVal} TL içerisinden ayrılan pay`,
-                      isOwnedProperty: false,
-                      paidByCashier: true,
-                      recordedInLedger: false,
-                      sentToAdvisor: true,
-                      status: 'SENT_TO_ADVISOR'
-                    }
-                    const item2 = {
-                      title: `Sanayi Mutfak Elektrik Avansı (Kasa Dağıtım)`,
-                      category: 'VARIABLE',
-                      subType: 'ELECTRICITY',
-                      amount: Math.round(totalVal * 0.4),
-                      period: '2026-10',
-                      expenseDate: new Date().toISOString().split('T')[0],
-                      recordedBy: user?.name || 'Kasa / Muhasebe',
-                      note: `Kasaya gelen ${totalVal} TL içerisinden ayrılan pay`,
-                      isOwnedProperty: false,
-                      paidByCashier: true,
-                      recordedInLedger: false,
-                      sentToAdvisor: true,
-                      status: 'SENT_TO_ADVISOR'
-                    }
-                    const item3 = {
-                      title: `Günlük Soğuk Zincir Lojistik Payı (Kasa Dağıtım)`,
-                      category: 'VARIABLE',
-                      subType: 'LOGISTICS',
-                      amount: Math.round(totalVal * 0.3),
-                      period: '2026-10',
-                      expenseDate: new Date().toISOString().split('T')[0],
-                      recordedBy: user?.name || 'Kasa / Muhasebe',
-                      note: `Kasaya gelen ${totalVal} TL içerisinden ayrılan pay`,
-                      isOwnedProperty: false,
-                      paidByCashier: true,
-                      recordedInLedger: false,
-                      sentToAdvisor: true,
-                      status: 'SENT_TO_ADVISOR'
+                    const totalVal = parseFloat(cashAllocationAmount) || 0
+                    if (totalVal <= 0) {
+                      notifyError('Lütfen geçerli bir nakit tutarı giriniz.')
+                      return
                     }
 
-                    await addExpense(item1)
-                    await addExpense(item2)
-                    await addExpense(item3)
+                    const periodLabel = cashInflowPeriod === 'DAILY' ? 'Günlük Kasa' : 'Aylık Bütçe'
+                    const sourceLabel = cashInflowSource === 'POS_CASH' ? 'POS Nakit Hasılatı' : cashInflowSource === 'PARTNER' ? 'Sermaye İlavesi' : 'Banka Nakit Çekim'
 
-                    sendNotification({
-                      title: '💵 Kasadan Gider Dağıtımı Yapıldı',
-                      message: `${user?.name || 'Kasa / Muhasebe'} kasaya gelen ${totalVal.toLocaleString('tr-TR')} ₺ tutarı Elektrik, Sarf Malzeme ve Soğuk Zincir Lojistik giderlerine dağıttı ve onayınıza sundu.`,
-                      targetRole: 'FINANCIAL_ADVISOR',
-                      senderName: user?.name || 'Kasa / Muhasebe',
-                      type: 'CASH_ALLOCATED',
-                      relatedEntityId: null
-                    })
+                    if (cashTargetAccount === 'SPECIFIC') {
+                      if (!selectedTargetExpense) {
+                        notifyError('Lütfen ödemenin aktarılacağı gider kalemini seçiniz.')
+                        return
+                      }
+                      const target = expenses.find(e => e.id === parseInt(selectedTargetExpense) || e.id === selectedTargetExpense)
+                      if (target) {
+                        await updateExpense(target.id, {
+                          paymentStatus: 'PAID',
+                          paidByCashier: true,
+                          note: `${target.note ? target.note + ' | ' : ''}${periodLabel} (${sourceLabel}) ile ${totalVal.toLocaleString('tr-TR')} ₺ fiilen kasadan ödendi.`
+                        })
 
-                    notifySuccess(
-                      `${totalVal.toLocaleString('tr-TR')} ₺ kasadan 3 ayrı gidere dağıtıldı ve Mali Müşavir onayına gönderildi!`,
-                      'Kasa Dağıtıldı & Gönderildi 🚀'
-                    )
+                        sendNotification({
+                          title: '💵 Kasadan Gider Ödemesi Yapıldı',
+                          message: `${user?.name || 'Kasa / Muhasebe'} kasaya giren ${totalVal.toLocaleString('tr-TR')} ₺ ile '${target.title}' borcunu fiilen ödedi ve resmi defter teyidine sundu.`,
+                          targetRole: 'FINANCIAL_ADVISOR',
+                          senderName: user?.name || 'Kasa / Muhasebe',
+                          type: 'EXPENSE_APPROVAL',
+                          relatedEntityId: target.id
+                        })
+
+                        notifySuccess(
+                          `${totalVal.toLocaleString('tr-TR')} ₺ tutarındaki ödeme "${target.title}" hesabına aktarıldı ve Mali Müşavir teyidine gönderildi.`,
+                          'Kasa Ödemesi Kesinleşti ✓'
+                        )
+                      }
+                    } else {
+                      // Custom yeni ödeme kalemi
+                      const titleToUse = customExpenseTitle.trim() || `${periodLabel} Gider Ödemesi (${EXPENSE_TYPES[customExpenseSubType]?.label || customExpenseSubType})`
+                      const newExpItem = {
+                        title: titleToUse,
+                        category: customExpenseCategory,
+                        subType: customExpenseSubType,
+                        amount: totalVal,
+                        period: new Date().toISOString().substring(0, 7),
+                        expenseDate: new Date().toISOString().split('T')[0],
+                        recordedBy: user?.name || 'Kasa / Muhasebe',
+                        note: `${periodLabel} kapsamında ${sourceLabel} kaynağından ayrılan ve kasadan doğrudan ödenen tutar.`,
+                        isOwnedProperty: false,
+                        paidByCashier: true,
+                        recordedInLedger: false,
+                        sentToAdvisor: true,
+                        paymentStatus: 'PAID',
+                        status: 'SENT_TO_ADVISOR'
+                      }
+
+                      await addExpense(newExpItem)
+
+                      sendNotification({
+                        title: '💵 Kasadan Doğrudan Gider Ödemesi',
+                        message: `${user?.name || 'Kasa / Muhasebe'} '${titleToUse}' için kasadan ${totalVal.toLocaleString('tr-TR')} ₺ ödeme yaptı. Onay masanızda inceleyebilirsiniz.`,
+                        targetRole: 'FINANCIAL_ADVISOR',
+                        senderName: user?.name || 'Kasa / Muhasebe',
+                        type: 'EXPENSE_APPROVAL',
+                        relatedEntityId: null
+                      })
+
+                      notifySuccess(
+                        `${totalVal.toLocaleString('tr-TR')} ₺ gider olarak kasadan ödendi ve Mali Müşavir incelemesine iletildi.`,
+                        'Gider Ödemesi Kaydedildi ✓'
+                      )
+                    }
+
                     setShowCashAllocationModal(false)
+                    setSelectedTargetExpense('')
+                    setCustomExpenseTitle('')
                   }}
                 >
-                  🚀 Giderlere Dağıt ve Müşavire Gönder
+                  ✓ Kasadan Gideri Öde ve Müşavire Bildir
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCashAllocationModal(false)}
-                  className="action-btn action-btn--secondary"
-                  style={{ padding: '12px 20px' }}
+                  className="btn-secondary"
+                  style={{ padding: '12px 20px', fontWeight: 600 }}
                 >
                   Vazgeç
                 </button>
@@ -1397,27 +1722,44 @@ export default function AccountingPage({ viewMode }) {
 
       {/* YENİ GİDER GİRİŞ MODALI */}
       {showAddModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '540px', borderRadius: '18px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #eef4f0', paddingBottom: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#0a1f11' }}>
-                  {isFinancialAdvisor && !isAccountant ? '📖 Mali Müşavir Defter Girişi' : '💰 Muhasebe & Kasa Gider Girişi'}
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Sabit ve değişken maliyet kalemi kaydı</span>
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '560px',
+              maxHeight: '94vh',
+              background: '#ffffff',
+              border: '1px solid #dbe7df',
+              borderRadius: '16px',
+              boxShadow: '0 20px 45px rgba(10, 31, 17, 0.18)',
+              overflow: 'hidden'
+            }}
+          >
+            <div className="modal-header" style={{ padding: '20px 24px', borderBottom: '1px solid #e8f0ea', background: '#f8fbf9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '20px' }}>
+                  <FiPlus size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '700' }}>
+                    {isFinancialAdvisor && !isAccountant ? 'Mali Müşavir Defter Girişi' : 'Muhasebe & Kasa Gider Girişi'}
+                  </h3>
+                  <span style={{ fontSize: '12.5px', color: '#64748b' }}>Sabit ve değişken maliyet kalemi kaydı</span>
+                </div>
               </div>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button className="modal-close" onClick={() => setShowAddModal(false)} style={{ color: '#64748b' }}>×</button>
             </div>
 
-            <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleCreateExpense} style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Gider Başlığı *</label>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Gider Başlığı *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Örn: Ekim Ayı Elektrik Faturası veya Şube Kirası"
-                  className="search-input"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  placeholder="Elektrik Faturası, Şube Kirası, Sarf Malzeme Alımı..."
+                  className="form-input"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                   value={newExpense.title}
                   onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
                 />
@@ -1425,10 +1767,10 @@ export default function AccountingPage({ viewMode }) {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Ana Kategori</label>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Ana Kategori</label>
                   <select
-                    className="filter-select"
-                    style={{ width: '100%', padding: '10px' }}
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px', background: '#f8fafc' }}
                     value={newExpense.category}
                     onChange={(e) => {
                       const cat = e.target.value
@@ -1442,10 +1784,10 @@ export default function AccountingPage({ viewMode }) {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Gider Türü</label>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Gider Türü</label>
                   <select
-                    className="filter-select"
-                    style={{ width: '100%', padding: '10px' }}
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px', background: '#f8fafc' }}
                     value={newExpense.subType}
                     onChange={(e) => setNewExpense({ ...newExpense, subType: e.target.value })}
                   >
@@ -1494,23 +1836,23 @@ export default function AccountingPage({ viewMode }) {
               {/* Gerçekçi Muhasebe: Kurum / Tedarikçi ve Fatura No */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Kurum / Alacaklı / Tedarikçi</label>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Kurum / Alacaklı / Tedarikçi</label>
                   <input
                     type="text"
-                    placeholder="Örn: Enerjisa, İGDAŞ, Mülk Sahibi Mehmet Bey"
-                    className="search-input"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                    placeholder="Enerjisa, İGDAŞ, Mülk Sahibi vb."
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                     value={newExpense.counterparty}
                     onChange={(e) => setNewExpense({ ...newExpense, counterparty: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Resmi Fatura / Fiş Seri No</label>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Resmi Fatura / Fiş Seri No</label>
                   <input
                     type="text"
-                    placeholder="Örn: GİB-2026-000412"
-                    className="search-input"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                    placeholder="GİB-2026-000412"
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                     value={newExpense.invoiceNumber}
                     onChange={(e) => setNewExpense({ ...newExpense, invoiceNumber: e.target.value })}
                   />
@@ -1520,7 +1862,7 @@ export default function AccountingPage({ viewMode }) {
               {/* Tutar, İşlem Tarihi, Son Ödeme Vadesi ve Dönem */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                     {newExpense.isOwnedProperty ? 'Tutar (0 ₺ Öz Mülk)' : 'Tutar (₺) *'}
                   </label>
                   <input
@@ -1529,19 +1871,19 @@ export default function AccountingPage({ viewMode }) {
                     disabled={newExpense.isOwnedProperty}
                     required={!newExpense.isOwnedProperty}
                     placeholder="0.00"
-                    className="search-input"
+                    className="form-input"
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: newExpense.isOwnedProperty ? '#f1f5f9' : '#ffffff' }}
                     value={newExpense.amount}
                     onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>İşlem Tarihi *</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>İşlem Tarihi *</label>
                   <input
                     type="date"
                     required
-                    className="search-input"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                     value={newExpense.expenseDate}
                     onChange={(e) => {
                       const val = e.target.value
@@ -1551,22 +1893,22 @@ export default function AccountingPage({ viewMode }) {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#b91c1c', marginBottom: '4px' }}>Son Ödeme Vadesi</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#b91c1c', marginBottom: '4px' }}>Son Ödeme Vadesi</label>
                   <input
                     type="date"
-                    className="search-input"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                     value={newExpense.dueDate}
                     onChange={(e) => setNewExpense({ ...newExpense, dueDate: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Muhasebe Dönemi</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Muhasebe Dönemi</label>
                   <input
                     type="text"
                     placeholder="2026-10"
-                    className="search-input"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                    className="form-input"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc' }}
                     value={newExpense.period}
                     onChange={(e) => setNewExpense({ ...newExpense, period: e.target.value })}
                   />
@@ -1575,11 +1917,11 @@ export default function AccountingPage({ viewMode }) {
 
               {/* Ödeme Durumu: Peşin Ödendi vs Borca Bırak (Vade) */}
               <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>
                   Kasa Ödeme Durumu (Peşin / Borç / Kısmi)
                 </label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="paymentStatus"
@@ -1589,7 +1931,7 @@ export default function AccountingPage({ viewMode }) {
                     />
                     <span>💵 Kasadan Peşin Ödendi</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="paymentStatus"
@@ -1599,7 +1941,7 @@ export default function AccountingPage({ viewMode }) {
                     />
                     <span>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="paymentStatus"
@@ -1613,22 +1955,22 @@ export default function AccountingPage({ viewMode }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Açıklama / Detaylı Not</label>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Açıklama / Detaylı Not</label>
                 <textarea
                   rows="2"
                   placeholder="Gider sebebi, fatura detayı veya vade açıklaması..."
-                  className="search-input"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }}
+                  className="form-input"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical', background: '#f8fafc' }}
                   value={newExpense.note}
                   onChange={(e) => setNewExpense({ ...newExpense, note: e.target.value })}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                <button type="submit" className="action-btn action-btn--primary" style={{ flex: 1, padding: '12px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '12px', justifyContent: 'center', fontWeight: 700 }}>
                   Kaydet
                 </button>
-                <button type="button" onClick={() => setShowAddModal(false)} className="action-btn action-btn--secondary" style={{ padding: '12px 20px' }}>
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary" style={{ padding: '12px 20px', fontWeight: 600 }}>
                   Vazgeç
                 </button>
               </div>
@@ -1639,27 +1981,38 @@ export default function AccountingPage({ viewMode }) {
 
       {/* MALİ MÜŞAVİR RET GEREKÇESİ MODALI */}
       {expenseToReject && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '440px', borderRadius: '18px', padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '20px', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+        <div className="modal-overlay" onClick={() => setExpenseToReject(null)}>
+          <div
+            className="modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '460px',
+              background: '#ffffff',
+              border: '1px solid #fecdd3',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 20px 45px rgba(225, 29, 72, 0.15)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                 ❌
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Mali Müşavir Onayını Reddet</h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>"{expenseToReject.title}" ({expenseToReject.amount.toLocaleString('tr-TR')} ₺)</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>Mali Müşavir Onayını Reddet</h3>
+                <span style={{ fontSize: '12.5px', color: '#64748b' }}>"{expenseToReject.title}" ({expenseToReject.amount.toLocaleString('tr-TR')} ₺)</span>
               </div>
             </div>
 
-            <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#475569' }}>
-              Lütfen bu gideri neden resmi deftere kabul etmediğinizi yazınız. Bu açıklama muhasebe ekranında hata olarak bildirilecektir:
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#475569', lineHeight: '1.4' }}>
+              Lütfen bu gideri neden resmi deftere kabul etmediğinizi yazınız. Bu açıklama muhasebe ekranında gerekçeli hata olarak bildirilecektir:
             </p>
 
             <textarea
               rows="3"
-              className="search-input"
-              placeholder="Örn: Fatura aslı sisteme yüklenmemiş / Stopaj tevkifat oranı hatalı / Kurumsal fatura unvanı geçersiz..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical', marginBottom: '14px' }}
+              className="form-input"
+              placeholder="Fatura aslı sisteme yüklenmemiş / Stopaj tevkifat oranı hatalı / Kurumsal fatura unvanı geçersiz..."
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical', marginBottom: '14px', background: '#f8fafc' }}
               value={rejectReasonText}
               onChange={(e) => setRejectReasonText(e.target.value)}
             />
@@ -1667,14 +2020,14 @@ export default function AccountingPage({ viewMode }) {
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={handleRejectLedger}
-                style={{ flex: 1, padding: '12px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '12px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Gerekçeli Reddet
               </button>
               <button
                 onClick={() => setExpenseToReject(null)}
-                className="action-btn action-btn--secondary"
-                style={{ padding: '12px 20px' }}
+                className="btn-secondary"
+                style={{ padding: '12px 20px', fontWeight: 600 }}
               >
                 Vazgeç
               </button>
@@ -1685,20 +2038,32 @@ export default function AccountingPage({ viewMode }) {
 
       {/* SİLME ONAY MODALI */}
       {expenseToDelete && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ backgroundColor: '#ffffff', width: '100%', maxWidth: '380px', borderRadius: '18px', padding: '24px', textAlign: 'center' }}>
-            <div style={{ width: '54px', height: '54px', borderRadius: '27px', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px' }}>
+        <div className="modal-overlay" onClick={() => setExpenseToDelete(null)}>
+          <div
+            className="modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '400px',
+              background: '#ffffff',
+              border: '1px solid #fed7aa',
+              borderRadius: '16px',
+              padding: '24px',
+              textAlign: 'center',
+              boxShadow: '0 20px 45px rgba(234, 88, 12, 0.15)'
+            }}
+          >
+            <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', fontSize: '24px' }}>
               ⚠️
             </div>
-            <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Gider Kaydı Silinsin mi?</h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: '#64748b' }}>
-              "{expenseToDelete.title}" ({expenseToDelete.amount.toLocaleString('tr-TR')} ₺) kaydı sistemden silinecektir.
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>Gider Kaydı Silinsin mi?</h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#64748b', lineHeight: '1.4' }}>
+              "{expenseToDelete.title}" ({expenseToDelete.amount.toLocaleString('tr-TR')} ₺) kaydı sistemden kalıcı olarak silinecektir.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={() => setExpenseToDelete(null)}
-                className="action-btn action-btn--secondary"
-                style={{ flex: 1, padding: '10px' }}
+                className="btn-secondary"
+                style={{ flex: 1, padding: '10px', fontWeight: 600 }}
               >
                 Vazgeç
               </button>
@@ -1708,7 +2073,7 @@ export default function AccountingPage({ viewMode }) {
                   notifySuccess('Gider kaydı silindi', 'Silindi')
                   setExpenseToDelete(null)
                 }}
-                style={{ flex: 1, padding: '10px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '10px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Evet, Sil
               </button>

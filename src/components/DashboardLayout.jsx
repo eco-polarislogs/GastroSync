@@ -69,17 +69,18 @@ export default function DashboardLayout({ children }) {
         <div className="sidebar-header">
           <div className="sidebar-brand" onClick={() => navigate('/')}>
             <div className="sidebar-logo">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-                <rect width="40" height="40" rx="10" fill="url(#sidegrad)" />
-                <path d="M12 28V16l8-6 8 6v12H12z" fill="white" fillOpacity="0.9" />
-                <circle cx="20" cy="22" r="3" fill="#10b981" />
-                <defs>
-                  <linearGradient id="sidegrad" x1="0" y1="0" x2="40" y2="40">
-                    <stop stopColor="#10b981" />
-                    <stop offset="1" stopColor="#064e3b" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img
+                src="/logo.jpg"
+                alt="GastroSync Logo"
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  boxShadow: '0 0 12px rgba(16, 185, 129, 0.45), 0 2px 4px rgba(0,0,0,0.3)',
+                  border: '1.5px solid rgba(212, 175, 55, 0.6)'
+                }}
+              />
             </div>
             {!sidebarCollapsed && <span className="sidebar-brand-text">GastroSync</span>}
           </div>

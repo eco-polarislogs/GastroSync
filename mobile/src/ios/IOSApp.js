@@ -21,6 +21,7 @@ import {
   INITIAL_SALES_ITEMS,
   ROLE_MODULES,
 } from '../data/inventoryData';
+import { TRANSLATIONS, getCategoryLabel, getRoleLabel, getExpenseTypeLabel, getLocalizedNotification } from '../data/translations';
 import { THEME } from '../theme/tokens';
 import {
   apiFetchInventory,
@@ -52,10 +53,10 @@ const { width } = Dimensions.get('window');
 
 // Web ile Birebir Yetki Matrisi (DashboardLayout.jsx NAV_ITEMS kuralı)
 const ROLE_ALLOWED_SCREENS = {
-  [ROLES.ADMIN]: ['dashboard', 'accounting', 'inventory', 'recipes', 'sales', 'warehouse', 'users'],
-  [ROLES.MANAGER]: ['dashboard', 'accounting', 'inventory', 'recipes', 'sales', 'warehouse'],
-  [ROLES.ACCOUNTANT]: ['accounting', 'dashboard', 'inventory', 'sales'],
-  [ROLES.FINANCIAL_ADVISOR]: ['accounting', 'dashboard', 'inventory', 'sales'],
+  [ROLES.ADMIN]: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse', 'users'],
+  [ROLES.MANAGER]: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse'],
+  [ROLES.ACCOUNTANT]: ['cashier', 'dashboard', 'inventory', 'sales'],
+  [ROLES.FINANCIAL_ADVISOR]: ['advisor', 'dashboard', 'inventory', 'sales'],
   [ROLES.CHEF]: ['recipes', 'inventory'],
   [ROLES.WAREHOUSE]: ['warehouse'],
 };
@@ -68,7 +69,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const allowedScreens = ROLE_ALLOWED_SCREENS[currentUser.role] || ['warehouse'];
 
   const getDefaultScreen = (role) => {
-    if (role === ROLES.ACCOUNTANT || role === ROLES.FINANCIAL_ADVISOR) return 'accounting';
+    if (role === ROLES.ACCOUNTANT) return 'cashier';
+    if (role === ROLES.FINANCIAL_ADVISOR) return 'advisor';
     if (role === ROLES.WAREHOUSE) return 'warehouse';
     if (role === ROLES.CHEF) return 'recipes';
     return 'dashboard';
@@ -100,12 +102,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
   ]);
   const [currentLang, setCurrentLang] = useState('tr');
   const [showLangModal, setShowLangModal] = useState(false);
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.tr;
 
   const isAccountantUser = currentUser.role === ROLES.ACCOUNTANT;
   const isAdvisorUser = currentUser.role === ROLES.FINANCIAL_ADVISOR;
 
-  const [expenseTab, setExpenseTab] = useState(isAdvisorUser ? 'pending_approval' : 'all');
+  const [expenseTab, setExpenseTab] = useState('all');
   const [expenseSearch, setExpenseSearch] = useState('');
+  const [advisorTab, setAdvisorTab] = useState('pending_approval'); // 'pending_approval' | 'ledger' | 'tdhp' | 'z_report' | 'rejected'
+  const [advisorSearch, setAdvisorSearch] = useState('');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashAllocationAmount, setCashAllocationAmount] = useState('5000');
@@ -157,7 +162,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
         setUnreadNotifCount(liveNotifs.filter((n) => !n.isRead).length);
       }
     } catch (err) {
-      console.log('[Android Sync] Error:', err);
+      // Offline fallback: Yerel demo verisi ile kesintisiz devam eder
     }
   }, [currentUser.role]);
 
@@ -204,8 +209,114 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const [itemToDelete, setItemToDelete] = useState(null); // { type: 'stock'|'recipe'|'user', id, name, details }
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', username: '', email: '', role: ROLES.CHEF });
+  const [newUser, setNewUser] = useState({ name: '', username: '', email: '', role: ROLES.CHEF, password: '123456' });
   const [editingUserRole, setEditingUserRole] = useState(null); // { id, name, currentRole }
+
+  // Web Birebir "Sipariş Talebi Aç" Modalı
+  const [orderModalItem, setOrderModalItem] = useState(null);
+  const [orderQuantity, setOrderQuantity] = useState('15');
+  const [orderUrgent, setOrderUrgent] = useState(false);
+  const [orderNote, setOrderNote] = useState('');
+
+  // Web Birebir Restoran Ekip İçi Anlık Sohbet (RestaurantTeamChat)
+  const [showTeamChatModal, setShowTeamChatModal] = useState(false);
+  const [activeChatChannel, setActiveChatChannel] = useState('general');
+  const [chatInputMsg, setChatInputMsg] = useState('');
+  const [chatIsUrgent, setChatIsUrgent] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, channelId: 'kitchen', sender: 'Mehmet Şef', role: 'chef', text: 'Depoda pancar son 2 kg kaldı! Akşamki kış menüsü ve pancarlı meze servisi için acil 15 kg takviye gerekiyor.', time: '10:15', avatar: 'MŞ', priority: 'urgent' },
+    { id: 2, channelId: 'cashier', sender: 'Canan Kasa', role: 'accountant', text: 'Şefin pancar talebi üzerine toptancıya 1.500 TL nakit kasa çıkışı yapıldı ve fiilen ödendi. Onay masasına iletildi.', time: '10:45', avatar: 'CK', priority: 'normal' },
+    { id: 3, channelId: 'kitchen', sender: 'Ali Depocu', role: 'warehouse', text: 'Halden 15 kg taze pancar geldi, tartıp mal kabul terminalinden barkodla stoğa işledim şefim.', time: '11:30', avatar: 'AD', priority: 'normal' },
+    { id: 4, channelId: 'cashier', sender: 'SMMM Selim', role: 'financial_advisor', text: 'Pancar alım faturası ile elektrik faturası dekontunu inceledim ve resmi yevmiye defterine onayladım.', time: '12:00', avatar: 'SS', priority: 'normal' },
+    { id: 5, channelId: 'shift', sender: 'Zeynep Müdür', role: 'manager', text: 'Akşam 20:00 için 8 kişilik VIP rezervasyon var (Masa 4-5 birleştirilecek). Tatlı porsiyonları kontrol edilsin.', time: '09:00', avatar: 'ZM', priority: 'urgent' },
+  ]);
+
+  const handleSendChatMessage = () => {
+    if (!chatInputMsg.trim()) return;
+    const newMsg = {
+      id: Date.now(),
+      channelId: activeChatChannel,
+      sender: currentUser.name || 'Yetkili',
+      role: currentUser.role || 'admin',
+      text: chatInputMsg.trim(),
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      avatar: currentUser.avatar || 'GS',
+      priority: chatIsUrgent ? 'urgent' : 'normal',
+    };
+    setChatMessages((prev) => [...prev, newMsg]);
+    setChatInputMsg('');
+    setChatIsUrgent(false);
+    showToast('Mesaj ilgili kanala gönderildi');
+  };
+
+  const handleCreateOrderRequest = async () => {
+    if (!orderModalItem) return;
+    const qty = parseFloat(orderQuantity) || 0;
+    if (qty <= 0) {
+      showToast('Lütfen geçerli bir sipariş miktarı giriniz.');
+      return;
+    }
+
+    const estimatedCost = Math.round(qty * orderModalItem.price);
+    const orderTitle = `${orderModalItem.name} Malzeme Alımı (${qty} ${orderModalItem.unit})`;
+
+    // 1. Kasa / Muhasebe ekranına bekleyen ödeme/harcama talebi olarak otomatik işle
+    const newExpenseObj = {
+      id: Date.now(),
+      title: orderTitle,
+      category: 'VARIABLE',
+      subType: 'CONSUMABLES',
+      amount: estimatedCost,
+      period: new Date().toISOString().substring(0, 7),
+      expenseDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      counterparty: 'Toptancı Hal / Gıda Tedarik',
+      invoiceNumber: `SIP-${Date.now().toString().slice(-6)}`,
+      paymentStatus: 'UNPAID',
+      paidByCashier: false,
+      recordedInLedger: false,
+      sentToAdvisor: false,
+      status: 'SENT_TO_ADVISOR',
+      note: `${orderUrgent ? '⚡ [ACİL TALEP] ' : ''}${currentUser?.name || 'Mutfak'} tarafından sipariş talebi açıldı. Mevcut stok: ${orderModalItem.stock} ${orderModalItem.unit}. ${orderNote ? 'Not: ' + orderNote : ''}`,
+    };
+
+    setExpenses((prev) => [newExpenseObj, ...prev]);
+
+    // 2. Canlı Ekip Sohbetine otomatik bildirim mesajı ilet (Mutfak, Depo, Kasa ortak takibi)
+    const newChatMsg = {
+      id: Date.now(),
+      channelId: 'kitchen',
+      sender: currentUser?.name || 'Mehmet Şef',
+      role: currentUser?.role || 'chef',
+      text: `Depoda ${orderModalItem.name} stoğu ${orderModalItem.stock} ${orderModalItem.unit} kaldı! ${qty} ${orderModalItem.unit} sipariş talebi açtım, kasadan ${estimatedCost.toLocaleString('tr-TR')} ₺ onay bekleniyor.`,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      avatar: currentUser?.avatar || 'MŞ',
+      priority: orderUrgent ? 'urgent' : 'normal',
+    };
+    setChatMessages((prev) => [...prev, newChatMsg]);
+
+    // 3. Kasa, Muhasebe ve Depo için otomatik sistem bildirimleri
+    await apiCreateNotification({
+      title: orderUrgent ? `⚡ Acil Sipariş Talebi: ${orderModalItem.name}` : `📦 Yeni Sipariş Talebi: ${orderModalItem.name}`,
+      message: `${currentUser?.name || 'Mutfak'} personeli ${qty} ${orderModalItem.unit} ${orderModalItem.name} için sipariş talebi oluşturdu (${estimatedCost.toLocaleString('tr-TR')} ₺). Kasa onayı bekliyor.`,
+      targetRole: 'ACCOUNTANT',
+      type: 'WARNING',
+    });
+
+    await apiCreateNotification({
+      title: `📦 Depo: Yeni Tedarik Talebi Açıldı`,
+      message: `${orderModalItem.name} için ${qty} ${orderModalItem.unit} tedarik talebi açıldı. Kasa ödemesi ardından sevkiyat masanızda listelenecektir.`,
+      targetRole: 'WAREHOUSE',
+      type: 'INFO',
+    });
+
+    showToast(`✓ "${orderModalItem.name}" talebi açıldı ve Kasa/Muhasebe/Depo ekranına iletildi.`);
+    setOrderModalItem(null);
+    setOrderQuantity('15');
+    setOrderNote('');
+    setOrderUrgent(false);
+  };
 
   // Filtreler
   const [inventorySearch, setInventorySearch] = useState('');
@@ -272,13 +383,41 @@ export default function AndroidApp({ initialUser, onLogout }) {
     return matchTab && matchSearch;
   });
 
+  // Mali Müşavir Defteri İçin Özel Filtrelenmiş Giderler
+  const filteredAdvisorExpenses = expenses.filter((e) => {
+    let matchTab = true;
+    if (advisorTab === 'pending_approval') {
+      matchTab = !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false);
+    } else if (advisorTab === 'ledger') {
+      matchTab = Boolean(e.recordedInLedger);
+    } else if (advisorTab === 'rejected') {
+      matchTab = e.status === 'REJECTED';
+    } else if (advisorTab === 'all') {
+      matchTab = true;
+    }
+
+    const matchSearch =
+      !advisorSearch ||
+      e.title.toLowerCase().includes(advisorSearch.toLowerCase()) ||
+      (e.counterparty && e.counterparty.toLowerCase().includes(advisorSearch.toLowerCase())) ||
+      (e.invoiceNumber && e.invoiceNumber.toLowerCase().includes(advisorSearch.toLowerCase())) ||
+      (e.note && e.note.toLowerCase().includes(advisorSearch.toLowerCase())) ||
+      (e.period && e.period.includes(advisorSearch)) ||
+      (e.expenseDate && e.expenseDate.includes(advisorSearch));
+    return matchTab && matchSearch;
+  });
+
   const navigateTo = (screen) => {
     if (!allowedScreens.includes(screen)) return;
-    setScreenStack((prev) => [...prev, screen]);
+    if (screen === currentScreen) return;
+    setScreenStack((prev) => {
+      const filtered = prev.filter((s) => s !== screen);
+      return [...filtered.slice(-4), screen];
+    });
     setCurrentScreen(screen);
   };
 
-  // Android Dahili Geri Butonu (Telefonun geri tuşunu kullanmadan uygulama içinden geri dönme)
+  // Android Dahili Geri Butonu (Sonsuz döngüyü önleyen, ana ekranda duran temiz navigasyon)
   const handleGoBack = () => {
     if (selectedItem) {
       setSelectedItem(null);
@@ -288,6 +427,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       setCameraActive(false);
       return;
     }
+    const defaultScreen = getDefaultScreen(currentUser.role);
     if (screenStack.length > 1) {
       const nextStack = [...screenStack];
       nextStack.pop();
@@ -295,7 +435,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
       setScreenStack(nextStack);
       setCurrentScreen(prev);
     } else {
-      setCurrentScreen(getDefaultScreen(currentUser.role));
+      setCurrentScreen(defaultScreen);
+      setScreenStack([defaultScreen]);
     }
   };
 
@@ -680,6 +821,40 @@ export default function AndroidApp({ initialUser, onLogout }) {
         ? `💵 Kasadan Ödendi: "${exp.title}"`
         : `⏳ Bekleyen Borca/Vadeye Bırakıldı: "${exp.title}"`
     );
+
+    // Kasa fiilen ödediğinde ve bu kalem hammadde/tedarik alımı ise Depo ve Mutfak'ı bilgilendir
+    if (nextPaid) {
+      const isMaterialOrProcurement =
+        exp.subType === 'CONSUMABLES' ||
+        exp.subType === 'FOOD_SUPPLY' ||
+        exp.category === 'VARIABLE' ||
+        (exp.counterparty && (exp.counterparty.includes('Hal') || exp.counterparty.includes('Tedarik')));
+
+      if (isMaterialOrProcurement) {
+        // 1. Depo bildirim masasına mal kabul uyarısı düşür
+        await apiCreateNotification({
+          title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
+          message: `Kasa tarafından "${exp.title}" (${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺) toptancıya ödendi. Depo terminalinden mal kabul edebilirsiniz.`,
+          targetRole: 'WAREHOUSE',
+          type: 'INFO',
+          relatedEntityId: exp.id,
+        });
+
+        // 2. Ekip içi canlı sohbete mutfak/depo kanalına otomatik bilgi düşür
+        const autoChatMsg = {
+          id: Date.now(),
+          channelId: 'kitchen',
+          sender: currentUser?.name || 'Canan Kasa',
+          role: 'accountant',
+          text: `"${exp.title}" için toptancıya ${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Sevkiyat depoya ulaştığında kabul edilebilir.`,
+          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          avatar: currentUser?.avatar || 'CK',
+          priority: 'normal',
+        };
+        setChatMessages((prev) => [...prev, autoChatMsg]);
+      }
+    }
+
     await apiUpdateExpense(exp.id, {
       paymentStatus: nextStatus,
       paidByCashier: nextPaid,
@@ -803,11 +978,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
       email: newUser.email || `${newUser.username}@gastrosync.com`,
       role: newUser.role,
       avatar: initials,
+      password: newUser.password || '123456',
     };
     setUsers([...users, created]);
     setShowAddUserModal(false);
-    setNewUser({ name: '', username: '', email: '', role: ROLES.CHEF });
-    showToast(`Yeni Personel Eklendi: ${created.name}`);
+    setNewUser({ name: '', username: '', email: '', role: ROLES.CHEF, password: '123456' });
+    showToast(`✓ ${t.users || 'Yeni Personel Eklendi'}: ${created.name}`);
 
     // Backend'e kaydet ve senkronize et
     await apiCreateUser(created);
@@ -827,7 +1003,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
   };
 
   const canViewFinancials = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR;
-  const canViewAccounting = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR;
+  const canViewCashier = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.ACCOUNTANT;
+  const canViewAdvisor = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.FINANCIAL_ADVISOR;
+  const canViewAccounting = canViewCashier;
   const canViewUsers = currentUser.role === ROLES.ADMIN;
   const canViewRecipes = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.CHEF;
   const canViewInventory = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.CHEF || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR;
@@ -839,65 +1017,102 @@ export default function AndroidApp({ initialUser, onLogout }) {
   return (
     <View style={styles.container}>
       {/* Sleek Minimalist Top App Bar (Status bar çakışmasını önleyen dinamik insets) */}
-      <View style={[styles.topAppBar, { paddingTop: Math.max(insets.top, 8), height: 52 + Math.max(insets.top, 8) }]}>
+      <View style={[styles.topAppBar, { paddingTop: Math.max(insets.top, 8), height: 54 + Math.max(insets.top, 8) }]}>
         <View style={styles.brandRow}>
           {(screenStack.length > 1 || selectedItem || cameraActive) ? (
-            <TouchableOpacity style={styles.androidBackBtn} onPress={handleGoBack} activeOpacity={0.6}>
+            <TouchableOpacity style={styles.androidBackBtn} onPress={handleGoBack} activeOpacity={0.7}>
               <Text style={styles.androidBackArrow}>←</Text>
-              <Text style={styles.androidBackLabel}>Geri</Text>
+              <Text style={styles.androidBackLabel}>{t.cancel || 'Geri'}</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.logoBadge}>
               <Text style={styles.logoText}>GS</Text>
             </View>
           )}
-          <Text style={styles.appBarTitle}>GastroSync</Text>
+          <Text style={styles.appBarTitle} numberOfLines={1}>
+            {screenStack.length > 1 ? '' : (t.appName || 'GastroSync')}
+          </Text>
         </View>
 
-        {/* Minimalist Kullanıcı Bilgisi & Dil & Rol Bildirim Zili & Çıkış */}
+        {/* Minimalist Kullanıcı Bilgisi & İkon Grubu */}
         <View style={styles.headerUserGroup}>
           {/* Tek Dokunuş Şirket Dili Seçici */}
           <TouchableOpacity
             style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 18,
-              paddingHorizontal: 8,
-              height: 36,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 14,
+              paddingHorizontal: 6,
+              height: 30,
               justifyContent: 'center',
               alignItems: 'center',
-              marginRight: 6,
               borderWidth: 1,
-              borderColor: '#cbd5e1',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
               flexDirection: 'row',
-              gap: 4,
+              gap: 3,
             }}
             onPress={() => setShowLangModal(true)}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 14 }}>
+            <Text style={{ fontSize: 13 }}>
               {currentLang === 'en' ? '🇬🇧' : currentLang === 'de' ? '🇩🇪' : currentLang === 'ar' ? '🇸🇦' : '🇹🇷'}
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: '#1e293b', textTransform: 'uppercase' }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#ffffff', textTransform: 'uppercase' }}>
               {currentLang}
             </Text>
+          </TouchableOpacity>
+
+          {/* Ekip İçi Anlık Sohbet Butonu */}
+          <TouchableOpacity
+            style={{
+              position: 'relative',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 16,
+              width: 32,
+              height: 32,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onPress={() => setShowTeamChatModal(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 15 }}>💬</Text>
+            {chatMessages.filter((m) => m.priority === 'urgent').length > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  backgroundColor: '#f59e0b',
+                  borderRadius: 6,
+                  minWidth: 14,
+                  height: 14,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 2,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '900' }}>
+                  {chatMessages.filter((m) => m.priority === 'urgent').length}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Bildirim Zili & Sayacı */}
           <TouchableOpacity
             style={{
               position: 'relative',
-              backgroundColor: '#f1f5f9',
-              borderRadius: 18,
-              width: 36,
-              height: 36,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 16,
+              width: 32,
+              height: 32,
               justifyContent: 'center',
               alignItems: 'center',
-              marginRight: 6,
             }}
             onPress={() => setShowNotifModal(true)}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+            <Text style={{ fontSize: 15 }}>🔔</Text>
             {unreadNotifCount > 0 && (
               <View
                 style={{
@@ -905,34 +1120,34 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   top: -2,
                   right: -2,
                   backgroundColor: '#ef4444',
-                  borderRadius: 8,
-                  minWidth: 16,
-                  height: 16,
+                  borderRadius: 6,
+                  minWidth: 14,
+                  height: 14,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  paddingHorizontal: 3,
+                  paddingHorizontal: 2,
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>
+                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '900' }}>
                   {unreadNotifCount}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
 
-          <View style={[styles.fixedRoleBadge, { backgroundColor: ROLE_COLORS[currentUser.role] }]}>
+          {/* Kompakt Rol Avatar Rozeti */}
+          <View style={[styles.fixedRoleBadge, { backgroundColor: ROLE_COLORS[currentUser.role], paddingHorizontal: 7, paddingVertical: 4 }]}>
             <Text style={styles.roleAvatar}>{currentUser.avatar}</Text>
-            <Text style={styles.roleNameText}>{ROLE_LABELS[currentUser.role]}</Text>
           </View>
 
+          {/* Çıkış İkon Butonu */}
           <TouchableOpacity
-            style={styles.logoutBtn}
+            style={[styles.logoutBtn, { paddingHorizontal: 6, paddingVertical: 5 }]}
             onPress={onLogout}
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.logoutIcon}>⎋</Text>
-            <Text style={styles.logoutBtnText}>Çıkış</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -959,20 +1174,20 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webExecutiveHero}>
               <View style={styles.webHeroTopPill}>
                 <View style={styles.webHeroPillDot} />
-                <Text style={styles.webHeroPillTxt}>RESTORAN İŞLETİM & MALİYET ZEKASI</Text>
+                <Text style={styles.webHeroPillTxt}>{t.heroBadge || 'RESTORAN İŞLETİM & MALİYET ZEKASI'}</Text>
               </View>
-              <Text style={styles.webHeroTitle}>Akıllı Reçete & Karlılık Motoru</Text>
+              <Text style={styles.webHeroTitle}>{t.heroTitle || 'Akıllı Reçete & Karlılık Motoru'}</Text>
               <Text style={styles.webHeroDesc}>
-                Canlı POS satışları, anlık gramaj ve depocu mal kabul faturalarıyla tam senkronize.
+                {t.heroDesc || 'Canlı POS satışları, anlık gramaj ve depocu mal kabul faturalarıyla tam senkronize.'}
               </Text>
               <View style={styles.webHeroBadgesRow}>
                 <View style={styles.webHeroStatBadge}>
                   <Text style={styles.webHeroStatNum}>%68.4</Text>
-                  <Text style={styles.webHeroStatLbl}>BRÜT KÂR</Text>
+                  <Text style={styles.webHeroStatLbl}>{t.heroAvgGrossMargin ? t.heroAvgGrossMargin.toUpperCase() : 'BRÜT KÂR'}</Text>
                 </View>
                 <View style={[styles.webHeroStatBadge, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }]}>
                   <Text style={[styles.webHeroStatNum, { color: '#065f46' }]}>Tier A</Text>
-                  <Text style={styles.webHeroStatLbl}>VERİMLİLİK</Text>
+                  <Text style={styles.webHeroStatLbl}>{t.efficiency ? t.efficiency.toUpperCase() : 'VERİMLİLİK'}</Text>
                 </View>
               </View>
             </View>
@@ -981,79 +1196,85 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webMetricsGrid}>
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>Bugünkü Ciro (POS)</Text>
+                  <Text style={styles.webMetricLabel}>{t.todaySalesRevenue || 'Bugünkü Ciro (POS)'}</Text>
                   <Text style={styles.webMetricIcon}>💰</Text>
                 </View>
                 <Text style={styles.webMetricValue}>{INITIAL_SALES_SUMMARY.totalRevenue.toLocaleString('tr-TR')} ₺</Text>
-                <Text style={styles.webMetricChange}>▲ %12.5 dünden fazla</Text>
+                <Text style={styles.webMetricChange}>▲ {t.moreThanYesterday || '%12.5 dünden fazla'}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>Gıda Maliyeti</Text>
+                  <Text style={styles.webMetricLabel}>{t.actualFoodCost || 'Gıda Maliyeti'}</Text>
                   <Text style={styles.webMetricIcon}>📦</Text>
                 </View>
                 <Text style={styles.webMetricValue}>{INITIAL_SALES_SUMMARY.totalCost.toLocaleString('tr-TR')} ₺</Text>
-                <Text style={styles.webMetricSubTxt}>Otomatik düşülen stok</Text>
+                <Text style={styles.webMetricSubTxt}>{t.autoDeductedStock || 'Otomatik düşülen stok'}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>Ortalama Food Cost</Text>
+                  <Text style={styles.webMetricLabel}>{t.averageFoodCost || 'Ortalama Food Cost'}</Text>
                   <Text style={styles.webMetricIcon}>🎯</Text>
                 </View>
                 <Text style={[styles.webMetricValue, { color: '#047857' }]}>%{INITIAL_SALES_SUMMARY.foodCostPercent}</Text>
-                <Text style={styles.webMetricSubTxt}>Hedef: %28.0 altında</Text>
+                <Text style={styles.webMetricSubTxt}>{t.aboveTargetFoodCost ? t.aboveTargetFoodCost.replace('{target}', '28.0') : 'Hedef: %28.0 altında'}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>Kritik Stok Uyarısı</Text>
+                  <Text style={styles.webMetricLabel}>{t.criticalStockStat || 'Kritik Stok Uyarısı'}</Text>
                   <Text style={styles.webMetricIcon}>⚠️</Text>
                 </View>
                 <Text style={[styles.webMetricValue, { color: '#f59e0b' }]}>
-                  {items.filter((i) => i.stock <= i.min).length} Ürün
+                  {items.filter((i) => i.stock <= i.min).length} {t.productNameCol ? t.productNameCol.split(' ')[0] : 'Ürün'}
                 </Text>
-                <Text style={styles.webMetricSubTxt}>Tedarik önerisi hazır</Text>
+                <Text style={styles.webMetricSubTxt}>{t.statusCritical || 'Kritik Seviye'}</Text>
               </View>
             </View>
 
-            <Text style={styles.subHeading}>MODÜL KISAYOLLARI</Text>
+            <Text style={styles.subHeading}>{t.filters ? t.filters.toUpperCase() : 'MODÜL KISAYOLLARI'}</Text>
             <View style={styles.shortcutGrid}>
-              {allowedScreens.includes('accounting') && (
-                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('accounting')}>
+              {(allowedScreens.includes('cashier') || allowedScreens.includes('accounting')) && (
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('cashier')}>
                   <Text style={styles.shortcutIcon}>💰</Text>
-                  <Text style={styles.shortcutTxt}>Muhasebe & Gider</Text>
+                  <Text style={styles.shortcutTxt}>{t.cashierAccounting || 'Kasa & Muhasebe'}</Text>
+                </TouchableOpacity>
+              )}
+              {allowedScreens.includes('advisor') && (
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('advisor')}>
+                  <Text style={styles.shortcutIcon}>📖</Text>
+                  <Text style={styles.shortcutTxt}>{t.advisorLedger || 'Mali Müşavir'}</Text>
                 </TouchableOpacity>
               )}
               {allowedScreens.includes('inventory') && (
                 <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('inventory')}>
                   <Text style={styles.shortcutIcon}>📦</Text>
-                  <Text style={styles.shortcutTxt}>Stok Yönetimi</Text>
+                  <Text style={styles.shortcutTxt}>{t.inventory || 'Stok Yönetimi'}</Text>
                 </TouchableOpacity>
               )}
               {allowedScreens.includes('recipes') && (
                 <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('recipes')}>
                   <Text style={styles.shortcutIcon}>📖</Text>
-                  <Text style={styles.shortcutTxt}>Reçete Merkezi</Text>
+                  <Text style={styles.shortcutTxt}>{t.recipes || 'Reçete Merkezi'}</Text>
                 </TouchableOpacity>
               )}
               {allowedScreens.includes('sales') && (
                 <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('sales')}>
                   <Text style={styles.shortcutIcon}>📊</Text>
-                  <Text style={styles.shortcutTxt}>Satış Analizi</Text>
+                  <Text style={styles.shortcutTxt}>{t.sales || 'Satış Analizi'}</Text>
                 </TouchableOpacity>
               )}
               {allowedScreens.includes('warehouse') && (
                 <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('warehouse')}>
                   <Text style={styles.shortcutIcon}>📦</Text>
-                  <Text style={styles.shortcutTxt}>Depo & Mal Kabul</Text>
+                  <Text style={styles.shortcutTxt}>{t.warehouse || 'Depo & Mal Kabul'}</Text>
                 </TouchableOpacity>
               )}
               {allowedScreens.includes('users') && (
                 <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigateTo('users')}>
                   <Text style={styles.shortcutIcon}>👥</Text>
-                  <Text style={styles.shortcutTxt}>Kullanıcı Yönetimi</Text>
+                  <Text style={styles.shortcutTxt}>{t.users || 'Kullanıcı Yönetimi'}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1064,9 +1285,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {currentScreen === 'inventory' && canViewInventory && (
           <View>
             <View style={styles.screenHeader}>
-              <View>
-                <Text style={styles.titleText}>Stok Yönetimi</Text>
-                <Text style={styles.descText}>Tüm envanter ve kritik eşikler</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.titleText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.inventory || 'Stok Yönetimi'}
+                </Text>
+                <Text style={styles.descText} numberOfLines={1} ellipsizeMode="tail">
+                  {t.autoThresholdControl || 'Tüm envanter ve kritik eşikler'}
+                </Text>
               </View>
             </View>
 
@@ -1074,19 +1299,19 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webMiniStatsRow}>
               <View style={styles.webMiniStatCard}>
                 <Text style={styles.webMiniStatVal}>{items.length}</Text>
-                <Text style={styles.webMiniStatLbl}>Toplam Ürün</Text>
+                <Text style={styles.webMiniStatLbl}>{t.totalProductsStat || 'Toplam Ürün'}</Text>
               </View>
               <View style={[styles.webMiniStatCard, { borderColor: '#fed7aa' }]}>
                 <Text style={[styles.webMiniStatVal, { color: '#f59e0b' }]}>
                   {items.filter((i) => i.stock <= i.min).length}
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Kritik Stok</Text>
+                <Text style={styles.webMiniStatLbl}>{t.criticalStockStat || 'Kritik Stok'}</Text>
               </View>
               <View style={styles.webMiniStatCard}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
                   {Math.round(items.reduce((s, i) => s + i.stock * i.price, 0) / 1000)}k ₺
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Envanter Değeri</Text>
+                <Text style={styles.webMiniStatLbl}>{t.totalInventoryValueStat || 'Envanter Değeri'}</Text>
               </View>
             </View>
 
@@ -1094,7 +1319,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webFilterBar}>
               <TextInput
                 style={styles.webSearchInput}
-                placeholder="🔍 Ürün adı veya barkod ile arayın..."
+                placeholder={t.searchInventoryPlaceholder || '🔍 Ürün adı veya barkod ile arayın...'}
                 placeholderTextColor={THEME.colors.textLight}
                 value={inventorySearch}
                 onChangeText={setInventorySearch}
@@ -1107,14 +1332,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     onPress={() => setInventoryCategory(c)}
                   >
                     <Text style={[styles.webChipTxt, inventoryCategory === c && styles.webChipTxtActive]}>
-                      {c === 'all' ? 'Tüm Kategoriler' : c}
+                      {c === 'all' ? (t.allCategories || 'Tüm Kategoriler') : getCategoryLabel(c, currentLang)}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
               <View style={styles.webFilterCountRow}>
                 <Text style={styles.webFilterCountTxt}>
-                  Listelenen: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredItems.length}</Text> / {items.length} ürün
+                  {t.recordsListed || 'Listelenen'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredItems.length}</Text> / {items.length} {t.productNameCol ? t.productNameCol.split(' ')[0].toLowerCase() : 'ürün'}
                 </Text>
               </View>
             </View>
@@ -1136,55 +1361,84 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     <View style={styles.webItemTopRow}>
                       <View style={{ flex: 1, paddingRight: 8 }}>
                         <Text style={styles.webItemName}>{it.name}</Text>
-                        <Text style={styles.webItemBarcode}>Barkod: {it.barcode || 'Belirtilmedi'}</Text>
+                        <Text style={styles.webItemBarcode}>{t.barcodeCol || 'Barkod'}: {it.barcode || 'Belirtilmedi'}</Text>
                       </View>
                       <View style={styles.webCategoryBadge}>
-                        <Text style={styles.webCategoryBadgeTxt}>{it.cat || 'Genel'}</Text>
+                        <Text style={styles.webCategoryBadgeTxt}>{getCategoryLabel(it.cat, currentLang) || 'Genel'}</Text>
                       </View>
                     </View>
 
                     {/* Middle Metrics: Stok, Min. Stok, Birim Fiyat, Toplam Değer */}
                     <View style={styles.webItemMetricsRow}>
                       <View style={styles.webItemMetricCol}>
-                        <Text style={styles.webItemMetricLbl}>Mevcut Stok</Text>
+                        <Text style={styles.webItemMetricLbl}>{t.stockCol || 'Mevcut Stok'}</Text>
                         <Text style={[styles.webItemMetricVal, isAlert && { color: '#dc2626' }]}>
                           {it.stock} {it.unit}
                         </Text>
                       </View>
                       <View style={styles.webItemMetricCol}>
-                        <Text style={styles.webItemMetricLbl}>Min. Stok</Text>
+                        <Text style={styles.webItemMetricLbl}>{t.minStockCol || 'Min. Stok'}</Text>
                         <Text style={styles.webItemMetricVal}>{it.min} {it.unit}</Text>
                       </View>
                       <View style={styles.webItemMetricCol}>
-                        <Text style={styles.webItemMetricLbl}>Birim Fiyat</Text>
+                        <Text style={styles.webItemMetricLbl}>{t.unitPriceCol || 'Birim Fiyat'}</Text>
                         <Text style={styles.webItemMetricVal}>{it.price.toFixed(2)} ₺</Text>
                       </View>
                       <View style={styles.webItemMetricCol}>
-                        <Text style={styles.webItemMetricLbl}>Toplam Değer</Text>
+                        <Text style={styles.webItemMetricLbl}>{t.totalValueCol || 'Toplam Değer'}</Text>
                         <Text style={[styles.webItemMetricVal, { color: '#047857' }]}>
                           {totalValue.toLocaleString('tr-TR')} ₺
                         </Text>
                       </View>
                     </View>
 
-                    {/* Bottom Status Row: Web ile Birebir Tier A / Kritik Rozeti */}
+                    {/* Bottom Status Row: Web ile Birebir Tier A / Kritik Rozeti & Satınalma Talebi */}
                     <View style={styles.webItemStatusRow}>
                       <View>
                         {isAlert ? (
                           <View style={styles.webCriticalBadge}>
                             <Text style={{ fontSize: 10 }}>⚠️</Text>
-                            <Text style={styles.webCriticalTxt}>Kritik Stok</Text>
+                            <Text style={styles.webCriticalTxt}>{t.statusCritical || 'Kritik Stok'}</Text>
                           </View>
                         ) : (
                           <View style={styles.webTierBadge}>
                             <View style={styles.webTierDot} />
-                            <Text style={styles.webTierTxt}>Tier A • Yeterli</Text>
+                            <Text style={styles.webTierTxt}>{t.statusSufficient || 'Tier A • Yeterli'}</Text>
                           </View>
                         )}
                       </View>
                       <Text style={{ fontSize: 11, color: '#64748b' }}>
-                        Tedarikçi: <Text style={{ fontWeight: '700', color: '#334155' }}>{it.supplier || 'Standart'}</Text>
+                        {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{it.supplier || 'Standart'}</Text>
                       </Text>
+                    </View>
+
+                    {/* Web ile Birebir Hızlı Aksiyon Satırı: Sipariş Talebi Aç */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3' }}>
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          backgroundColor: '#ecfdf5',
+                          borderRadius: 8,
+                          paddingVertical: 9,
+                          borderWidth: 1,
+                          borderColor: '#a7f3d0',
+                        }}
+                        onPress={() => {
+                          setOrderModalItem(it);
+                          setOrderQuantity('15');
+                          setOrderNote('');
+                          setOrderUrgent(isAlert);
+                        }}
+                      >
+                        <Text style={{ fontSize: 13 }}>🛒</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#047857' }}>
+                          {t.orderModalItem || 'Sipariş Talebi Aç'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -1197,12 +1451,22 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {currentScreen === 'recipes' && canViewRecipes && (
           <View>
             <View style={styles.webHeaderRow}>
-              <View>
-                <Text style={styles.webPageTitle}>Reçete Merkezi</Text>
-                <Text style={styles.webPageSub}>Mutfak şefi gramaj ve maliyet analizi</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.webPageTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.recipes || 'Reçete Merkezi'}
+                </Text>
+                <Text style={styles.webPageSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.recipesAndKitchen || 'Mutfak şefi gramaj ve maliyet analizi'}
+                </Text>
               </View>
-              <TouchableOpacity style={styles.webBtnPrimary} onPress={() => setShowAddRecipeModal(true)}>
-                <Text style={styles.webBtnPrimaryTxt}>+ Yeni Reçete</Text>
+              <TouchableOpacity
+                style={[styles.webBtnPrimary, { flexShrink: 0 }]}
+                onPress={() => setShowAddRecipeModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.webBtnPrimaryTxt} numberOfLines={1}>
+                  {t.addNewRecipe || '+ Yeni Reçete'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -1210,14 +1474,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webFilterBar}>
               <TextInput
                 style={styles.webSearchInput}
-                placeholder="🔍 Reçete veya yemek adı ara..."
+                placeholder={t.searchRecipePlaceholder || '🔍 Reçete veya yemek adı ara...'}
                 placeholderTextColor={THEME.colors.textLight}
                 value={recipeSearch}
                 onChangeText={setRecipeSearch}
               />
               <View style={styles.webFilterCountRow}>
                 <Text style={styles.webFilterCountTxt}>
-                  Listelenen: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredRecipes.length}</Text> / {recipes.length} reçete
+                  {t.recordsListed || 'Listelenen'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredRecipes.length}</Text> / {recipes.length} {t.recipes ? t.recipes.toLowerCase() : 'reçete'}
                 </Text>
               </View>
             </View>
@@ -1229,7 +1493,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <View key={r.id} style={styles.webRecipeCard}>
                   <View style={styles.webRecipeTopRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.webRecipeCategory}>{r.category}</Text>
+                      <Text style={styles.webRecipeCategory}>{getCategoryLabel(r.category, currentLang)}</Text>
                       <Text style={styles.webRecipeTitle}>{r.name}</Text>
                     </View>
                     <View style={[styles.webFcBadge, r.foodCostPercent >= 30 ? styles.webFcBadgeDanger : styles.webFcBadgeGood]}>
@@ -1242,17 +1506,17 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   {/* 3'lü Metrik Barı (Web recipe-card-stats ile birebir) */}
                   <View style={styles.webRecipeStatsRow}>
                     <View style={styles.webRecipeStatCol}>
-                      <Text style={styles.webRecipeStatLbl}>Maliyet</Text>
+                      <Text style={styles.webRecipeStatLbl}>{t.costLabel || 'Maliyet'}</Text>
                       <Text style={styles.webRecipeStatVal}>{r.cost.toFixed(2)} ₺</Text>
                     </View>
                     <View style={styles.webRecipeStatCol}>
-                      <Text style={styles.webRecipeStatLbl}>Satış Fiyatı</Text>
+                      <Text style={styles.webRecipeStatLbl}>{t.saleLabel || 'Satış Fiyatı'}</Text>
                       <Text style={[styles.webRecipeStatVal, { fontWeight: '900', color: THEME.colors.primary }]}>
                         {r.salePrice.toFixed(2)} ₺
                       </Text>
                     </View>
                     <View style={styles.webRecipeStatCol}>
-                      <Text style={styles.webRecipeStatLbl}>Kâr</Text>
+                      <Text style={styles.webRecipeStatLbl}>{t.profitCol || 'Kâr'}</Text>
                       <Text style={[styles.webRecipeStatVal, { color: '#047857' }]}>
                         +{profit.toFixed(2)} ₺
                       </Text>
@@ -1261,7 +1525,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
                   {/* Malzemeler ve Gramajlar */}
                   <View style={styles.webRecipeIngBox}>
-                    <Text style={styles.webRecipeIngHead}>Reçete Gramajları (1 Porsiyon):</Text>
+                    <Text style={styles.webRecipeIngHead}>{t.ingredientsTitle || 'Reçete Gramajları'} (1 {t.portionCol || 'Porsiyon'}):</Text>
                     {r.ingredients.map((ing, idx) => (
                       <View key={idx} style={styles.webRecipeIngLine}>
                         <Text style={styles.webRecipeIngName}>• {ing.name}</Text>
@@ -1289,7 +1553,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.webRecipeEditTxt}>✏️ Düzenle</Text>
+                      <Text style={styles.webRecipeEditTxt}>✏️ {t.edit || 'Düzenle'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1304,7 +1568,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.webRecipeDeleteTxt}>🗑️ Sil</Text>
+                      <Text style={styles.webRecipeDeleteTxt}>🗑️ {t.delete || 'Sil'}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1317,9 +1581,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {currentScreen === 'sales' && canViewFinancials && (
           <View>
             <View style={styles.webHeaderRow}>
-              <View>
-                <Text style={styles.webPageTitle}>Satış Analizi</Text>
-                <Text style={styles.webPageSub}>POS canlı satış verileri ve ciro dökümü</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.webPageTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.sales || 'Satış Analizi'}
+                </Text>
+                <Text style={styles.webPageSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.posSalesToday || 'POS canlı satış verileri ve ciro dökümü'}
+                </Text>
               </View>
             </View>
 
@@ -1329,33 +1597,33 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <Text style={[styles.webMiniStatVal, { color: THEME.colors.primary }]}>
                   {INITIAL_SALES_SUMMARY.totalRevenue.toLocaleString('tr-TR')} ₺
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Toplam Ciro</Text>
+                <Text style={styles.webMiniStatLbl}>{t.totalRevenueStat || 'Toplam Ciro'}</Text>
               </View>
               <View style={[styles.webMiniStatCard, { borderColor: '#bbf7d0' }]}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
                   {INITIAL_SALES_SUMMARY.netProfit.toLocaleString('tr-TR')} ₺
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Net Kâr</Text>
+                <Text style={styles.webMiniStatLbl}>{t.netProfitStat || 'Net Kâr'}</Text>
               </View>
               <View style={styles.webMiniStatCard}>
                 <Text style={styles.webMiniStatVal}>{INITIAL_SALES_ITEMS.length}</Text>
-                <Text style={styles.webMiniStatLbl}>Satış Kalemi</Text>
+                <Text style={styles.webMiniStatLbl}>{t.salesItemsStat || 'Satış Kalemi'}</Text>
               </View>
             </View>
 
-            <Text style={styles.subHeading}>GÜNLÜK ÜRÜN SATIŞLARI</Text>
+            <Text style={styles.subHeading}>{t.productProfitHeader ? t.productProfitHeader.toUpperCase() : 'GÜNLÜK ÜRÜN SATIŞLARI'}</Text>
             {INITIAL_SALES_ITEMS.map((item) => {
               const itemProfit = item.revenue - item.cost;
               return (
                 <View key={item.id} style={styles.webSalesCard}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.itemTitle}>{item.name}</Text>
-                    <Text style={styles.itemMeta}>{item.qty} Porsiyon Satıldı • Food Cost %{item.foodCost}</Text>
+                    <Text style={styles.itemMeta}>{item.qty} {t.portionCol || 'Porsiyon'} • Food Cost %{item.foodCost}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.salesRevBold}>{item.revenue.toLocaleString('tr-TR')} ₺</Text>
                     <Text style={[styles.itemMeta, { color: '#047857', fontWeight: '700' }]}>
-                      +Kâr: {itemProfit.toLocaleString('tr-TR')} ₺
+                      +{t.profitCol || 'Kâr'}: {itemProfit.toLocaleString('tr-TR')} ₺
                     </Text>
                   </View>
                 </View>
@@ -1368,9 +1636,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {currentScreen === 'warehouse' && canViewWarehouse && (
           <View>
             <View style={styles.webHeaderRow}>
-              <View>
-                <Text style={styles.webPageTitle}>Depo & Mal Kabul Terminali</Text>
-                <Text style={styles.webPageSub}>Manuel barkod / ürün girişi, mal kabul & zayiat</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.webPageTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.warehouse || 'Depo & Mal Kabul'}
+                </Text>
+                <Text style={styles.webPageSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.manualEntry || 'Manuel barkod / ürün girişi, mal kabul & zayiat'}
+                </Text>
               </View>
             </View>
 
@@ -1384,8 +1656,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.webWhActionIcon}>📦</Text>
-                <Text style={styles.webWhActionTitle}>Mal Kabul</Text>
-                <Text style={styles.webWhActionSub}>Manuel Giriş</Text>
+                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.goodsReceipt || 'Mal Kabul'}
+                </Text>
+                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.manualEntry || 'Manuel Giriş'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1396,8 +1672,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.webWhActionIcon}>⚠️</Text>
-                <Text style={styles.webWhActionTitle}>Zayiat Bildir</Text>
-                <Text style={styles.webWhActionSub}>Fire Kaydı</Text>
+                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.reportWaste || 'Zayiat Bildir'}
+                </Text>
+                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.wasteRecord || 'Fire Kaydı'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1419,17 +1699,21 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.webWhActionIcon}>➕</Text>
-                <Text style={styles.webWhActionTitle}>Yeni Ürün</Text>
-                <Text style={styles.webWhActionSub}>Depoya Ekle</Text>
+                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  {t.newItem || 'Yeni Ürün'}
+                </Text>
+                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                  {t.warehouse || 'Depoya Ekle'}
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Manuel Barkod Kartı (Kamerasız - Klavyeden Elle Giriş) */}
             <View style={styles.webSearchCard}>
-              <Text style={styles.cardHeaderSmall}>Manuel Ürün Arama (Barkodsuz / Barkodlu):</Text>
+              <Text style={styles.cardHeaderSmall}>{t.manualEntry || 'Manuel Ürün Arama'} ({t.barcodeCol || 'Barkod'}):</Text>
               <TextInput
                 style={styles.inputBox}
-                placeholder="Barkod numarası veya ürün adı girin..."
+                placeholder={t.searchInventoryPlaceholder || 'Barkod numarası veya ürün adı girin...'}
                 placeholderTextColor={THEME.colors.textLight}
                 value={barcodeInput}
                 onChangeText={setBarcodeInput}
@@ -1454,7 +1738,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   }
                 }}
               >
-                <Text style={styles.btnManualSubmitTxt}>Ürünü Getir</Text>
+                <Text style={styles.btnManualSubmitTxt}>{t.confirm || 'Ürünü Getir'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -1463,17 +1747,17 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={styles.itemTitle}>{selectedItem.name}</Text>
                   <TouchableOpacity style={styles.inlineBackBtn} onPress={() => setSelectedItem(null)}>
-                    <Text style={styles.inlineBackBtnTxt}>✕ Kapat</Text>
+                    <Text style={styles.inlineBackBtnTxt}>✕ {t.cancel || 'Kapat'}</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.itemMeta}>Barkod: {selectedItem.barcode || 'Yok'}</Text>
+                <Text style={styles.itemMeta}>{t.barcodeCol || 'Barkod'}: {selectedItem.barcode || 'Yok'}</Text>
                 <Text style={styles.stockStatusBig}>
-                  Mevcut Stok: {selectedItem.stock} {selectedItem.unit} (Min: {selectedItem.min})
+                  {t.stockCol || 'Mevcut Stok'}: {selectedItem.stock} {selectedItem.unit} ({t.minStockCol || 'Min'}: {selectedItem.min})
                 </Text>
 
                 <TextInput
                   style={[styles.inputBox, { marginTop: 12 }]}
-                  placeholder={`Miktar girin (${selectedItem.unit})`}
+                  placeholder={`${t.quantity || 'Miktar'} (${selectedItem.unit})`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={quantity}
                   onChangeText={setQuantity}
@@ -1485,13 +1769,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     style={[styles.actionBtnItem, { backgroundColor: '#059669' }]}
                     onPress={() => handleStockAction(true)}
                   >
-                    <Text style={styles.actionBtnItemTxt}>+ Mal Kabul Et</Text>
+                    <Text style={styles.actionBtnItemTxt}>+ {t.goodsReceipt || 'Mal Kabul Et'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionBtnItem, { backgroundColor: '#dc2626' }]}
                     onPress={() => handleStockAction(false)}
                   >
-                    <Text style={styles.actionBtnItemTxt}>⚠️ Zayiat / Fire</Text>
+                    <Text style={styles.actionBtnItemTxt}>⚠️ {t.reportWaste || 'Zayiat / Fire'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1500,8 +1784,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
             {/* Web Birebir: Son İşlemler (Bugün) Kutusu */}
             <View style={styles.webTxBox}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <Text style={styles.webTxTitle}>📋 Son İşlemler (Bugün)</Text>
-                <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700' }}>Canlı Hareketler</Text>
+                <Text style={[styles.webTxTitle, { flex: 1, marginRight: 8 }]} numberOfLines={1} ellipsizeMode="tail">
+                  📋 {t.timelineSalesHeader || 'Son İşlemler (Bugün)'}
+                </Text>
+                <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexShrink: 0 }}>
+                  <Text style={{ fontSize: 9, color: '#475569', fontWeight: '800' }}>
+                    {t.liveMonitoring || 'Canlı İzleme'}
+                  </Text>
+                </View>
               </View>
               {transactions && transactions.length > 0 ? (
                 transactions.slice(0, 5).map((tx) => (
@@ -1518,7 +1808,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.webTxName}>{tx.itemName}</Text>
                         <Text style={styles.webTxMeta}>
-                          {tx.recordedBy} • {tx.note ? tx.note : (tx.type === 'receive' ? 'Mal Kabul' : 'Zayiat')}
+                          {tx.recordedBy} • {tx.note ? tx.note : (tx.type === 'receive' ? (t.goodsReceipt || 'Mal Kabul') : (t.reportWaste || 'Zayiat'))}
                         </Text>
                       </View>
                     </View>
@@ -1534,7 +1824,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 ))
               ) : (
                 <Text style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', paddingVertical: 12 }}>
-                  Bugün henüz depo hareketi kaydedilmedi.
+                  {t.noNotifications || 'Bugün henüz depo hareketi kaydedilmedi.'}
                 </Text>
               )}
             </View>
@@ -1544,66 +1834,78 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {/* 6. EKRAN: KULLANICI YÖNETİMİ (Users - Web ile Birebir) */}
         {currentScreen === 'users' && canViewUsers && (
           <View>
-            <View style={styles.webHeaderRow}>
-              <View>
-                <Text style={styles.webPageTitle}>Kullanıcı & Personel Yönetimi</Text>
-                <Text style={styles.webPageSub}>Personel hesapları ve yetki matrisi</Text>
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 150 }}>
+                  <Text style={styles.webPageTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                    {t.users || 'Kullanıcı Yönetimi'}
+                  </Text>
+                  <Text style={styles.webPageSub} numberOfLines={1} ellipsizeMode="tail">
+                    {t.roleAdmin || 'Personel hesapları ve yetki matrisi'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.webBtnPrimary, { paddingVertical: 8, paddingHorizontal: 12, minHeight: 38, justifyContent: 'center' }]}
+                  onPress={() => setShowAddUserModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.webBtnPrimaryTxt}>+ {t.users || 'Yeni Personel'}</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.webBtnPrimary} onPress={() => setShowAddUserModal(true)}>
-                <Text style={styles.webBtnPrimaryTxt}>+ Yeni Personel Ekle</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Web Toolbar */}
             <View style={styles.webFilterBar}>
               <TextInput
                 style={styles.webSearchInput}
-                placeholder="🔍 Personel adı, e-posta veya kullanıcı adı ara..."
+                placeholder={t.search || '🔍 Personel adı, e-posta veya kullanıcı adı ara...'}
                 placeholderTextColor={THEME.colors.textLight}
                 value={usersSearch}
                 onChangeText={setUsersSearch}
               />
               <View style={styles.webFilterCountRow}>
                 <Text style={styles.webFilterCountTxt}>
-                  Listelenen: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredUsers.length}</Text> / {users.length} personel
+                  {t.recordsListed || 'Listelenen'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredUsers.length}</Text> / {users.length} {t.users ? t.users.toLowerCase() : 'personel'}
                 </Text>
               </View>
             </View>
 
-            {/* Web Style User Cards */}
+            {/* Web Style User Cards (Kullanıcı Kartları - Taşmayı ve Sıkışmayı Önleyen Esnek Düzen) */}
             {filteredUsers.map((u) => (
               <View key={u.id} style={styles.webUserCard}>
                 <View style={styles.webUserTopRow}>
                   <View style={[styles.webUserAvatar, { backgroundColor: ROLE_COLORS[u.role] }]}>
                     <Text style={styles.webUserAvatarTxt}>{u.avatar}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webUserName}>{u.name}</Text>
-                    <Text style={styles.webUserEmail}>✉️ {u.email}</Text>
-                    <Text style={styles.webUserUname}>Kullanıcı Adı: <Text style={{ fontWeight: '700' }}>{u.username}</Text></Text>
-                  </View>
-                  <View style={[styles.webRolePill, { backgroundColor: ROLE_COLORS[u.role] + '18', borderColor: ROLE_COLORS[u.role] }]}>
-                    <Text style={[styles.webRolePillTxt, { color: ROLE_COLORS[u.role] }]}>
-                      {ROLE_LABELS[u.role]}
-                    </Text>
+                  <View style={{ flex: 1, paddingHorizontal: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+                      <Text style={styles.webUserName} numberOfLines={1}>{u.name}</Text>
+                      <View style={[styles.webRolePill, { backgroundColor: ROLE_COLORS[u.role] + '18', borderColor: ROLE_COLORS[u.role] }]}>
+                        <Text style={[styles.webRolePillTxt, { color: ROLE_COLORS[u.role] }]}>
+                          {getRoleLabel(u.role, currentLang)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.webUserEmail} numberOfLines={1}>✉️ {u.email}</Text>
+                    <Text style={styles.webUserUname}>@{u.username}</Text>
                   </View>
                 </View>
 
                 {/* Module description from web */}
                 <View style={styles.webUserModuleBox}>
-                  <Text style={styles.webUserModuleLabel}>Erişim Modülleri:</Text>
+                  <Text style={styles.webUserModuleLabel}>{t.status || 'Erişim Modülleri'}:</Text>
                   <Text style={styles.webUserModuleTxt}>{ROLE_MODULES[u.role] || 'Yetkilendirilmiş restoran modülleri'}</Text>
                 </View>
 
                 <View style={styles.webUserCardFooter}>
-                  <Text style={styles.webUserStatusTxt}>Durum: Aktif Oturum</Text>
+                  <Text style={styles.webUserStatusTxt}>{t.status || 'Durum'}: {t.statusProfitable || 'Aktif Oturum'}</Text>
                   {currentUser.role === ROLES.ADMIN && u.username !== 'admin' && (
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                       <TouchableOpacity
                         style={[styles.webUserDismissBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
                         onPress={() => setEditingUserRole(u)}
                       >
-                        <Text style={[styles.webUserDismissTxt, { color: '#1d4ed8' }]}>🛡️ Rolü Değiştir</Text>
+                        <Text style={[styles.webUserDismissTxt, { color: '#1d4ed8' }]}>🛡️ {t.edit || 'Rol Değiştir'}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.webUserDismissBtn}
@@ -1616,7 +1918,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           });
                         }}
                       >
-                        <Text style={styles.webUserDismissTxt}>🗑️ Görevden Al</Text>
+                        <Text style={styles.webUserDismissTxt}>🗑️ {t.delete || 'Görevden Al'}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -1626,1101 +1928,1512 @@ export default function AndroidApp({ initialUser, onLogout }) {
           </View>
         )}
 
-        {/* 7. EKRAN: MUHASEBE & GENEL GİDER YÖNETİMİ (Accounting - Web ile Birebir) */}
-            {currentScreen === 'accounting' && canViewAccounting && (
-              <View>
-                <View style={styles.webHeaderRow}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.webPageTitle}>
-                      {isAdvisorUser
-                        ? '📖 Müşavir Defteri & Onay'
-                        : isAccountantUser
-                          ? '💰 Kasa & Muhasebe (Dağıtım)'
-                          : 'Muhasebe & Genel Gider'}
-                    </Text>
-                    <Text style={styles.webPageSub}>
-                      {isAdvisorUser
-                        ? 'Muhasebenin gönderdiği giderleri yevmiye defterine inceleyip onaylayın'
-                        : isAccountantUser
-                          ? 'Kasaya gelen parayı giderlere dağıtın ve Müşavire gönderin'
-                          : 'Sabit ve değişken gider yönetimi & gerçek toplam maliyet'}
-                    </Text>
-                  </View>
-
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {(isAccountantUser || currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER) && (
-                      <TouchableOpacity
-                        style={[styles.webBtnPrimary, { backgroundColor: '#059669', paddingHorizontal: 10 }]}
-                        onPress={() => setShowCashModal(true)}
-                      >
-                        <Text style={styles.webBtnPrimaryTxt}>💵 Kasa Dağıt</Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={[styles.webBtnPrimary, { backgroundColor: isAdvisorUser ? '#7c3aed' : '#8b5cf6', paddingHorizontal: 10 }]}
-                      onPress={() => setShowAddExpenseModal(true)}
-                    >
-                      <Text style={styles.webBtnPrimaryTxt}>
-                        {isAdvisorUser ? '+ Deftere Kaydet' : '+ Yeni Gider'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+        {/* 7. EKRAN: KASA & MUHASEBE (Cashier - Web /cashier ile Birebir) */}
+        {(currentScreen === 'cashier' || (currentScreen === 'accounting' && !isAdvisorUser)) && canViewCashier && (
+          <View>
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text
+                    style={[styles.webPageTitle, { fontSize: 18 }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    💰 {t.cashierAccounting || 'Kasa & Muhasebe'}
+                  </Text>
+                  <Text style={[styles.webPageSub, { fontSize: 11, marginTop: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                    {t.heroDesc || 'Restoran nakit akışı ve fiili kasa ödemeleri'}
+                  </Text>
                 </View>
 
-                {/* GÜNLÜK GELİR / KASA & NET KÂR BANNER'I */}
-                <View style={{
-                  backgroundColor: '#f0fdf4',
-                  borderRadius: 14,
-                  padding: 12,
-                  marginBottom: 12,
-                  borderWidth: 1.5,
-                  borderColor: '#86efac',
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <View>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}>
-                      💵 GÜNLÜK KASA GELİRİ (CİRO)
-                    </Text>
-                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#14532d' }}>
-                      {totalRevenue.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#15803d', marginTop: 2 }}>
-                      Restoran adisyon & POS tahsilatları
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: netOperatingProfit >= 0 ? '#166534' : '#991b1b', textTransform: 'uppercase' }}>
-                      GÜNLÜK NET İŞLETME KÂRI
-                    </Text>
-                    <Text style={{ fontSize: 18, fontWeight: '900', color: netOperatingProfit >= 0 ? '#15803d' : '#b91c1c' }}>
-                      {netOperatingProfit >= 0 ? `+${netOperatingProfit.toLocaleString('tr-TR')}` : netOperatingProfit.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                      Gelir - Toplam İşletme Gideri
-                    </Text>
-                  </View>
+                <TouchableOpacity
+                  style={[styles.webBtnPrimary, { backgroundColor: '#047857', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }]}
+                  onPress={() => setShowAddExpenseModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>+ {t.newExpense || 'Yeni Gider'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* GÜNLÜK GELİR / KASA & NET KÂR BANNER'I */}
+            <View style={{
+              backgroundColor: '#f0fdf4',
+              borderRadius: 14,
+              padding: 12,
+              marginBottom: 12,
+              borderWidth: 1.5,
+              borderColor: '#86efac',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <View style={{ flex: 1, paddingRight: 6 }}>
+                <Text
+                  style={{ fontSize: 10, fontWeight: '800', color: '#166534', textTransform: 'uppercase' }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  💵 {t.dailyRevenue || 'GÜNLÜK KASA CİROSU (GELİR)'}
+                </Text>
+                <Text
+                  style={{ fontSize: 18, fontWeight: '900', color: '#14532d', marginTop: 1 }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {totalRevenue.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text
+                  style={{ fontSize: 10, color: '#15803d', marginTop: 2 }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t.posSalesToday || 'Restoran adisyon & POS tahsilatları'}
+                </Text>
+              </View>
+              <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: 6 }}>
+                <Text
+                  style={{ fontSize: 10, fontWeight: '800', color: netOperatingProfit >= 0 ? '#166534' : '#991b1b', textTransform: 'uppercase' }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {t.operatingProfit || 'GÜNLÜK NET İŞLETME KÂRI'}
+                </Text>
+                <Text
+                  style={{ fontSize: 18, fontWeight: '900', color: netOperatingProfit >= 0 ? '#15803d' : '#b91c1c', marginTop: 1 }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {netOperatingProfit >= 0 ? `+${netOperatingProfit.toLocaleString('tr-TR')}` : netOperatingProfit.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text
+                  style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t.revenueMinusCosts || 'Gelir - Toplam İşletme Gideri'}
+                </Text>
+              </View>
+            </View>
+
+            {/* RUBRİK SORULARI VE KASA TEŞHİS KARTI */}
+            <View style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 14,
+              padding: 12,
+              marginBottom: 12,
+              borderWidth: 1.5,
+              borderColor: '#cbd5e1'
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text
+                  style={{ flex: 1, marginRight: 8, fontSize: 12, fontWeight: '900', color: '#0f172a' }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  🧭 {t.rubrikTitleShort || t.rubrikTitle || 'Finansal Rubrik Soruları'}
+                </Text>
+                <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#a7f3d0', flexShrink: 0 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#047857' }}>{t.rubrikScore || 'Rubrik'}: A+</Text>
+                </View>
+              </View>
+
+              <View style={{ gap: 6 }}>
+                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                    ❓ {t.rubrikQ1 || 'Bugün ne satıldı ve ne kadar gelir sağlandı?'}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
+                    ✓ {t.rubrikA1 || 'Kasaya'} {totalRevenue.toLocaleString('tr-TR')} ₺ {t.rubrikA1Suffix || 'ciro girdi.'} ({INITIAL_SALES_ITEMS[0]?.name || 'Izgara Köfte'})
+                  </Text>
                 </View>
 
-                {/* RUBRİK SORULARI VE KASA TEŞHİS KARTI */}
-                <View style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: 14,
-                  padding: 12,
-                  marginBottom: 12,
-                  borderWidth: 1.5,
-                  borderColor: '#cbd5e1'
-                }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#0f172a' }}>
-                      🧭 Finansal Rubrik Soruları & Kasa Teşhisi
-                    </Text>
-                    <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#047857' }}>Rubrik: Pekiyi / A+</Text>
-                    </View>
-                  </View>
-
-                  <View style={{ gap: 6 }}>
-                    <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
-                        ❓ Bugün ne satıldı, ne kadar gelir elde edildi?
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
-                        ✓ Cevap: Kasaya {totalRevenue.toLocaleString('tr-TR')} ₺ ciro girdi. (En çok satan: Izgara Köfte - 12.920 ₺)
-                      </Text>
-                    </View>
-
-                    <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
-                        ❓ Ne kadar net kâr elde edildi?
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
-                        ✓ Cevap: Brüt Kâr {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺, Faaliyet Kârı {netOperatingProfit.toLocaleString('tr-TR')} ₺.
-                      </Text>
-                    </View>
-
-                    <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
-                        ❓ Kasada bekleyen borçlar ve vadeli harcamalar ne durumda?
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#dc2626', marginTop: 2 }}>
-                        ✓ Cevap: {totalDebtAmount.toLocaleString('tr-TR')} ₺ vadesi bekleyen fatura/vergi borcu var.
-                      </Text>
-                    </View>
-
-                    <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
-                        ❓ Mali Müşavir denetiminde reddedilen veya bekleyen var mı?
-                      </Text>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#7e22ce', marginTop: 2 }}>
-                        ✓ Cevap: {expenses.filter(e => e.recordedInLedger).length} Kalem onaylandı, {totalRejectedCount} Kalem reddedildi.
-                      </Text>
-                    </View>
-                  </View>
+                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                    ❓ {t.rubrikQ2 || 'Gerçek net kâr ve hammadde maliyeti nedir?'}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
+                    ✓ {t.rubrikA2 || 'Brüt kâr'} {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺, {t.operatingProfit || 'Faaliyet Kârı'} {netOperatingProfit.toLocaleString('tr-TR')} ₺.
+                  </Text>
                 </View>
 
-                {/* 4'lü Gerçek Toplam Maliyet Özet Metrik Kartları */}
-                <View style={styles.webMetricsGrid}>
-                  {/* 1. Gıda / Hammadde Maliyeti */}
-                  <View style={[styles.webMetricCard, { borderColor: '#bbf7d0' }]}>
-                    <View style={styles.webMetricHeader}>
-                      <Text style={styles.webMetricLabel}>1. Hammadde / Gıda</Text>
-                      <Text style={styles.webMetricIcon}>🥩</Text>
-                    </View>
-                    <Text style={[styles.webMetricValue, { color: '#059669' }]}>
-                      {foodCostTotal.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={styles.webMetricSubTxt}>Reçete & Depo Çıkışları</Text>
-                  </View>
-
-                  {/* 2. Sabit Giderler */}
-                  <View style={[styles.webMetricCard, { borderColor: '#bfdbfe' }]}>
-                    <View style={styles.webMetricHeader}>
-                      <Text style={styles.webMetricLabel}>2. Sabit Giderler</Text>
-                      <Text style={styles.webMetricIcon}>🏢</Text>
-                    </View>
-                    <Text style={[styles.webMetricValue, { color: '#2563eb' }]}>
-                      {fixedExpensesTotal.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={styles.webMetricSubTxt}>Kira, Maaş, Mali Müşavir</Text>
-                  </View>
-
-                  {/* 3. Değişken Giderler */}
-                  <View style={[styles.webMetricCard, { borderColor: '#fde68a' }]}>
-                    <View style={styles.webMetricHeader}>
-                      <Text style={styles.webMetricLabel}>3. Değişken Giderler</Text>
-                      <Text style={styles.webMetricIcon}>⚡</Text>
-                    </View>
-                    <Text style={[styles.webMetricValue, { color: '#d97706' }]}>
-                      {variableExpensesTotal.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={styles.webMetricSubTxt}>Fatura, SGK, Vergi, Sarf</Text>
-                  </View>
-
-                  {/* 4. Gerçek Toplam İşletme Maliyeti */}
-                  <View style={[styles.webMetricCard, { borderColor: '#ddd6fe', backgroundColor: '#faf5ff' }]}>
-                    <View style={styles.webMetricHeader}>
-                      <Text style={[styles.webMetricLabel, { color: '#6d28d9' }]}>Gerçek Toplam Maliyet</Text>
-                      <Text style={styles.webMetricIcon}>💼</Text>
-                    </View>
-                    <Text style={[styles.webMetricValue, { color: '#7c3aed', fontSize: 20 }]}>
-                      {grandTotalCost.toLocaleString('tr-TR')} ₺
-                    </Text>
-                    <Text style={[styles.webMetricSubTxt, { color: '#7c3aed' }]}>
-                      Gıda + Sabit + Değişken
-                    </Text>
-                  </View>
+                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                    ❓ {t.rubrikQ3 || 'Kasada bekleyen borçlar ve vadeli harcamalar ne durumda?'}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#dc2626', marginTop: 2 }}>
+                    ✓ {t.rubrikA3 || 'Toplam'} {totalDebtAmount.toLocaleString('tr-TR')} ₺ {t.rubrikA3Suffix || 'vadesi bekleyen borç var.'}
+                  </Text>
                 </View>
 
-                {/* Gider Kategori Dağılım & Borç Takip Kartları */}
-                <View style={styles.webMiniStatsRow}>
-                  <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#ef4444' }]}>
-                    <Text style={[styles.webMiniStatVal, { color: '#dc2626' }]}>{totalDebtAmount.toLocaleString('tr-TR')} ₺</Text>
-                    <Text style={styles.webMiniStatLbl}>⏳ Bekleyen Borç / Vade</Text>
-                  </View>
-                  <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#b91c1c' }]}>
-                    <Text style={[styles.webMiniStatVal, { color: '#b91c1c' }]}>{totalRejectedCount} Adet</Text>
-                    <Text style={styles.webMiniStatLbl}>❌ Müşavir Ret Bildirimi</Text>
-                  </View>
+                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                    ❓ {t.rubrikQ4 || 'Mali Müşavir denetiminde reddedilen veya bekleyen var mı?'}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#047857', marginTop: 2 }}>
+                    ✓ {expenses.filter(e => e.recordedInLedger).length} {t.rubrikA4Ledger || 'Kalem deftere işlendi,'} {totalRejectedCount} {t.rubrikA4Rejected || 'Kalem reddedildi.'}
+                  </Text>
                 </View>
+              </View>
+            </View>
 
-                {/* Sekmeler & Arama Filtresi */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {isAdvisorUser && (
-                      <TouchableOpacity
-                        style={[
-                          styles.catFilterChip,
-                          expenseTab === 'pending_approval' && { backgroundColor: '#be185d', borderColor: '#be185d' }
-                        ]}
-                        onPress={() => setExpenseTab('pending_approval')}
-                      >
-                        <Text style={[styles.catFilterTxt, expenseTab === 'pending_approval' && { color: '#ffffff', fontWeight: '800' }]}>
-                          ⏳ Onay Bekleyenler ({expenses.filter(e => !e.recordedInLedger && e.sentToAdvisor !== false).length})
+            {/* 4'lü Gerçek Toplam Maliyet Özet Metrik Kartları */}
+            <View style={styles.webMetricsGrid}>
+              <View style={[styles.webMetricCard, { borderColor: '#bbf7d0' }]}>
+                <View style={styles.webMetricHeader}>
+                  <Text style={styles.webMetricLabel} numberOfLines={2} ellipsizeMode="tail">1. {t.rawMaterialCost || 'Hammadde / Gıda'}</Text>
+                  <Text style={styles.webMetricIcon}>🥩</Text>
+                </View>
+                <Text style={[styles.webMetricValue, { color: '#059669' }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {foodCostTotal.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text style={styles.webMetricSubTxt} numberOfLines={1} ellipsizeMode="tail">{t.recipesAndKitchen || 'Reçete & Depo Çıkışları'}</Text>
+              </View>
+
+              <View style={[styles.webMetricCard, { borderColor: '#bfdbfe' }]}>
+                <View style={styles.webMetricHeader}>
+                  <Text style={styles.webMetricLabel} numberOfLines={2} ellipsizeMode="tail">2. {t.fixedExpenses || 'Sabit Giderler'}</Text>
+                  <Text style={styles.webMetricIcon}>🏢</Text>
+                </View>
+                <Text style={[styles.webMetricValue, { color: '#2563eb' }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {fixedExpensesTotal.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text style={styles.webMetricSubTxt} numberOfLines={1} ellipsizeMode="tail">{t.fixedCommitments || 'Kira, Maaş, Mali Müşavir'}</Text>
+              </View>
+
+              <View style={[styles.webMetricCard, { borderColor: '#fde68a' }]}>
+                <View style={styles.webMetricHeader}>
+                  <Text style={styles.webMetricLabel} numberOfLines={2} ellipsizeMode="tail">3. {t.variableExpenses || 'Değişken Giderler'}</Text>
+                  <Text style={styles.webMetricIcon}>⚡</Text>
+                </View>
+                <Text style={[styles.webMetricValue, { color: '#d97706' }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {variableExpensesTotal.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text style={styles.webMetricSubTxt} numberOfLines={1} ellipsizeMode="tail">{t.usageAndOps || 'Fatura, SGK, Vergi, Sarf'}</Text>
+              </View>
+
+              <View style={[styles.webMetricCard, { borderColor: '#a7f3d0', backgroundColor: '#f0fdf4' }]}>
+                <View style={styles.webMetricHeader}>
+                  <Text style={[styles.webMetricLabel, { color: '#065f46' }]} numberOfLines={2} ellipsizeMode="tail">{t.grandOperatingCost || 'Toplam İşletme Maliyeti'}</Text>
+                  <Text style={styles.webMetricIcon}>💼</Text>
+                </View>
+                <Text style={[styles.webMetricValue, { color: '#047857', fontSize: 17 }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {grandTotalCost.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text style={[styles.webMetricSubTxt, { color: '#047857' }]} numberOfLines={1} ellipsizeMode="tail">
+                  {t.rawPlusFplusV || 'Gıda + Sabit + Değişken'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Gider Kategori Dağılım & Borç Takip Kartları */}
+            <View style={styles.webMiniStatsRow}>
+              <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#ef4444' }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit>{totalDebtAmount.toLocaleString('tr-TR')} ₺</Text>
+                <Text style={styles.webMiniStatLbl} numberOfLines={1} ellipsizeMode="tail">⏳ {t.unpaidDebt || 'Bekleyen Borç / Vade'}</Text>
+              </View>
+              <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#b91c1c' }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#b91c1c' }]} numberOfLines={1} adjustsFontSizeToFit>{totalRejectedCount} {t.portionCol || 'Adet'}</Text>
+                <Text style={styles.webMiniStatLbl} numberOfLines={1} ellipsizeMode="tail">❌ {t.rejectedBadge || 'Ret Bildirimi'}</Text>
+              </View>
+            </View>
+
+            {/* Kasa & Muhasebe Sekmeleri */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity
+                  style={[styles.catFilterChip, expenseTab === 'all' && styles.catFilterChipActive]}
+                  onPress={() => setExpenseTab('all')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'all' && styles.catFilterTxtActive]}>
+                    {t.allExpenseTypes || 'Tüm Giderler'} ({expenses.length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'daily_sales' && { backgroundColor: '#059669', borderColor: '#059669' }
+                  ]}
+                  onPress={() => setExpenseTab('daily_sales')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'daily_sales' && { color: '#ffffff', fontWeight: '800' }]}>
+                    💵 {t.dailySalesTab || 'Günlük Satış'} ({INITIAL_SALES_ITEMS.length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'debt' && { backgroundColor: '#dc2626', borderColor: '#dc2626' }
+                  ]}
+                  onPress={() => setExpenseTab('debt')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'debt' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ⏳ {t.unpaidDebt || 'Bekleyen Borçlar'} ({expenses.filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier).length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'rejected' && { backgroundColor: '#991b1b', borderColor: '#991b1b' }
+                  ]}
+                  onPress={() => setExpenseTab('rejected')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ❌ {t.rejectedBadge || 'Retler'} ({expenses.filter(e => e.status === 'REJECTED').length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'rent' && { backgroundColor: '#059669', borderColor: '#059669' }
+                  ]}
+                  onPress={() => setExpenseTab('rent')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'rent' && { color: '#ffffff', fontWeight: '800' }]}>
+                    🏢 {t.rent || 'Kira'} ({expenses.filter(e => e.subType === 'RENT').length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'fixed' && { backgroundColor: '#3b82f6', borderColor: '#3b82f6' }
+                  ]}
+                  onPress={() => setExpenseTab('fixed')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'fixed' && { color: '#ffffff', fontWeight: '800' }]}>
+                    🏢 {t.fixedLabel || 'Sabit'} ({expenses.filter(e => e.category === 'FIXED').length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    expenseTab === 'variable' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }
+                  ]}
+                  onPress={() => setExpenseTab('variable')}
+                >
+                  <Text style={[styles.catFilterTxt, expenseTab === 'variable' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ⚡ {t.variableLabel || 'Değişken'} ({expenses.filter(e => e.category === 'VARIABLE').length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+
+            <View style={styles.webFilterBar}>
+              <TextInput
+                style={styles.webSearchInput}
+                placeholder={t.searchExpensePlaceholder || '🔍 Gider adı, kurum, fatura no, dönem ara...'}
+                placeholderTextColor={THEME.colors.textLight}
+                value={expenseSearch}
+                onChangeText={setExpenseSearch}
+              />
+              <View style={styles.webFilterCountRow}>
+                <Text style={styles.webFilterCountTxt}>
+                  {t.recordsListed || 'Listelenen'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredExpenses.length}</Text> / {expenses.length} {t.allExpenseTypes ? t.allExpenseTypes.toLowerCase() : 'gider'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Günlük Satışlar Listesi (Eğer 'daily_sales' sekmesi seçiliyse) */}
+            {expenseTab === 'daily_sales' ? (
+              <View style={{ gap: 8, marginBottom: 12 }}>
+                <View style={{ backgroundColor: '#ecfdf5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#065f46' }}>
+                    🍽️ Bugün Restoranda Ne Satıldı? (Kasa Dökümü)
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
+                    Toplam Gelir: {totalRevenue.toLocaleString('tr-TR')} ₺ • Brüt Kâr: {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺
+                  </Text>
+                </View>
+                {INITIAL_SALES_ITEMS.map((item) => (
+                  <View key={item.id} style={[styles.webUserCard, { borderLeftWidth: 4, borderLeftColor: '#059669' }]}>
+                    <View style={styles.webUserTopRow}>
+                      <View style={[styles.webUserAvatar, { backgroundColor: '#dcfce7', borderRadius: 8 }]}>
+                        <Text style={{ fontSize: 16 }}>🍽️</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.webUserName}>{item.name}</Text>
+                        <Text style={styles.webUserEmail}>
+                          Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{item.qty} porsiyon</Text> • Hammadde: {item.cost.toLocaleString('tr-TR')} ₺
                         </Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={[styles.catFilterChip, expenseTab === 'all' && styles.catFilterChipActive]}
-                      onPress={() => setExpenseTab('all')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'all' && styles.catFilterTxtActive]}>
-                        Tüm Giderler ({expenses.length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'daily_sales' && { backgroundColor: '#059669', borderColor: '#059669' }
-                      ]}
-                      onPress={() => setExpenseTab('daily_sales')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'daily_sales' && { color: '#ffffff', fontWeight: '800' }]}>
-                        💵 Günlük Satış & Kasa ({INITIAL_SALES_ITEMS.length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'debt' && { backgroundColor: '#dc2626', borderColor: '#dc2626' }
-                      ]}
-                      onPress={() => setExpenseTab('debt')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'debt' && { color: '#ffffff', fontWeight: '800' }]}>
-                        ⏳ Bekleyen Borçlar ({expenses.filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier).length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'rejected' && { backgroundColor: '#991b1b', borderColor: '#991b1b' }
-                      ]}
-                      onPress={() => setExpenseTab('rejected')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
-                        ❌ Müşavir Retleri ({expenses.filter(e => e.status === 'REJECTED').length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'rent' && { backgroundColor: '#059669', borderColor: '#059669' }
-                      ]}
-                      onPress={() => setExpenseTab('rent')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'rent' && { color: '#ffffff', fontWeight: '800' }]}>
-                        🏢 Dükkan & Kiralar ({expenses.filter(e => e.subType === 'RENT').length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'fixed' && { backgroundColor: '#3b82f6', borderColor: '#3b82f6' }
-                      ]}
-                      onPress={() => setExpenseTab('fixed')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'fixed' && { color: '#ffffff', fontWeight: '800' }]}>
-                        🏢 Sabit ({expenses.filter(e => e.category === 'FIXED').length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'variable' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }
-                      ]}
-                      onPress={() => setExpenseTab('variable')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'variable' && { color: '#ffffff', fontWeight: '800' }]}>
-                        ⚡ Değişken ({expenses.filter(e => e.category === 'VARIABLE').length})
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.catFilterChip,
-                        expenseTab === 'ledger' && { backgroundColor: '#7e22ce', borderColor: '#7e22ce' }
-                      ]}
-                      onPress={() => setExpenseTab('ledger')}
-                    >
-                      <Text style={[styles.catFilterTxt, expenseTab === 'ledger' && { color: '#ffffff', fontWeight: '800' }]}>
-                        📖 Müşavir Defteri ({expenses.filter(e => e.recordedInLedger).length} İşlendi)
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-
-                <View style={styles.webFilterBar}>
-                  <TextInput
-                    style={styles.webSearchInput}
-                    placeholder="🔍 Gider adı, kurum, fatura no, dönem ara..."
-                    placeholderTextColor={THEME.colors.textLight}
-                    value={expenseSearch}
-                    onChangeText={setExpenseSearch}
-                  />
-                  <View style={styles.webFilterCountRow}>
-                    <Text style={styles.webFilterCountTxt}>
-                      Listelenen: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredExpenses.length}</Text> / {expenses.length} gider kalemi
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Günlük Satışlar Listesi (Eğer 'daily_sales' sekmesi seçiliyse) */}
-                {expenseTab === 'daily_sales' ? (
-                  <View style={{ gap: 8, marginBottom: 12 }}>
-                    <View style={{ backgroundColor: '#ecfdf5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '900', color: '#065f46' }}>
-                        🍽️ Bugün Restoranda Ne Satıldı? (Kasa Dökümü)
-                      </Text>
-                      <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
-                        Toplam Gelir: {totalRevenue.toLocaleString('tr-TR')} ₺ • Brüt Kâr: {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺
-                      </Text>
-                    </View>
-                    {INITIAL_SALES_ITEMS.map((item) => (
-                      <View key={item.id} style={[styles.webUserCard, { borderLeftWidth: 4, borderLeftColor: '#059669' }]}>
-                        <View style={styles.webUserTopRow}>
-                          <View style={[styles.webUserAvatar, { backgroundColor: '#dcfce7', borderRadius: 8 }]}>
-                            <Text style={{ fontSize: 16 }}>🍽️</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.webUserName}>{item.name}</Text>
-                            <Text style={styles.webUserEmail}>
-                              Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{item.qty} porsiyon</Text> • Hammadde: {item.cost.toLocaleString('tr-TR')} ₺
-                            </Text>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }}>
-                              +{item.revenue.toLocaleString('tr-TR')} ₺
-                            </Text>
-                            <View style={[styles.webRolePill, { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }]}>
-                              <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
-                                %{item.foodCost} Food Cost
-                              </Text>
-                            </View>
-                          </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }}>
+                          +{item.revenue.toLocaleString('tr-TR')} ₺
+                        </Text>
+                        <View style={[styles.webRolePill, { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }]}>
+                          <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
+                            %{item.foodCost} Food Cost
+                          </Text>
                         </View>
                       </View>
-                    ))}
+                    </View>
                   </View>
-                ) : filteredExpenses.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14 }}>
-                    <Text style={{ fontSize: 28, marginBottom: 6 }}>📑</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: THEME.colors.textDark }}>Eşleşen gider kaydı bulunamadı</Text>
-                    <Text style={{ fontSize: 12, color: THEME.colors.textLight, marginTop: 4 }}>Arama terimini veya filtre sekmesini değiştirebilirsiniz.</Text>
-                  </View>
-                ) : (
-                  filteredExpenses.map((exp) => {
-                    const isFixed = exp.category === 'FIXED';
-                    const pillColor = isFixed ? '#2563eb' : '#d97706';
-                    const pillBg = isFixed ? '#eff6ff' : '#fffbeb';
-                    const pillBorder = isFixed ? '#bfdbfe' : '#fde68a';
+                ))}
+              </View>
+            ) : filteredExpenses.length === 0 ? (
+              <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14 }}>
+                <Text style={{ fontSize: 28, marginBottom: 6 }}>📑</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: THEME.colors.textDark }}>Eşleşen gider kaydı bulunamadı</Text>
+                <Text style={{ fontSize: 12, color: THEME.colors.textLight, marginTop: 4 }}>Arama terimini veya filtre sekmesini değiştirebilirsiniz.</Text>
+              </View>
+            ) : (
+              filteredExpenses.map((exp) => {
+                const isFixed = exp.category === 'FIXED';
+                const pillColor = isFixed ? '#2563eb' : '#d97706';
+                const pillBg = isFixed ? '#eff6ff' : '#fffbeb';
+                const pillBorder = isFixed ? '#bfdbfe' : '#fde68a';
 
-                    const isPaid = exp.paymentStatus === 'PAID' || (exp.paidByCashier && exp.paymentStatus !== 'UNPAID');
-                    const isPartial = exp.paymentStatus === 'PARTIAL';
-                    const isRejected = exp.status === 'REJECTED';
+                const isPaid = exp.paymentStatus === 'PAID' || (exp.paidByCashier && exp.paymentStatus !== 'UNPAID');
+                const isPartial = exp.paymentStatus === 'PARTIAL';
+                const isRejected = exp.status === 'REJECTED';
 
-                    return (
-                      <View key={exp.id} style={[styles.webUserCard, isRejected && { borderColor: '#fca5a5', borderWidth: 1.5 }]}>
-                        <View style={styles.webUserTopRow}>
+                return (
+                  <View key={exp.id} style={[styles.webUserCard, isRejected && { borderColor: '#fca5a5', borderWidth: 1.5 }]}>
+                    <View style={{ marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                           <View
                             style={[
                               styles.webUserAvatar,
-                              { backgroundColor: isFixed ? '#3b82f6' : '#f59e0b', borderRadius: 10 }
+                              { backgroundColor: isFixed ? '#3b82f6' : '#f59e0b', borderRadius: 10, width: 36, height: 36 }
                             ]}
                           >
-                            <Text style={{ fontSize: 18 }}>{isFixed ? '🏢' : '⚡'}</Text>
+                            <Text style={{ fontSize: 16 }}>{isFixed ? '🏢' : '⚡'}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.webUserName}>{exp.title}</Text>
-
-                            {/* Kurum ve Fatura Seri Numarası */}
+                            <Text style={[styles.webUserName, { fontSize: 14 }]} numberOfLines={2}>{exp.title}</Text>
                             {(exp.counterparty || exp.invoiceNumber) && (
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#1e293b', marginTop: 2 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155', marginTop: 2 }}>
                                 {exp.counterparty ? `🏢 ${exp.counterparty}` : ''}
                                 {exp.invoiceNumber ? ` • 📄 No: ${exp.invoiceNumber}` : ''}
                               </Text>
                             )}
-
-                            <Text style={styles.webUserEmail}>
-                              📅 Dönem: <Text style={{ fontWeight: '700', color: THEME.colors.textDark }}>{exp.period || '2026-10'}</Text> • İşlem: {exp.expenseDate}
-                              {exp.dueDate ? ` • Vade: ${exp.dueDate}` : ''}
-                            </Text>
-
-                            {exp.note ? (
-                              <Text style={{ fontSize: 11, color: THEME.colors.textMuted, marginTop: 2 }}>
-                                📝 {exp.note}
-                              </Text>
-                            ) : null}
                           </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a' }}>
+                        </View>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'right', flexShrink: 0 }} numberOfLines={1} adjustsFontSizeToFit>
+                          {parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                        <Text style={{ fontSize: 10, color: '#64748b' }}>
+                          📅 {exp.period || '2026-10'} • {exp.expenseDate}{exp.dueDate ? ` (${t.dueDateLabel || 'Vade'}: ${exp.dueDate})` : ''}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                          <View
+                            style={[
+                              styles.webRolePill,
+                              {
+                                backgroundColor: isPaid ? '#dcfce7' : isPartial ? '#fef3c7' : '#fee2e2',
+                                borderColor: isPaid ? '#86efac' : isPartial ? '#fcd34d' : '#fca5a5',
+                                paddingVertical: 2,
+                                paddingHorizontal: 6,
+                              }
+                            ]}
+                          >
+                            <Text style={[styles.webRolePillTxt, { color: isPaid ? '#15803d' : isPartial ? '#b45309' : '#b91c1c', fontSize: 10 }]}>
+                              {isPaid ? `✓ ${t.paidFromCashier ? t.paidFromCashier.toUpperCase() : 'ÖDENDİ'}` : isPartial ? `⚡ ${t.partialPaid ? t.partialPaid.toUpperCase() : 'KISMİ AVANS'}` : `⏳ ${t.debtUnpaid ? t.debtUnpaid.toUpperCase() : 'BORÇTA'}`}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.webRolePill,
+                              { backgroundColor: pillBg, borderColor: pillBorder, paddingVertical: 2, paddingHorizontal: 6 }
+                            ]}
+                          >
+                            <Text style={[styles.webRolePillTxt, { color: pillColor, fontSize: 10 }]}>
+                              {isFixed ? (t.fixedLabel ? t.fixedLabel.toUpperCase() : 'SABİT') : (t.variableLabel ? t.variableLabel.toUpperCase() : 'DEĞİŞKEN')}
+                            </Text>
+                          </View>
+                          {exp.isOwnedProperty && (
+                            <View
+                              style={[
+                                styles.webRolePill,
+                                { backgroundColor: '#dcfce7', borderColor: '#86efac', paddingVertical: 2, paddingHorizontal: 6 }
+                              ]}
+                            >
+                              <Text style={[styles.webRolePillTxt, { color: '#15803d', fontSize: 10 }]}>
+                                🏠 {t.ownedPropertyBadge ? t.ownedPropertyBadge.toUpperCase() : 'ÖZ MÜLK'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+
+                      {exp.note ? (
+                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontStyle: 'italic' }}>
+                          📝 {exp.note}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {isRejected && (
+                      <View style={{ marginHorizontal: 4, marginTop: 4, marginBottom: 8, padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#991b1b' }}>
+                          ❌ {t.rejectionReasonPrefix || 'Mali Müşavir Ret Gerekçesi'}:
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
+                          {exp.rejectionReason || 'Fatura veya tevkifat bilgisi eksik olduğu için reddedildi.'}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Kasa ve Muhasebe Aksiyonları */}
+                    <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3', flexWrap: 'wrap' }}>
+                      <TouchableOpacity
+                        style={[
+                          { flex: 1, minWidth: 120, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+                          isPaid
+                            ? { backgroundColor: '#dcfce7', borderColor: '#86efac' }
+                            : { backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+                        ]}
+                        onPress={() => handleToggleExpensePaid(exp)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: isPaid ? '#15803d' : '#b91c1c' }}>
+                          {isPaid ? `💵 ${t.paidFromCashier || 'Ödendi'} ↷` : `⚡ ${t.colCashPayment ? t.colCashPayment.split(' ')[0] : 'Kasa'} ${t.confirm || 'Öde'} ✓`}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {(!exp.recordedInLedger && !exp.sentToAdvisor && !isRejected) && (
+                        <TouchableOpacity
+                          style={[
+                            { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
+                          ]}
+                          onPress={() => handleSendToAdvisor(exp)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#1d4ed8' }}>
+                            🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <View
+                        style={[
+                          { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+                          exp.recordedInLedger
+                            ? { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
+                            : isRejected
+                              ? { backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
+                              : { backgroundColor: '#fffbeb', borderColor: '#fde68a' }
+                        ]}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: exp.recordedInLedger ? '#047857' : isRejected ? '#991b1b' : '#b45309' }}>
+                          {exp.recordedInLedger ? `✓ ${t.recordedLedgerBadge || 'Deftere İşlendi'}` : isRejected ? `❌ ${t.rejectedBadge || 'Reddedildi'}` : `⏳ ${t.awaitingApprovalBadge || 'Müşavir Onayında'}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.webUserCardFooter}>
+                      <Text style={[styles.webUserStatusTxt, { flexShrink: 1 }]} numberOfLines={1}>
+                        {t.colCategory || 'Tür'}: <Text style={{ fontWeight: '700' }}>{getExpenseTypeLabel(exp.subType, currentLang) || (isFixed ? (t.fixedLabel || 'Sabit Kalem') : (t.variableLabel || 'Değişken Kalem'))}</Text>
+                        {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
+                      </Text>
+                      {(currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT) && (
+                        <TouchableOpacity
+                          style={styles.webUserDismissBtn}
+                          onPress={() => {
+                            setItemToDelete({
+                              type: 'expense',
+                              id: exp.id,
+                              name: exp.title,
+                              details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
+                            });
+                          }}
+                        >
+                          <Text style={styles.webUserDismissTxt}>🗑️ {t.delete || 'Gideri Sil'}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* 8. EKRAN: MALİ MÜŞAVİR DEFTERİ & SMMM KONTROL PANELİ (Advisor - Web /advisor-ledger ile Birebir) */}
+        {(currentScreen === 'advisor' || (currentScreen === 'accounting' && isAdvisorUser)) && canViewAdvisor && (
+          <View>
+            {/* Top Page Header & Action Buttons */}
+            <View style={{ marginBottom: 12 }}>
+              <View style={{ marginBottom: 8 }}>
+                <Text
+                  style={[styles.webPageTitle, { fontSize: 18 }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                >
+                  {t.advisorLedgerHeader || ('📖 ' + (t.advisorLedger || 'Mali Müşavir Defteri'))}
+                </Text>
+                <Text style={[styles.webPageSub, { fontSize: 11, marginTop: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                  {t.advisorSubHeader || 'Muhasebenin kasadan yaptığı harcamaları resmi yevmiye defterine onaylayın'}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[styles.webBtnPrimary, { flex: 1, backgroundColor: '#0d9488', paddingVertical: 9, alignItems: 'center', justifyContent: 'center' }]}
+                  onPress={() => showToast('📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.webBtnPrimaryTxt}>📥 Luca/Zirve Aktar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.webBtnPrimary, { flex: 1, backgroundColor: '#047857', paddingVertical: 9, alignItems: 'center', justifyContent: 'center' }]}
+                  onPress={() => setShowAddExpenseModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.webBtnPrimaryTxt}>+ {t.advisorDefter || 'Deftere Kaydet'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* SMMM Özet Rozet Kartları - 2 Kolonlu Dengeli Düzen */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+              <View style={{
+                flex: 1,
+                backgroundColor: '#ffffff',
+                borderRadius: 14,
+                padding: 12,
+                borderWidth: 1.5,
+                borderColor: '#10b981',
+                borderLeftWidth: 4,
+                borderLeftColor: '#059669',
+              }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  📑 {t.recordedLedgerBadge || 'ONAYLANAN DEFTER'}
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#047857', marginTop: 4 }}>
+                  {expenses.filter(e => e.recordedInLedger).length} {t.recordsListed || 'Kalem'}
+                </Text>
+                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }} numberOfLines={1}>
+                  Yevmiyeye kesinleşen kayıtlar
+                </Text>
+              </View>
+
+              <View style={{
+                flex: 1,
+                backgroundColor: '#ffffff',
+                borderRadius: 14,
+                padding: 12,
+                borderWidth: 1.5,
+                borderColor: '#f59e0b',
+                borderLeftWidth: 4,
+                borderLeftColor: '#d97706',
+              }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  ✍️ {t.awaitingApprovalBadge || 'ONAY BEKLEYEN'}
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#92400e', marginTop: 4 }}>
+                  {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false)).length} {t.recordsListed || 'Kalem'}
+                </Text>
+                <Text style={{ fontSize: 10, color: '#b91c1c', marginTop: 2 }} numberOfLines={1}>
+                  {totalRejectedCount} {t.rejectedBadge || 'Reddedildi'}
+                </Text>
+              </View>
+            </View>
+
+            {/* SMMM 5'li Sekme Sistemi (Web ile Birebir) */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'pending_approval' && { backgroundColor: '#d97706', borderColor: '#d97706' }
+                  ]}
+                  onPress={() => setAdvisorTab('pending_approval')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'pending_approval' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ✍️ {t.awaitingApprovalBadge || 'Onay Masası'} ({expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false)).length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'ledger' && styles.catFilterChipActive
+                  ]}
+                  onPress={() => setAdvisorTab('ledger')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'ledger' && styles.catFilterTxtActive]}>
+                    📖 {t.advisorDefter || 'Resmi Defter'} ({expenses.filter(e => e.recordedInLedger).length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'tdhp' && { backgroundColor: '#0f766e', borderColor: '#0f766e' }
+                  ]}
+                  onPress={() => setAdvisorTab('tdhp')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'tdhp' && { color: '#ffffff', fontWeight: '800' }]}>
+                    🏛️ {t.tdhpTab || 'TDHP Hesap Planı'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'z_report' && { backgroundColor: '#b45309', borderColor: '#b45309' }
+                  ]}
+                  onPress={() => setAdvisorTab('z_report')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'z_report' && { color: '#ffffff', fontWeight: '800' }]}>
+                    🧾 {t.zReportTab || 'Z Raporu & Kasa'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'rejected' && { backgroundColor: '#be123c', borderColor: '#be123c' }
+                  ]}
+                  onPress={() => setAdvisorTab('rejected')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ❌ {t.rejectedBadge || 'Reddedilenler'} ({totalRejectedCount})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'all' && styles.catFilterChipActive
+                  ]}
+                  onPress={() => setAdvisorTab('all')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'all' && styles.catFilterTxtActive]}>
+                    {t.all || 'Tüm Kayıtlar'} ({expenses.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+
+            {/* TDHP HESAP PLANI GÖRÜNÜMÜ */}
+            {advisorTab === 'tdhp' ? (
+              <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#0d9488', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#115e59' }}>
+                    🏛️ Tek Düzen Hesap Planı (TDHP)
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#0d9488', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                    onPress={() => showToast('Luca/Zirve XML fişi dışa aktarıldı')}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>XML İndir</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>100.01 Merkez Kasa (Nakit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>108.01 POS / Kredi Kartı Bloke</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.65).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>150.01 İlk Madde & Malzeme (Stok)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#b45309' }}>{foodCostTotal.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.01 Genel Yönetim (Sabit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#4338ca' }}>{fixedExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.02 Operasyonel Gider (Değişken)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#0284c7' }}>{variableExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#ecfdf5', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#065f46' }}>391.10 Hesaplanan KDV (%10)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#166534' }}>{Math.round(totalRevenue - (totalRevenue / 1.1)).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                </View>
+              </View>
+            ) : advisorTab === 'z_report' ? (
+              /* Z RAPORU & GÜN SONU KASA MUTABAKATI */
+              <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#d97706', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#92400e' }}>
+                    🧾 Gün Sonu Z-Raporu (Z-0284)
+                  </Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#d97706', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                    onPress={() => showToast('🖨️ Z-Raporu PDF çıktısı oluşturuldu!')}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>🖨️ PDF Yazdır</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>Nakit Tahsilat (Çekmece):</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>Banka POS & Temassız:</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.55).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>Yemek Kartları (Sodexo/Multi):</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.10).toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 10, backgroundColor: '#ecfdf5', borderRadius: 8, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065f46' }}>TOPLAM GÜNLÜK Z-HASILATI:</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857' }}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              /* GİDER LİSTESİ (Onay Masası, Resmi Defter, Reddedilenler veya Tümü) */
+              <>
+                <View style={styles.webFilterBar}>
+                  <TextInput
+                    style={styles.webSearchInput}
+                    placeholder="🔍 Defterde gider, kurum veya fatura ara..."
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={advisorSearch}
+                    onChangeText={setAdvisorSearch}
+                  />
+                  <View style={styles.webFilterCountRow}>
+                    <Text style={styles.webFilterCountTxt}>
+                      Listelenen: <Text style={{ fontWeight: '800', color: '#7c3aed' }}>{filteredAdvisorExpenses.length}</Text> kayıt
+                    </Text>
+                  </View>
+                </View>
+
+                {filteredAdvisorExpenses.length === 0 ? (
+                  <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14 }}>
+                    <Text style={{ fontSize: 28, marginBottom: 6 }}>📖</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: THEME.colors.textDark }}>
+                      Bu sekmede incelenecek kayıt bulunamadı
+                    </Text>
+                    <Text style={{ fontSize: 12, color: THEME.colors.textLight, marginTop: 4 }}>
+                      Onay bekleyen veya onaylanmış kayıtlar geldikçe burada listelenir.
+                    </Text>
+                  </View>
+                ) : (
+                  filteredAdvisorExpenses.map((exp) => {
+                    const isFixed = exp.category === 'FIXED';
+                    const isRejected = exp.status === 'REJECTED';
+                    const isApproved = Boolean(exp.recordedInLedger);
+
+                    return (
+                      <View
+                        key={exp.id}
+                        style={[
+                          styles.webUserCard,
+                          isApproved && { borderLeftWidth: 4, borderLeftColor: '#7e22ce' },
+                          isRejected && { borderColor: '#fca5a5', borderWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#dc2626' }
+                        ]}
+                      >
+                        <View style={{ marginBottom: 10 }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                              <View
+                                style={[
+                                  styles.webUserAvatar,
+                                  { backgroundColor: isApproved ? '#7e22ce' : isRejected ? '#dc2626' : '#d97706', borderRadius: 10, width: 36, height: 36 }
+                                ]}
+                              >
+                                <Text style={{ fontSize: 16 }}>{isApproved ? '✓' : isRejected ? '✕' : '⏳'}</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.webUserName, { fontSize: 14 }]} numberOfLines={2}>{exp.title}</Text>
+                                {(exp.counterparty || exp.invoiceNumber) && (
+                                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155', marginTop: 2 }}>
+                                    {exp.counterparty ? `🏢 ${exp.counterparty}` : ''}
+                                    {exp.invoiceNumber ? ` • 📄 No: ${exp.invoiceNumber}` : ''}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'right', flexShrink: 0 }} numberOfLines={1} adjustsFontSizeToFit>
                               {parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺
                             </Text>
+                          </View>
 
-                            {/* Ödeme / Borç Durumu Rozeti */}
-                            <View
-                              style={[
-                                styles.webRolePill,
-                                {
-                                  backgroundColor: isPaid ? '#dcfce7' : isPartial ? '#fef3c7' : '#fee2e2',
-                                  borderColor: isPaid ? '#86efac' : isPartial ? '#fcd34d' : '#fca5a5',
-                                  marginTop: 4,
-                                }
-                              ]}
-                            >
-                              <Text style={[styles.webRolePillTxt, { color: isPaid ? '#15803d' : isPartial ? '#b45309' : '#b91c1c', fontWeight: '800' }]}>
-                                {isPaid ? '✓ ÖDENDİ' : isPartial ? '⚡ KISMİ AVANS' : '⏳ BORÇTA (VADELİ)'}
-                              </Text>
-                            </View>
-
-                            <View
-                              style={[
-                                styles.webRolePill,
-                                { backgroundColor: pillBg, borderColor: pillBorder, marginTop: 4 }
-                              ]}
-                            >
-                              <Text style={[styles.webRolePillTxt, { color: pillColor }]}>
-                                {isFixed ? 'SABİT GİDER' : 'DEĞİŞKEN GİDER'}
-                              </Text>
-                            </View>
-
-                            {exp.isOwnedProperty && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                            <Text style={{ fontSize: 10, color: '#64748b' }}>
+                              📅 {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} • {exp.expenseDate}
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
                               <View
                                 style={[
                                   styles.webRolePill,
-                                  { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }
+                                  {
+                                    backgroundColor: isApproved ? '#f3e8ff' : isRejected ? '#fee2e2' : '#fffbeb',
+                                    borderColor: isApproved ? '#d8b4fe' : isRejected ? '#fca5a5' : '#fde68a',
+                                    paddingVertical: 2,
+                                    paddingHorizontal: 6,
+                                  }
                                 ]}
                               >
-                                <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
-                                  🏠 ÖZ MÜLK (Kira Yok)
+                                <Text style={[styles.webRolePillTxt, { color: isApproved ? '#7e22ce' : isRejected ? '#b91c1c' : '#b45309', fontSize: 10 }]}>
+                                  {isApproved ? `✓ ${t.recordedLedgerBadge ? t.recordedLedgerBadge.toUpperCase() : 'DEFTERE İŞLENDİ'}` : isRejected ? `❌ ${t.rejectedBadge ? t.rejectedBadge.toUpperCase() : 'REDDEDİLDİ'}` : `⏳ ${t.awaitingApprovalBadge ? t.awaitingApprovalBadge.toUpperCase() : 'ONAY BEKLİYOR'}`}
                                 </Text>
                               </View>
-                            )}
+                              <View
+                                style={[
+                                  styles.webRolePill,
+                                  { backgroundColor: isFixed ? '#eff6ff' : '#fffbeb', borderColor: isFixed ? '#bfdbfe' : '#fde68a', paddingVertical: 2, paddingHorizontal: 6 }
+                                ]}
+                              >
+                                <Text style={[styles.webRolePillTxt, { color: isFixed ? '#2563eb' : '#d97706', fontSize: 10 }]}>
+                                  {isFixed ? `770.01 ${t.fixedLabel ? t.fixedLabel.toUpperCase() : 'SABİT'}` : `770.02 ${t.variableLabel ? t.variableLabel.toUpperCase() : 'DEĞİŞKEN'}`}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
+
+                          {exp.note ? (
+                            <Text style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontStyle: 'italic' }}>
+                              📝 {exp.note}
+                            </Text>
+                          ) : null}
                         </View>
 
-                        {/* Mali Müşavir Ret Bildirim Kutusu */}
                         {isRejected && (
-                          <View style={{ marginHorizontal: 12, marginTop: 6, padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
+                          <View style={{ marginHorizontal: 4, marginTop: 4, marginBottom: 8, padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
                             <Text style={{ fontSize: 11, fontWeight: '800', color: '#991b1b' }}>
-                              ❌ Mali Müşavir Ret Gerekçesi:
+                              ❌ {t.rejectionReasonPrefix || 'Ret Gerekçesi (Muhasebeye İletildi)'}:
                             </Text>
                             <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
-                              {exp.rejectionReason || 'Fatura veya tevkifat bilgisi eksik olduğu için reddedildi.'}
+                              {exp.rejectionReason || 'Fatura veya tevkifat bilgisi eksik.'}
                             </Text>
                           </View>
                         )}
 
-                        {/* Muhasebe (Kasa) & Mali Müşavir (Defter) Onay ve Statü Şeridi */}
-                        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#f8fafc', borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 6 }}>
-                          {/* Kasa / Muhasebe Ödeme Butonu */}
-                          {(isAccountantUser || currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER) && (
+                        {/* MALİ MÜŞAVİR ONAY VE GEREKÇELİ RET BUTONLARI (ASLA KASAYA DOKUNMAZ) */}
+                        <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3', flexWrap: 'wrap' }}>
+                          {isApproved ? (
                             <TouchableOpacity
                               style={[
-                                styles.catFilterChip,
-                                { flex: 1, paddingVertical: 5, alignItems: 'center', justifyContent: 'center' },
-                                isPaid
-                                  ? { backgroundColor: '#dcfce7', borderColor: '#86efac' }
-                                  : { backgroundColor: '#fef2f2', borderColor: '#fecaca' }
+                                { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
                               ]}
-                              onPress={() => handleToggleExpensePaid(exp)}
+                              onPress={() => handleToggleExpenseLedger(exp)}
                               activeOpacity={0.7}
                             >
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: isPaid ? '#15803d' : '#b91c1c' }}>
-                                {isPaid ? '💵 Ödendi (Borç Yap) ↷' : '⚡ Kasadan Öde ✓'}
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
+                                ✓ {t.recordedLedgerBadge || 'Deftere İşlendi'} ({t.cancel || 'Geri Al'})
                               </Text>
                             </TouchableOpacity>
-                          )}
-
-                          {/* Muhasebeci: Mali Müşavir Onayına Gönder Butonu */}
-                          {(!exp.recordedInLedger && !exp.sentToAdvisor && !isRejected) && (
-                            <TouchableOpacity
-                              style={[
-                                styles.catFilterChip,
-                                { paddingVertical: 5, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
-                              ]}
-                              onPress={() => handleSendToAdvisor(exp)}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#1d4ed8' }}>
-                                🚀 Müşavire Gönder
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-
-                          {/* Mali Müşavir Defter Kayıt, Onay & Ret Butonları */}
-                          {isAdvisorUser ? (
-                            exp.recordedInLedger ? (
+                          ) : (
+                            <View style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
                               <TouchableOpacity
                                 style={[
-                                  styles.catFilterChip,
-                                  { flex: 1, paddingVertical: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3e8ff', borderColor: '#d8b4fe' }
+                                  { flex: 1.2, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }
                                 ]}
-                                onPress={() => handleToggleExpenseLedger(exp)}
+                                onPress={() => handleApproveExpenseLedger(exp)}
                                 activeOpacity={0.7}
                               >
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#7e22ce' }}>
-                                  📑 Deftere İşlendi ✓ (Geri Al)
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
+                                  ✓ {t.approveBtn || 'Deftere Onayla'}
                                 </Text>
                               </TouchableOpacity>
-                            ) : (
-                              <View style={{ flex: 1.5, flexDirection: 'row', gap: 4 }}>
-                                <TouchableOpacity
-                                  style={[
-                                    styles.catFilterChip,
-                                    { flex: 1, paddingVertical: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }
-                                  ]}
-                                  onPress={() => handleApproveExpenseLedger(exp)}
-                                  activeOpacity={0.7}
-                                >
-                                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
-                                    ✓ Onayla
-                                  </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={[
-                                    styles.catFilterChip,
-                                    { flex: 1, paddingVertical: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
-                                  ]}
-                                  onPress={() => handleOpenRejectModal(exp)}
-                                  activeOpacity={0.7}
-                                >
-                                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#b91c1c' }}>
-                                    ✕ Reddet
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-                            )
-                          ) : (
-                            <View
-                              style={[
-                                styles.catFilterChip,
-                                { flex: 1, paddingVertical: 5, alignItems: 'center', justifyContent: 'center' },
-                                exp.recordedInLedger
-                                  ? { backgroundColor: '#f3e8ff', borderColor: '#d8b4fe' }
-                                  : isRejected
-                                    ? { backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
-                                    : { backgroundColor: '#fffbeb', borderColor: '#fde68a' }
-                              ]}
-                            >
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: exp.recordedInLedger ? '#7e22ce' : isRejected ? '#991b1b' : '#b45309' }}>
-                                {exp.recordedInLedger ? '📑 Deftere İşlendi ✓' : isRejected ? '❌ Müşavir Reddetti' : '⏳ Müşavir Onayında'}
-                              </Text>
+                              <TouchableOpacity
+                                style={[
+                                  { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
+                                ]}
+                                onPress={() => handleOpenRejectModal(exp)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#b91c1c' }}>
+                                  ✕ {t.rejectBtn || 'Reddet'}
+                                </Text>
+                              </TouchableOpacity>
                             </View>
                           )}
                         </View>
 
                         <View style={styles.webUserCardFooter}>
-                          <Text style={styles.webUserStatusTxt}>
-                            Tür: <Text style={{ fontWeight: '700' }}>{exp.subType || (isFixed ? 'Sabit Kalem' : 'Değişken Kalem')}</Text>
-                            {exp.recordedBy ? ` • Kayıt: ${exp.recordedBy}` : ''}
+                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1 }]} numberOfLines={1}>
+                            TDHP: <Text style={{ fontWeight: '700' }}>{isFixed ? '770.01 Genel Yönetim' : '770.02 Operasyonel'}</Text>
+                            {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
                           </Text>
-                          {(currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR) && (
-                            <TouchableOpacity
-                              style={styles.webUserDismissBtn}
-                              onPress={() => {
-                                setItemToDelete({
-                                  type: 'expense',
-                                  id: exp.id,
-                                  name: exp.title,
-                                  details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
-                                });
-                              }}
-                            >
-                              <Text style={styles.webUserDismissTxt}>🗑️ Gideri Sil</Text>
-                            </TouchableOpacity>
-                          )}
+                          <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700' }}>
+                            {exp.paidByCashier ? `💵 ${t.paidFromCashier || 'Kasadan Ödendi'}` : `⏳ ${t.onCreditRemaining || 'Vadeli / Borç'}`}
+                          </Text>
                         </View>
                       </View>
                     );
                   })
                 )}
-              </View>
+              </>
             )}
-          </ScrollView>
+          </View>
+        )}
+      </ScrollView>
 
       {/* MODAL 1: YENİ / DÜZENLE STOK ÜRÜNÜ (Web Warehouse & Inventory ile Birebir) */}
-        <Modal visible={showAddStockModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>
-                    {editingStockItem ? '✏️ Ürün Bilgilerini Düzenle' : '➕ Depoya Yeni Ürün Ekle'}
-                  </Text>
-                  <Text style={styles.webModalSub}>
-                    {editingStockItem ? 'Mevcut stok ve maliyet parametreleri' : 'Envanter ve barkod kayıt formu'}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowAddStockModal(false);
-                    setEditingStockItem(null);
-                  }}
-                  style={styles.modalCloseBtn}
-                >
-                  <Text style={styles.modalCloseX}>✕</Text>
-                </TouchableOpacity>
+      <Modal visible={showAddStockModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>
+                  {editingStockItem ? `✏️ ${t.edit || 'Ürün Bilgilerini Düzenle'}` : `➕ ${t.newItem || 'Depoya Yeni Ürün Ekle'}`}
+                </Text>
+                <Text style={styles.webModalSub}>
+                  {editingStockItem ? (t.autoThresholdControl || 'Mevcut stok ve maliyet parametreleri') : (t.warehouse || 'Envanter ve barkod kayıt formu')}
+                </Text>
               </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10 }}>
-                {/* Ürün Adı */}
-                <Text style={styles.webModalLabel}>Ürün Adı *</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Örn: Rebul Kolonya 50ml, Çam Fıstığı..."
-                  placeholderTextColor={THEME.colors.textLight}
-                  value={newStockItem.name}
-                  onChangeText={(t) => setNewStockItem({ ...newStockItem, name: t })}
-                />
-
-                {/* Kategori Seçici */}
-                <Text style={styles.webModalLabel}>Kategori</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                  {['Kuru Gıda', 'Et & Tavuk', 'Sebze & Meyve', 'Süt Ürünleri', 'İçecek', 'Temizlik & Hijyen', 'Genel'].map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.webModalChip, newStockItem.cat === cat && styles.webModalChipActive]}
-                      onPress={() => setNewStockItem({ ...newStockItem, cat })}
-                    >
-                      <Text style={[styles.webModalChipTxt, newStockItem.cat === cat && styles.webModalChipTxtActive]}>
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                {/* Birim Seçici */}
-                <Text style={styles.webModalLabel}>Ölçü Birimi</Text>
-                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
-                  {['adet', 'kg', 'lt', 'paket', 'koli'].map((unit) => (
-                    <TouchableOpacity
-                      key={unit}
-                      style={[styles.webModalChip, newStockItem.unit === unit && styles.webModalChipActive, { flex: 1, alignItems: 'center' }]}
-                      onPress={() => setNewStockItem({ ...newStockItem, unit })}
-                    >
-                      <Text style={[styles.webModalChipTxt, newStockItem.unit === unit && styles.webModalChipTxtActive]}>
-                        {unit}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Stok Miktarı ve Min Stok */}
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Mevcut Stok Miktarı</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="0"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={String(newStockItem.stock)}
-                      onChangeText={(t) => setNewStockItem({ ...newStockItem, stock: t })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Kritik Min. Stok</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="5"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={String(newStockItem.min)}
-                      onChangeText={(t) => setNewStockItem({ ...newStockItem, min: t })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                {/* Birim Maliyet ve Tedarikçi */}
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Birim Maliyet (₺)</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="0.00"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={String(newStockItem.price)}
-                      onChangeText={(t) => setNewStockItem({ ...newStockItem, price: t })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Tedarikçi Firma</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Örn: Metro Grossmarket"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={newStockItem.supplier}
-                      onChangeText={(t) => setNewStockItem({ ...newStockItem, supplier: t })}
-                    />
-                  </View>
-                </View>
-
-                {/* Barkod */}
-                <Text style={styles.webModalLabel}>Barkod Numarası</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Boş bırakılırsa sistem otomatik üretir"
-                  placeholderTextColor={THEME.colors.textLight}
-                  value={newStockItem.barcode}
-                  onChangeText={(t) => setNewStockItem({ ...newStockItem, barcode: t })}
-                  keyboardType="numeric"
-                />
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-                <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleSaveStockItem}>
-                  <Text style={styles.modalSubmitTxt}>
-                    {editingStockItem ? 'Değişiklikleri Kaydet' : 'Ürünü Stoğa Ekle'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => {
-                    setShowAddStockModal(false);
-                    setEditingStockItem(null);
-                  }}
-                >
-                  <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddStockModal(false);
+                  setEditingStockItem(null);
+                }}
+                style={styles.modalCloseBtn}
+              >
+                <Text style={styles.modalCloseX}>✕</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
 
-        {/* MODAL 2: REÇETE EKLE / DÜZENLE (Web RecipesPage ile Birebir) */}
-        <Modal visible={showAddRecipeModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>
-                    {editingRecipe ? '✏️ Reçeteyi Düzenle' : '➕ Yeni Reçete Tanımla'}
-                  </Text>
-                  <Text style={styles.webModalSub}>Menü reçetesi, porsiyon ve malzeme gramajı</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowAddRecipeModal(false);
-                    setEditingRecipe(null);
-                  }}
-                  style={styles.modalCloseBtn}
-                >
-                  <Text style={styles.modalCloseX}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10 }}>
-                <Text style={styles.webModalLabel}>Reçete / Yemek Adı *</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Örn: Izgara Levrek, Dana Antrikot, Tiramisu..."
-                  placeholderTextColor={THEME.colors.textLight}
-                  value={newRecipe.name}
-                  onChangeText={(t) => setNewRecipe({ ...newRecipe, name: t })}
-                />
-
-                {/* Kategori Seçici */}
-                <Text style={styles.webModalLabel}>Kategori</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                  {['Ana Yemek', 'Makarna', 'Pizza', 'Burger', 'Salata', 'Kahvaltı', 'Tatlı', 'İçecek', 'Başlangıç'].map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[styles.webModalChip, newRecipe.category === cat && styles.webModalChipActive]}
-                      onPress={() => setNewRecipe({ ...newRecipe, category: cat })}
-                    >
-                      <Text style={[styles.webModalChipTxt, newRecipe.category === cat && styles.webModalChipTxtActive]}>
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Satış Fiyatı (₺) *</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Örn: 350.00"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={String(newRecipe.salePrice)}
-                      onChangeText={(t) => setNewRecipe({ ...newRecipe, salePrice: t })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.webModalLabel}>Porsiyon Maliyeti (₺)</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Örn: 95.00"
-                      placeholderTextColor={THEME.colors.textLight}
-                      value={String(newRecipe.cost)}
-                      onChangeText={(t) => setNewRecipe({ ...newRecipe, cost: t })}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                {/* Dinamik Malzeme & Gramaj Listesi (Web ile birebir) */}
-                <View style={{ marginTop: 8, marginBottom: 12 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={styles.webModalLabel}>Malzeme & Gramaj Listesi (1 Porsiyon)</Text>
-                    <TouchableOpacity
-                      style={styles.webAddIngredientBtn}
-                      onPress={() => {
-                        setNewRecipe({
-                          ...newRecipe,
-                          ingredients: [...(newRecipe.ingredients || []), { name: '', amount: '100 gr' }],
-                        });
-                      }}
-                    >
-                      <Text style={styles.webAddIngredientBtnTxt}>+ Malzeme Ekle</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {(newRecipe.ingredients || []).map((ing, idx) => (
-                    <View key={idx} style={styles.webIngInputRow}>
-                      <TextInput
-                        style={[styles.modalInput, { flex: 2, marginBottom: 0 }]}
-                        placeholder="Malzeme Adı (örn: Dana Bonfile)"
-                        placeholderTextColor={THEME.colors.textLight}
-                        value={ing.name}
-                        onChangeText={(t) => {
-                          const next = [...newRecipe.ingredients];
-                          next[idx].name = t;
-                          setNewRecipe({ ...newRecipe, ingredients: next });
-                        }}
-                      />
-                      <TextInput
-                        style={[styles.modalInput, { flex: 1.2, marginBottom: 0 }]}
-                        placeholder="Miktar (200 gr)"
-                        placeholderTextColor={THEME.colors.textLight}
-                        value={ing.amount}
-                        onChangeText={(t) => {
-                          const next = [...newRecipe.ingredients];
-                          next[idx].amount = t;
-                          setNewRecipe({ ...newRecipe, ingredients: next });
-                        }}
-                      />
-                      {newRecipe.ingredients.length > 1 && (
-                        <TouchableOpacity
-                          style={styles.webRemoveIngBtn}
-                          onPress={() => {
-                            const next = newRecipe.ingredients.filter((_, i) => i !== idx);
-                            setNewRecipe({ ...newRecipe, ingredients: next });
-                          }}
-                        >
-                          <Text style={styles.webRemoveIngTxt}>✕</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-                <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleSaveRecipe}>
-                  <Text style={styles.modalSubmitTxt}>
-                    {editingRecipe ? 'Değişiklikleri Kaydet' : 'Reçeteyi Kaydet'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => {
-                    setShowAddRecipeModal(false);
-                    setEditingRecipe(null);
-                  }}
-                >
-                  <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL 2.5: WEB BİREBİR SİLME ONAY MESAJ KUTUSU (Delete Confirmation MessageBox) */}
-        <Modal visible={!!itemToDelete} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.deleteConfirmModalCard}>
-              <View style={styles.deleteWarningIconCircle}>
-                <Text style={{ fontSize: 30 }}>⚠️</Text>
-              </View>
-              <Text style={styles.deleteModalTitle}>Kalıcı Olarak Silinsin mi?</Text>
-              <Text style={styles.deleteModalDesc}>
-                {itemToDelete?.details || `"${itemToDelete?.name}" kaydı sistemden ve veritabanından kalıcı olarak silinecektir. Bu işlem geri alınamaz.`}
-              </Text>
-              <View style={styles.deleteModalBtnRow}>
-                <TouchableOpacity
-                  style={styles.deleteModalCancelBtn}
-                  onPress={() => setItemToDelete(null)}
-                >
-                  <Text style={styles.deleteModalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteModalConfirmBtn}
-                  onPress={handleConfirmDelete}
-                >
-                  <Text style={styles.deleteModalConfirmTxt}>🗑️ Evet, Sil</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL 3: YENİ PERSONEL EKLE */}
-        <Modal visible={showAddUserModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.modalTitle}>Yeni Personel Ekle</Text>
-                <TouchableOpacity onPress={() => setShowAddUserModal(false)}>
-                  <Text style={styles.modalCloseX}>✕</Text>
-                </TouchableOpacity>
-              </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10 }}>
+              {/* Ürün Adı */}
+              <Text style={styles.webModalLabel}>{t.productName || 'Ürün Adı'} *</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="Ad Soyad"
+                placeholder={t.productName || 'Örn: Dana Bonfile, Çam Fıstığı...'}
+                placeholderTextColor={THEME.colors.textLight}
+                value={newStockItem.name}
+                onChangeText={(tVal) => setNewStockItem({ ...newStockItem, name: tVal })}
+              />
+
+              {/* Kategori Seçici */}
+              <Text style={styles.webModalLabel}>{t.category || 'Kategori'}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {['Kuru Gıda', 'Et & Tavuk', 'Sebze & Meyve', 'Süt Ürünleri', 'İçecek', 'Temizlik & Hijyen', 'Genel'].map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.webModalChip, newStockItem.cat === cat && styles.webModalChipActive]}
+                    onPress={() => setNewStockItem({ ...newStockItem, cat })}
+                  >
+                    <Text style={[styles.webModalChipTxt, newStockItem.cat === cat && styles.webModalChipTxtActive]}>
+                      {getCategoryLabel(cat, currentLang)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Birim Seçici */}
+              <Text style={styles.webModalLabel}>{t.unit || 'Ölçü Birimi'}</Text>
+              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                {['adet', 'kg', 'lt', 'paket', 'koli'].map((u) => (
+                  <TouchableOpacity
+                    key={u}
+                    style={[styles.webModalChip, newStockItem.unit === u && styles.webModalChipActive, { flex: 1, alignItems: 'center' }]}
+                    onPress={() => setNewStockItem({ ...newStockItem, unit: u })}
+                  >
+                    <Text style={[styles.webModalChipTxt, newStockItem.unit === u && styles.webModalChipTxtActive]}>
+                      {u}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Stok Miktarı ve Min Stok */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.stockCol || 'Mevcut Stok Miktarı'}</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="0"
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={String(newStockItem.stock)}
+                    onChangeText={(tVal) => setNewStockItem({ ...newStockItem, stock: tVal })}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.minStockCol || 'Kritik Min. Stok'}</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="5"
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={String(newStockItem.min)}
+                    onChangeText={(tVal) => setNewStockItem({ ...newStockItem, min: tVal })}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              {/* Birim Maliyet ve Tedarikçi */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.unitPriceCol || 'Birim Maliyet'} (₺)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="0.00"
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={String(newStockItem.price)}
+                    onChangeText={(tVal) => setNewStockItem({ ...newStockItem, price: tVal })}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.supplier || 'Tedarikçi Firma'}</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder={`${t.supplier || 'Tedarikçi'}`}
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={newStockItem.supplier}
+                    onChangeText={(tVal) => setNewStockItem({ ...newStockItem, supplier: tVal })}
+                  />
+                </View>
+              </View>
+
+              {/* Barkod */}
+              <Text style={styles.webModalLabel}>{t.barcodeCol || 'Barkod Numarası'}</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder={`${t.autoGenerateBarcode || 'Otomatik Barkod'}`}
+                placeholderTextColor={THEME.colors.textLight}
+                value={newStockItem.barcode}
+                onChangeText={(tVal) => setNewStockItem({ ...newStockItem, barcode: tVal })}
+                keyboardType="numeric"
+              />
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleSaveStockItem}>
+                <Text style={styles.modalSubmitTxt}>
+                  {editingStockItem ? (t.save || 'Değişiklikleri Kaydet') : (t.confirm || 'Ürünü Stoğa Ekle')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setShowAddStockModal(false);
+                  setEditingStockItem(null);
+                }}
+              >
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 2: REÇETE EKLE / DÜZENLE (Web RecipesPage ile Birebir) */}
+      <Modal visible={showAddRecipeModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>
+                  {editingRecipe ? `✏️ ${t.edit || 'Reçeteyi Düzenle'}` : `➕ ${t.addNewRecipe || 'Yeni Reçete Tanımla'}`}
+                </Text>
+                <Text style={styles.webModalSub}>{t.recipesAndKitchen || 'Menü reçetesi, porsiyon ve malzeme gramajı'}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddRecipeModal(false);
+                  setEditingRecipe(null);
+                }}
+                style={styles.modalCloseBtn}
+              >
+                <Text style={styles.modalCloseX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10 }}>
+              <Text style={styles.webModalLabel}>{t.dishNameTh || 'Reçete / Yemek Adı'} *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder={`${t.dishNameTh || 'Reçete / Yemek Adı'}`}
+                placeholderTextColor={THEME.colors.textLight}
+                value={newRecipe.name}
+                onChangeText={(tVal) => setNewRecipe({ ...newRecipe, name: tVal })}
+              />
+
+              {/* Kategori Seçici */}
+              <Text style={styles.webModalLabel}>{t.category || 'Kategori'}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {['Ana Yemek', 'Makarna', 'Pizza', 'Burger', 'Salata', 'Kahvaltı', 'Tatlı', 'İçecek', 'Başlangıç'].map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.webModalChip, newRecipe.category === cat && styles.webModalChipActive]}
+                    onPress={() => setNewRecipe({ ...newRecipe, category: cat })}
+                  >
+                    <Text style={[styles.webModalChipTxt, newRecipe.category === cat && styles.webModalChipTxtActive]}>
+                      {getCategoryLabel(cat, currentLang)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.targetSaleTh || 'Satış Fiyatı'} (₺) *</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="0.00"
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={String(newRecipe.salePrice)}
+                    onChangeText={(tVal) => setNewRecipe({ ...newRecipe, salePrice: tVal })}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.webModalLabel}>{t.portionCostTh || 'Porsiyon Maliyeti'} (₺)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="0.00"
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={String(newRecipe.cost)}
+                    onChangeText={(tVal) => setNewRecipe({ ...newRecipe, cost: tVal })}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              {/* Dinamik Malzeme & Gramaj Listesi (Web ile birebir) */}
+              <View style={{ marginTop: 8, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={styles.webModalLabel}>{t.ingredientsTitle || 'Malzeme & Gramaj Listesi'} (1 {t.portionCol || 'Porsiyon'})</Text>
+                  <TouchableOpacity
+                    style={styles.webAddIngredientBtn}
+                    onPress={() => {
+                      setNewRecipe({
+                        ...newRecipe,
+                        ingredients: [...(newRecipe.ingredients || []), { name: '', amount: '100 gr' }],
+                      });
+                    }}
+                  >
+                    <Text style={styles.webAddIngredientBtnTxt}>+ {t.rawMaterialCost || 'Malzeme Ekle'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {(newRecipe.ingredients || []).map((ing, idx) => (
+                  <View key={idx} style={styles.webIngInputRow}>
+                    <TextInput
+                      style={[styles.modalInput, { flex: 2, marginBottom: 0 }]}
+                      placeholder={t.productName || 'Malzeme Adı'}
+                      placeholderTextColor={THEME.colors.textLight}
+                      value={ing.name}
+                      onChangeText={(tVal) => {
+                        const next = [...newRecipe.ingredients];
+                        next[idx].name = tVal;
+                        setNewRecipe({ ...newRecipe, ingredients: next });
+                      }}
+                    />
+                    <TextInput
+                      style={[styles.modalInput, { flex: 1.2, marginBottom: 0 }]}
+                      placeholder={t.quantity || 'Miktar (200 gr)'}
+                      placeholderTextColor={THEME.colors.textLight}
+                      value={ing.amount}
+                      onChangeText={(tVal) => {
+                        const next = [...newRecipe.ingredients];
+                        next[idx].amount = tVal;
+                        setNewRecipe({ ...newRecipe, ingredients: next });
+                      }}
+                    />
+                    {newRecipe.ingredients.length > 1 && (
+                      <TouchableOpacity
+                        style={styles.webRemoveIngBtn}
+                        onPress={() => {
+                          const next = newRecipe.ingredients.filter((_, i) => i !== idx);
+                          setNewRecipe({ ...newRecipe, ingredients: next });
+                        }}
+                      >
+                        <Text style={styles.webRemoveIngTxt}>✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleSaveRecipe}>
+                <Text style={styles.modalSubmitTxt}>
+                  {editingRecipe ? (t.save || 'Değişiklikleri Kaydet') : (t.confirm || 'Reçeteyi Kaydet')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setShowAddRecipeModal(false);
+                  setEditingRecipe(null);
+                }}
+              >
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 2.5: WEB BİREBİR SİLME ONAY MESAJ KUTUSU (Delete Confirmation MessageBox) */}
+      <Modal visible={!!itemToDelete} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteConfirmModalCard}>
+            <View style={styles.deleteWarningIconCircle}>
+              <Text style={{ fontSize: 30 }}>⚠️</Text>
+            </View>
+            <Text style={styles.deleteModalTitle}>{t.delete || 'Kalıcı Olarak Silinsin mi?'}</Text>
+            <Text style={styles.deleteModalDesc}>
+              {itemToDelete?.details || `"${itemToDelete?.name}" kaydı sistemden ve veritabanından kalıcı olarak silinecektir. Bu işlem geri alınamaz.`}
+            </Text>
+            <View style={styles.deleteModalBtnRow}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelBtn}
+                onPress={() => setItemToDelete(null)}
+              >
+                <Text style={styles.deleteModalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteModalConfirmBtn}
+                onPress={handleConfirmDelete}
+              >
+                <Text style={styles.deleteModalConfirmTxt}>🗑️ {t.delete || 'Evet, Sil'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 3: YENİ PERSONEL EKLE (Web UsersPage ile Birebir) */}
+      <Modal visible={showAddUserModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%', padding: 18, borderWidth: 1.5, borderColor: '#10b981' }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <View>
+                <Text style={[styles.modalTitle, { color: '#065f46', fontSize: 17 }]}>➕ {t.users || 'Yeni Personel Ekle'}</Text>
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{t.roleAdmin || 'Personel hesapları ve yetki matrisi'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAddUserModal(false)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+              {/* Ad Soyad */}
+              <Text style={styles.webModalLabel}>{t.fullNameLabel || 'Personel Adı Soyadı'} *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder={`${t.fullNameLabel || 'Personel Adı Soyadı'}`}
                 placeholderTextColor={THEME.colors.textLight}
                 value={newUser.name}
-                onChangeText={(t) => setNewUser({ ...newUser, name: t })}
+                onChangeText={(tVal) => setNewUser({ ...newUser, name: tVal })}
               />
+
+              {/* Kullanıcı Adı */}
+              <Text style={styles.webModalLabel}>{t.usernameLabel || 'Kullanıcı Adı'} *</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="Kullanıcı Adı"
+                placeholder={`${t.usernameLabel || 'Kullanıcı Adı'}`}
                 placeholderTextColor={THEME.colors.textLight}
                 value={newUser.username}
-                onChangeText={(t) => setNewUser({ ...newUser, username: t })}
+                onChangeText={(tVal) => setNewUser({ ...newUser, username: tVal })}
                 autoCapitalize="none"
               />
+
+              {/* E-posta */}
+              <Text style={styles.webModalLabel}>{t.emailLabel || 'E-posta Adresi'}</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="E-posta"
+                placeholder="ornek@gastrosync.com"
                 placeholderTextColor={THEME.colors.textLight}
                 value={newUser.email}
-                onChangeText={(t) => setNewUser({ ...newUser, email: t })}
+                onChangeText={(tVal) => setNewUser({ ...newUser, email: tVal })}
                 autoCapitalize="none"
+                keyboardType="email-address"
               />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginVertical: 6 }}>
-                Görev Rolü:
+
+              {/* Başlangıç Şifresi (Web Birebir Eklendi) */}
+              <Text style={styles.webModalLabel}>{t.passwordLabel || 'Başlangıç Şifresi'} *</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: '#f0fdf4', borderColor: '#86efac', color: '#065f46', fontWeight: '700' }]}
+                placeholder="123456"
+                placeholderTextColor="#059669"
+                value={newUser.password}
+                onChangeText={(tVal) => setNewUser({ ...newUser, password: tVal })}
+                secureTextEntry
+              />
+              <Text style={{ fontSize: 10, color: '#64748b', marginTop: -6, marginBottom: 12 }}>
+                ℹ️ {t.passwordHint || 'Personel sisteme bu şifre ile ilk girişini yapacaktır.'}
+              </Text>
+
+              {/* Görev Rolü Seçimi */}
+              <Text style={styles.webModalLabel}>
+                {t.colRole || 'Atanacak Görev Rolü'} *
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                 {Object.keys(ROLES).map((rKey) => {
                   const rVal = ROLES[rKey];
-                  return (
-                    <TouchableOpacity
-                      key={rVal}
-                      style={[styles.chipBtn, newUser.role === rVal && styles.chipBtnActive]}
-                      onPress={() => setNewUser({ ...newUser, role: rVal })}
-                    >
-                      <Text style={[styles.chipTxt, newUser.role === rVal && styles.chipTxtActive]}>
-                        {ROLE_LABELS[rVal]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleAddNewUser}>
-                  <Text style={styles.modalSubmitTxt}>Kaydet</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAddUserModal(false)}>
-                  <Text style={styles.modalCancelTxt}>Geri Dön</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL 4B: KULLANICI ROLÜ GÜNCELLE / ATAMA MODALI */}
-        <Modal visible={!!editingUserRole} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { borderColor: '#6366f1', borderWidth: 2 }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={[styles.modalTitle, { color: '#4338ca' }]}>🛡️ Görev Rolü Ata & Değiştir</Text>
-                  <Text style={styles.webModalSub}>Restoran erişim yetkilerini güncelle</Text>
-                </View>
-                <TouchableOpacity onPress={() => setEditingUserRole(null)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              {editingUserRole && (
-                <View style={{ backgroundColor: '#f5f3ff', padding: 12, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#ddd6fe' }}>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#4338ca' }}>
-                    {editingUserRole.name} ({editingUserRole.username})
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#6d28d9', marginTop: 2 }}>
-                    Mevcut Rol: <Text style={{ fontWeight: '800' }}>{ROLE_LABELS[editingUserRole.role]}</Text>
-                  </Text>
-                </View>
-              )}
-
-              <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 8 }}>
-                Atanacak Yeni Restoran Rolü:
-              </Text>
-              <View style={{ gap: 6, marginBottom: 14 }}>
-                {Object.keys(ROLES).map((rKey) => {
-                  const rVal = ROLES[rKey];
-                  const isSelected = editingUserRole?.role === rVal;
+                  const isSelected = newUser.role === rVal;
+                  const roleCol = ROLE_COLORS[rVal] || '#059669';
                   return (
                     <TouchableOpacity
                       key={rVal}
                       style={[
                         styles.chipBtn,
-                        { paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-                        isSelected && { backgroundColor: '#6366f1', borderColor: '#4f46e5' }
+                        {
+                          paddingVertical: 7,
+                          paddingHorizontal: 10,
+                          borderRadius: 8,
+                          backgroundColor: isSelected ? roleCol : '#f8fafc',
+                          borderColor: isSelected ? roleCol : '#e2e8f0',
+                          borderWidth: 1.5,
+                        }
                       ]}
-                      onPress={() => handleUpdateUserRole(editingUserRole.id, rVal)}
+                      onPress={() => setNewUser({ ...newUser, role: rVal })}
                     >
-                      <Text style={[styles.chipTxt, isSelected && { color: '#ffffff', fontWeight: '800' }]}>
-                        {ROLE_LABELS[rVal]}
+                      <Text style={[styles.chipTxt, { color: isSelected ? '#ffffff' : '#334155', fontWeight: isSelected ? '800' : '600', fontSize: 11 }]}>
+                        {getRoleLabel(rVal, currentLang)}
                       </Text>
-                      {isSelected && (
-                        <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 14 }}>✓ Aktif</Text>
-                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
+            </ScrollView>
 
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditingUserRole(null)}>
-                <Text style={styles.modalCancelTxt}>Vazgeç</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity style={[styles.modalSubmitBtn, { backgroundColor: '#059669' }]} onPress={handleAddNewUser}>
+                <Text style={styles.modalSubmitTxt}>✓ {t.save || 'Kullanıcıyı Kaydet'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAddUserModal(false)}>
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* MODAL 4C: ROL BİLDİRİMLERİ & MESAJLAŞMA MERKEZİ */}
-        <Modal visible={showNotifModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '85%' }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>🔔 Rol Bildirimleri</Text>
-                  <Text style={styles.webModalSub}>
-                    {ROLE_LABELS[currentUser.role]} için anlık onay, ret ve kasa bildirimleri
+      {/* MODAL 4B: KULLANICI ROLÜ GÜNCELLE / ATAMA MODALI (Web Theme Parity) */}
+      <Modal visible={!!editingUserRole} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { borderColor: '#10b981', borderWidth: 2, padding: 18 }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: '#065f46' }]}>🛡️ {t.edit || 'Görev Rolü Ata & Değiştir'}</Text>
+                <Text style={styles.webModalSub}>{t.rbacMatrixTitle || 'Restoran erişim yetkilerini güncelle'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditingUserRole(null)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {editingUserRole && (
+              <View style={{ backgroundColor: '#ecfdf5', padding: 12, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#065f46' }}>
+                  {editingUserRole.name} (@{editingUserRole.username})
+                </Text>
+                <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
+                  Mevcut Rol: <Text style={{ fontWeight: '800' }}>{getRoleLabel(editingUserRole.role, currentLang)}</Text>
+                </Text>
+              </View>
+            )}
+
+            <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 8 }}>
+              {t.colRole || 'Atanacak Yeni Restoran Rolü'}:
+            </Text>
+            <View style={{ gap: 6, marginBottom: 14 }}>
+              {Object.keys(ROLES).map((rKey) => {
+                const rVal = ROLES[rKey];
+                const isSelected = editingUserRole?.role === rVal;
+                const roleCol = ROLE_COLORS[rVal] || '#059669';
+                return (
+                  <TouchableOpacity
+                    key={rVal}
+                    style={[
+                      styles.chipBtn,
+                      {
+                        paddingVertical: 9,
+                        paddingHorizontal: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderRadius: 10,
+                        backgroundColor: isSelected ? '#ecfdf5' : '#f8fafc',
+                        borderColor: isSelected ? roleCol : '#e2e8f0',
+                        borderWidth: 1.5,
+                      }
+                    ]}
+                    onPress={() => handleUpdateUserRole(editingUserRole.id, rVal)}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: roleCol }} />
+                      <Text style={[styles.chipTxt, { color: isSelected ? '#065f46' : '#334155', fontWeight: isSelected ? '800' : '600', fontSize: 13 }]}>
+                        {getRoleLabel(rVal, currentLang)}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Text style={{ color: '#059669', fontWeight: '900', fontSize: 13 }}>✓ {t.statusProfitable || 'Aktif'}</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditingUserRole(null)}>
+              <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 4C: ROL BİLDİRİMLERİ & MESAJLAŞMA MERKEZİ */}
+      <Modal visible={showNotifModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '85%' }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>🔔 {t.notifications || 'Rol Bildirimleri'}</Text>
+                <Text style={styles.webModalSub}>
+                  {getRoleLabel(currentUser.role, currentLang)} {t.accountingSubHeader || 'için anlık onay, ret ve kasa bildirimleri'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowNotifModal(false)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {unreadNotifCount > 0 && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ecfdf5',
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  marginBottom: 10,
+                  borderWidth: 1,
+                  borderColor: '#a7f3d0',
+                  alignItems: 'center',
+                }}
+                onPress={async () => {
+                  await apiMarkAllNotificationsRead(currentUser.role);
+                  setMobileNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+                  setUnreadNotifCount(0);
+                  showToast(t.markAllRead || 'Tüm bildirimler okundu olarak işaretlendi');
+                }}
+              >
+                <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 12 }}>
+                  ✓ {t.markAllRead || 'Tümünü Okundu Olarak İşaretle'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <ScrollView style={{ maxHeight: 380 }}>
+              {mobileNotifications.length === 0 ? (
+                <View style={{ padding: 30, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: '#94a3b8' }}>
+                    📭 {t.noNotifications || 'Henüz okunmamış bildiriminiz bulunmuyor.'}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => setShowNotifModal(false)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              {unreadNotifCount > 0 && (
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: '#ecfdf5',
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 8,
-                    marginBottom: 10,
-                    borderWidth: 1,
-                    borderColor: '#a7f3d0',
-                    alignItems: 'center',
-                  }}
-                  onPress={async () => {
-                    await apiMarkAllNotificationsRead(currentUser.role);
-                    setMobileNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-                    setUnreadNotifCount(0);
-                    showToast('Tüm bildirimler okundu olarak işaretlendi');
-                  }}
-                >
-                  <Text style={{ color: '#065f46', fontWeight: '800', fontSize: 12 }}>
-                    ✓ Tümünü Okundu Olarak İşaretle
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <ScrollView style={{ maxHeight: 380 }}>
-                {mobileNotifications.length === 0 ? (
-                  <View style={{ padding: 30, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#94a3b8' }}>
-                      📭 Henüz okunmamış bildiriminiz bulunmuyor.
-                    </Text>
-                  </View>
-                ) : (
-                  mobileNotifications.map((notif) => (
+              ) : (
+                mobileNotifications.map((notif) => {
+                  const loc = getLocalizedNotification(notif, currentLang);
+                  return (
                     <TouchableOpacity
                       key={notif.id}
                       style={{
@@ -2743,15 +3456,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       activeOpacity={0.8}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: notif.isRead ? '#475569' : '#166534' }}>
-                          {notif.title}
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: notif.isRead ? '#475569' : '#166534', flex: 1, marginRight: 6 }}>
+                          {loc.title}
                         </Text>
                         {!notif.isRead && (
                           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' }} />
                         )}
                       </View>
                       <Text style={{ fontSize: 11, color: '#334155', lineHeight: 16, marginBottom: 6 }}>
-                        {notif.message}
+                        {loc.message}
                       </Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={{ fontSize: 10, color: '#64748b' }}>
@@ -2762,105 +3475,107 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         </Text>
                       </View>
                     </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={[styles.modalCancelBtn, { marginTop: 12 }]}
-                onPress={() => setShowNotifModal(false)}
-              >
-                <Text style={styles.modalCancelTxt}>Kapat</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL 4D: ŞİRKET DİLİ SEÇİMİ (Language Selector Modal) */}
-        <Modal visible={showLangModal} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxWidth: 320, padding: 20 }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>🌐 Şirket Dili / Language</Text>
-                  <Text style={styles.webModalSub}>Tek dokunuşla dil değiştirin</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowLangModal(false)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ gap: 8, marginVertical: 12 }}>
-                {[
-                  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
-                  { code: 'en', label: 'English', flag: '🇬🇧' },
-                  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-                  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-                ].map((l) => {
-                  const isSelected = currentLang === l.code;
-                  return (
-                    <TouchableOpacity
-                      key={l.code}
-                      style={[
-                        styles.chipBtn,
-                        {
-                          paddingVertical: 12,
-                          paddingHorizontal: 16,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          borderRadius: 12,
-                        },
-                        isSelected && { backgroundColor: '#ecfdf5', borderColor: '#10b981' }
-                      ]}
-                      onPress={() => {
-                        setCurrentLang(l.code);
-                        setShowLangModal(false);
-                        showToast(`Dil değiştirildi: ${l.label}`);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontSize: 22 }}>{l.flag}</Text>
-                        <Text style={[styles.chipTxt, isSelected && { color: '#065f46', fontWeight: '800' }]}>
-                          {l.label}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <Text style={{ color: '#059669', fontWeight: '900', fontSize: 16 }}>✓</Text>
-                      )}
-                    </TouchableOpacity>
                   );
-                })}
-              </View>
+                })
+              )}
+            </ScrollView>
 
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setShowLangModal(false)}
-              >
-                <Text style={styles.modalCancelTxt}>Kapat</Text>
+            <TouchableOpacity
+              style={[styles.modalCancelBtn, { marginTop: 12 }]}
+              onPress={() => setShowNotifModal(false)}
+            >
+              <Text style={styles.modalCancelTxt}>Kapat</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 4D: ŞİRKET DİLİ SEÇİMİ (Language Selector Modal) */}
+      <Modal visible={showLangModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxWidth: 320, padding: 20 }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>🌐 Şirket Dili / Language</Text>
+                <Text style={styles.webModalSub}>Tek dokunuşla dil değiştirin</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowLangModal(false)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            <View style={{ gap: 8, marginVertical: 12 }}>
+              {[
+                { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
+                { code: 'en', label: 'English', flag: '🇬🇧' },
+                { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+                { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+              ].map((l) => {
+                const isSelected = currentLang === l.code;
+                return (
+                  <TouchableOpacity
+                    key={l.code}
+                    style={[
+                      styles.chipBtn,
+                      {
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderRadius: 12,
+                      },
+                      isSelected && { backgroundColor: '#ecfdf5', borderColor: '#10b981' }
+                    ]}
+                    onPress={() => {
+                      setCurrentLang(l.code);
+                      setShowLangModal(false);
+                      showToast(`Dil değiştirildi: ${l.label}`);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontSize: 22 }}>{l.flag}</Text>
+                      <Text style={[styles.chipTxt, isSelected && { color: '#065f46', fontWeight: '800' }]}>
+                        {l.label}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Text style={{ color: '#059669', fontWeight: '900', fontSize: 16 }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => setShowLangModal(false)}
+            >
+              <Text style={styles.modalCancelTxt}>Kapat</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* MODAL 5: YENİ GİDER EKLE (Sabit veya Değişken Gider Formu) */}
-        <Modal visible={showAddExpenseModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>➕ Yeni Gider Kaydı Ekle</Text>
-                  <Text style={styles.webModalSub}>Sabit veya değişken işletme maliyet kalemi</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowAddExpenseModal(false)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
+      {/* MODAL 5: YENİ GİDER EKLE (Sabit veya Değişken Gider Formu) */}
+      <Modal visible={showAddExpenseModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%', padding: 16 }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>➕ {t.newExpense || 'Yeni Gider Kaydı Ekle'}</Text>
+                <Text style={styles.webModalSub}>{t.rawPlusFplusV || 'Sabit veya değişken işletme maliyet kalemi'}</Text>
               </View>
+              <TouchableOpacity onPress={() => setShowAddExpenseModal(false)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Gider Türü Seçimi: Sabit vs Değişken */}
               <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 6 }}>
-                Gider Ana Kategorisi:
+                {t.category || 'Gider Ana Kategorisi'}:
               </Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                 <TouchableOpacity
@@ -2872,7 +3587,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setNewExpense({ ...newExpense, category: 'FIXED', subType: 'RENT' })}
                 >
                   <Text style={[styles.chipTxt, newExpense.category === 'FIXED' && { color: '#ffffff', fontWeight: '800' }]}>
-                    🏢 Sabit Gider
+                    🏢 {t.fixedLabel || 'Sabit Gider'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2884,7 +3599,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setNewExpense({ ...newExpense, category: 'VARIABLE', subType: 'ELECTRICITY' })}
                 >
                   <Text style={[styles.chipTxt, newExpense.category === 'VARIABLE' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ⚡ Değişken Gider
+                    ⚡ {t.variableLabel || 'Değişken Gider'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -3058,60 +3773,60 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
               <TextInput
                 style={styles.modalInput}
-                placeholder="Gider Başlığı (Örn: Sanayi Tipi Elektrik Faturası)"
+                placeholder={`${t.colExpenseTitle || 'Gider Tanımı'} (${t.expElectricity || 'Elektrik, Kira, Maaş'}...)`}
                 placeholderTextColor={THEME.colors.textLight}
                 value={newExpense.title}
-                onChangeText={(t) => setNewExpense({ ...newExpense, title: t })}
+                onChangeText={(tVal) => setNewExpense({ ...newExpense, title: tVal })}
               />
 
               {/* Kurum / Alacaklı & Fatura Seri No */}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TextInput
                   style={[styles.modalInput, { flex: 1.2 }]}
-                  placeholder="Kurum / Muhatap (Örn: Enerjisa)"
+                  placeholder={`${t.supplier || 'Kurum / Muhatap'}`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={newExpense.counterparty}
-                  onChangeText={(t) => setNewExpense({ ...newExpense, counterparty: t })}
+                  onChangeText={(tVal) => setNewExpense({ ...newExpense, counterparty: tVal })}
                 />
                 <TextInput
                   style={[styles.modalInput, { flex: 1 }]}
-                  placeholder="Fatura No (Örn: ELEK-8839)"
+                  placeholder={`${t.barcodeCol || 'Fatura No'}`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={newExpense.invoiceNumber}
-                  onChangeText={(t) => setNewExpense({ ...newExpense, invoiceNumber: t })}
+                  onChangeText={(tVal) => setNewExpense({ ...newExpense, invoiceNumber: tVal })}
                 />
               </View>
 
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TextInput
                   style={[styles.modalInput, { flex: 1 }]}
-                  placeholder={newExpense.isOwnedProperty ? "Tutar (Öz Mülk: 0 ₺)" : "Tutar (₺) Örn: 14500"}
+                  placeholder={newExpense.isOwnedProperty ? `0 ₺ (${t.ownedPropertyBadge || 'Öz Mülk'})` : `${t.amount || 'Tutar'} (₺)`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={newExpense.isOwnedProperty ? '0' : newExpense.amount}
-                  onChangeText={(t) => setNewExpense({ ...newExpense, amount: t })}
+                  onChangeText={(tVal) => setNewExpense({ ...newExpense, amount: tVal })}
                   keyboardType="numeric"
                   editable={!newExpense.isOwnedProperty}
                 />
                 <TextInput
                   style={[styles.modalInput, { flex: 1 }]}
-                  placeholder="Dönem (Örn: 2026-10)"
+                  placeholder={`${t.periodLabel || 'Dönem'} (YYYY-MM)`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={newExpense.period}
-                  onChangeText={(t) => setNewExpense({ ...newExpense, period: t })}
+                  onChangeText={(tVal) => setNewExpense({ ...newExpense, period: tVal })}
                 />
               </View>
 
               {/* Vade / Son Ödeme Tarihi */}
               <View style={{ marginBottom: 6 }}>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 4 }}>
-                  Son Ödeme Vadesi (YYYY-AA-GG):
+                  {t.dueDateLabel || 'Son Ödeme Vadesi'} (YYYY-MM-DD):
                 </Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Vade Tarihi (Örn: 2026-10-24)"
+                  placeholder={`${t.dueDateLabel || 'Vade Tarihi'} (YYYY-MM-DD)`}
                   placeholderTextColor={THEME.colors.textLight}
                   value={newExpense.dueDate}
-                  onChangeText={(t) => setNewExpense({ ...newExpense, dueDate: t })}
+                  onChangeText={(tVal) => setNewExpense({ ...newExpense, dueDate: tVal })}
                 />
               </View>
 
@@ -3129,7 +3844,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
                 >
                   <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PAID' && { color: '#ffffff', fontWeight: '800' }]}>
-                    💵 Peşin Ödendi
+                    💵 {t.paidFromCashier || 'Peşin Ödendi'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -3141,7 +3856,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
                 >
                   <Text style={[styles.chipTxt, newExpense.paymentStatus === 'UNPAID' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ⏳ Borçta / Vadeli
+                    ⏳ {t.unpaidDebt ? t.unpaidDebt.split(' ')[0] : 'Borçta'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -3153,17 +3868,17 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
                 >
                   <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PARTIAL' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ⚡ Kısmi Avans
+                    ⚡ {t.share || 'Kısmi'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <TextInput
                 style={styles.modalInput}
-                placeholder="Açıklama / Fatura Notu (Opsiyonel)"
+                placeholder={t.note || 'Açıklama / Fatura Notu (Opsiyonel)'}
                 placeholderTextColor={THEME.colors.textLight}
                 value={newExpense.note}
-                onChangeText={(t) => setNewExpense({ ...newExpense, note: t })}
+                onChangeText={(tVal) => setNewExpense({ ...newExpense, note: tVal })}
               />
 
               {/* Mali Müşavir Defter Onay Durumu */}
@@ -3184,96 +3899,98 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 >
                   <Text style={{ fontSize: 14 }}>{newExpense.recordedInLedger ? '☑️' : '⬜'}</Text>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: newExpense.recordedInLedger ? '#6b21a8' : '#64748b' }}>
-                    📑 Resmi Deftere Doğrudan Onayla
+                    📑 {t.recordedLedgerBadge || 'Resmi Deftere Doğrudan Onayla'}
                   </Text>
                 </TouchableOpacity>
               </View>
+            </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, { backgroundColor: '#8b5cf6' }]}
-                  onPress={handleSaveExpense}
-                >
-                  <Text style={styles.modalSubmitTxt}>Gideri Kaydet</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAddExpenseModal(false)}>
-                  <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#047857' }]}
+                onPress={handleSaveExpense}
+              >
+                <Text style={styles.modalSubmitTxt}>{t.save || 'Gideri Kaydet'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAddExpenseModal(false)}>
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* MODAL 5B: MALİ MÜŞAVİR GEREKÇELİ RET MODALI */}
-        <Modal visible={!!expenseToRejectMobile} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { borderColor: '#fca5a5', borderWidth: 2 }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={[styles.modalTitle, { color: '#991b1b' }]}>❌ Gideri Deftere Almayı Reddet</Text>
-                  <Text style={styles.webModalSub}>Muhasebeye iletilecek gerekçeli ret bildirimi</Text>
-                </View>
-                <TouchableOpacity onPress={() => setExpenseToRejectMobile(null)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
+      {/* MODAL 5B: MALİ MÜŞAVİR GEREKÇELİ RET MODALI */}
+      <Modal visible={!!expenseToRejectMobile} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { borderColor: '#fca5a5', borderWidth: 2 }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: '#991b1b' }]}>❌ {t.reject || 'Gideri Deftere Almayı Reddet'}</Text>
+                <Text style={styles.webModalSub}>{t.rejectedBadge || 'Muhasebeye iletilecek gerekçeli ret bildirimi'}</Text>
               </View>
+              <TouchableOpacity onPress={() => setExpenseToRejectMobile(null)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-              {expenseToRejectMobile && (
-                <View style={{ backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, marginBottom: 12 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#991b1b' }}>
-                    {expenseToRejectMobile.title}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
-                    Tutar: {parseFloat(expenseToRejectMobile.amount || 0).toLocaleString('tr-TR')} ₺ • Fatura No: {expenseToRejectMobile.invoiceNumber || 'Girilmemiş'}
-                  </Text>
-                </View>
-              )}
-
-              <Text style={{ fontSize: 11, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 6 }}>
-                Ret Gerekçesi (Zorunlu):
-              </Text>
-              <TextInput
-                style={[styles.modalInput, { height: 70, textAlignVertical: 'top' }]}
-                placeholder="Örn: Fatura e-arşiv PDF belgesi eksik, KDV tevkifat oranı hatalı girilmiş..."
-                placeholderTextColor={THEME.colors.textLight}
-                multiline
-                numberOfLines={3}
-                value={mobileRejectReason}
-                onChangeText={setMobileRejectReason}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, { backgroundColor: '#dc2626' }]}
-                  onPress={handleConfirmRejectExpense}
-                >
-                  <Text style={styles.modalSubmitTxt}>❌ Reddet ve Bildir</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setExpenseToRejectMobile(null)}
-                >
-                  <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
+            {expenseToRejectMobile && (
+              <View style={{ backgroundColor: '#fef2f2', padding: 10, borderRadius: 8, marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#991b1b' }}>
+                  {expenseToRejectMobile.title}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
+                  {t.amount || 'Tutar'}: {parseFloat(expenseToRejectMobile.amount || 0).toLocaleString('tr-TR')} ₺ • {t.barcodeCol || 'Fatura No'}: {expenseToRejectMobile.invoiceNumber || 'Girilmemiş'}
+                </Text>
               </View>
+            )}
+
+            <Text style={{ fontSize: 11, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 6 }}>
+              {t.note || 'Ret Gerekçesi'} (Zorunlu):
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { height: 70, textAlignVertical: 'top' }]}
+              placeholder={`${t.rejectionReasonPrefix || 'Ret Gerekçesi'}...`}
+              placeholderTextColor={THEME.colors.textLight}
+              multiline
+              numberOfLines={3}
+              value={mobileRejectReason}
+              onChangeText={setMobileRejectReason}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#dc2626' }]}
+                onPress={handleConfirmRejectExpense}
+              >
+                <Text style={styles.modalSubmitTxt}>❌ {t.reject || 'Reddet ve Bildir'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setExpenseToRejectMobile(null)}
+              >
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* MODAL 6: KASAYA PARA GİRİŞİ & DAĞIT (Muhasebe Kasa Yönetimi) */}
-        <Modal visible={showCashModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
-              <View style={styles.webModalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>💵 Kasaya Para Girişi & Dağıt</Text>
-                  <Text style={styles.webModalSub}>Nakit bütçeyi gider kalemlerine paylaştırıp Müşavire ilet</Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowCashModal(false)}>
-                  <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-                </TouchableOpacity>
+      {/* MODAL 6: KASAYA PARA GİRİŞİ & DAĞIT (Muhasebe Kasa Yönetimi) */}
+      <Modal visible={showCashModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%', padding: 16 }]}>
+            <View style={styles.webModalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>💵 Kasaya Para Girişi & Dağıt</Text>
+                <Text style={styles.webModalSub}>Nakit bütçeyi gider kalemlerine paylaştırıp Müşavire ilet</Text>
               </View>
+              <TouchableOpacity onPress={() => setShowCashModal(false)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               <View style={{ marginVertical: 8 }}>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 4 }}>
                   Kasaya Gelen Nakit Tutarı (₺)
@@ -3305,131 +4022,374 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   </Text>
                 </View>
               </View>
+            </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, { backgroundColor: '#059669', flex: 1.5 }]}
-                  onPress={handleAllocateCash}
-                >
-                  <Text style={styles.modalSubmitTxt}>🚀 Dağıt ve Müşavire Gönder</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCashModal(false)}>
-                  <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#059669', flex: 1.5 }]}
+                onPress={handleAllocateCash}
+              >
+                <Text style={styles.modalSubmitTxt}>🚀 Dağıt ve Müşavire Gönder</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCashModal(false)}>
+                <Text style={styles.modalCancelTxt}>Vazgeç</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
+        </View>
+      </Modal>
 
-        {/* Material 3 Bottom Navigation Bar - Android Sanal Tuşlarının Üzerine Binmeyen Dinamik Güvenli Alan */}
-        <View style={[styles.bottomNavAndroid, { paddingBottom: androidBottomPadding, height: 56 + androidBottomPadding }]}>
-          {allowedScreens.includes('accounting') && (
-            <TouchableOpacity
-              style={[styles.bottomNavTab, currentScreen === 'accounting' && styles.bottomNavTabActive]}
-              onPress={() => navigateTo('accounting')}
-            >
-              <Text style={[styles.bottomNavIcon, currentScreen === 'accounting' && styles.bottomNavIconActive]}>
-                {isAdvisorUser ? '📖' : '💰'}
-              </Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'accounting' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
+      {/* MODAL 7: WEB BİREBİR "SİPARİŞ TALEBİ AÇ" (Stoktan Kasaya Otomatik Harcama & Bildirim) */}
+      <Modal visible={!!orderModalItem} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%', padding: 16 }]}>
+            <View style={styles.webModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>🛒 {t.orderModalItem || 'Sipariş & Malzeme Talebi Aç'}</Text>
+                <Text style={styles.webModalSub}>
+                  {orderModalItem?.name} ({orderModalItem?.stock} {orderModalItem?.unit} {t.statusSufficient ? t.statusSufficient.split('•')[1] || 'mevcut' : 'mevcut'})
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setOrderModalItem(null)}>
+                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+              <View style={{ marginVertical: 8 }}>
+                <Text style={styles.webModalLabel}>{t.quantity || 'Sipariş Miktarı'} ({orderModalItem?.unit?.toUpperCase()})</Text>
+                <TextInput
+                  style={[styles.modalInput, { fontSize: 16, fontWeight: '800', color: '#047857' }]}
+                  placeholder="15"
+                  placeholderTextColor={THEME.colors.textLight}
+                  value={orderQuantity}
+                  onChangeText={setOrderQuantity}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={{ marginVertical: 8 }}>
+                <Text style={styles.webModalLabel}>{t.note || 'Şef / Depo Notu veya Tercihi'}</Text>
+                <TextInput
+                  style={[styles.modalInput, { minHeight: 60, textAlignVertical: 'top' }]}
+                  placeholder={t.note || 'Taze ve iri boy tercih edilsin...'}
+                  placeholderTextColor={THEME.colors.textLight}
+                  value={orderNote}
+                  onChangeText={setOrderNote}
+                  multiline
+                />
+              </View>
+
+              {/* Acil Durum Butonu */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: orderUrgent ? '#fee2e2' : '#f8fafc',
+                  padding: 10,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: orderUrgent ? '#fca5a5' : '#cbd5e1',
+                  marginVertical: 8,
+                }}
+                onPress={() => setOrderUrgent(!orderUrgent)}
+                activeOpacity={0.8}
               >
-                {isAdvisorUser ? 'Defter Onay' : isAccountantUser ? 'Kasa & Gider' : 'Muhasebe'}
-              </Text>
-            </TouchableOpacity>
-          )}
+                <Text style={{ fontSize: 16 }}>{orderUrgent ? '⚡' : '⚪'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: orderUrgent ? '#991b1b' : '#334155' }}>
+                    {orderUrgent ? '⚡ [ACİL TALEP]' : '⚡ Normal Talep'}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: orderUrgent ? '#b91c1c' : '#64748b' }}>
+                    {t.criticalStockAlert || 'Kasa ekranında acil öncelik bildirimi oluşturur'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
+              {/* Tahmini Maliyet Özeti */}
+              <View style={{ backgroundColor: '#f0fdf4', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 14 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
+                  💰 {t.costLabel || 'Maliyet'}:
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#047857', marginTop: 2 }}>
+                  {(Math.round((parseFloat(orderQuantity) || 0) * (orderModalItem?.price || 0))).toLocaleString('tr-TR')} ₺
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: '#059669', flex: 1.5 }]}
+                onPress={handleCreateOrderRequest}
+              >
+                <Text style={styles.modalSubmitTxt}>✓ {t.confirm || 'Talebi Aç ve Kasaya İlet'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setOrderModalItem(null)}>
+                <Text style={styles.modalCancelTxt}>{t.cancel || 'Vazgeç'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 8: WEB BİREBİR RESTORAN EKİP İÇİ ANLIK SOHBET (RestaurantTeamChat) */}
+      <Modal visible={showTeamChatModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '90%', height: '84%', padding: 14 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingBottom: 8 }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={[styles.modalTitle, { fontSize: 15, fontWeight: '800' }]}>💬 {t.teamChat || 'Restoran Ekip İçi Anlık Sohbet'}</Text>
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }} numberOfLines={1}>{t.interDeptComm || 'Departmanlar Arası Anlık Haberleşme'}</Text>
+              </View>
+              <TouchableOpacity
+                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => setShowTeamChatModal(false)}
+              >
+                <Text style={{ fontSize: 14, color: '#64748b', fontWeight: '800' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Sohbet Kanalları Sekmeleri (Kompakt Şık Butonlar) */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, maxHeight: 34 }}>
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                {[
+                  { id: 'general', label: `📢 ${t.chGeneralShort || 'Genel'}`, color: '#10b981' },
+                  { id: 'kitchen', label: `🍳 ${t.chKitchenShort || 'Mutfak'}`, color: '#ea580c' },
+                  { id: 'cashier', label: `💰 ${t.chCashierShort || 'Kasa'}`, color: '#047857' },
+                  { id: 'shift', label: `📋 ${t.chShiftShort || 'Vardiya'}`, color: '#6366f1' },
+                ].map((ch) => (
+                  <TouchableOpacity
+                    key={ch.id}
+                    style={[
+                      {
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 20,
+                        backgroundColor: '#f8fafc',
+                        borderWidth: 1,
+                        borderColor: '#e2e8f0',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      },
+                      activeChatChannel === ch.id && { backgroundColor: ch.color, borderColor: ch.color },
+                    ]}
+                    onPress={() => setActiveChatChannel(ch.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: activeChatChannel === ch.id ? '#ffffff' : '#475569' }}>
+                      {ch.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Mesaj Listesi */}
+            <ScrollView
+              style={{ flex: 1, backgroundColor: '#f8faf9', borderRadius: 12, padding: 8, marginVertical: 4 }}
+              contentContainerStyle={{ paddingBottom: 6 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {chatMessages
+                .filter((m) => m.channelId === activeChatChannel)
+                .map((m) => {
+                  const isMe = m.sender === (currentUser?.name || 'Yetkili');
+                  return (
+                    <View
+                      key={m.id}
+                      style={{
+                        backgroundColor: m.priority === 'urgent' ? '#fff5f5' : '#ffffff',
+                        borderRadius: 10,
+                        padding: 10,
+                        marginBottom: 8,
+                        borderLeftWidth: 3.5,
+                        borderLeftColor: m.priority === 'urgent' ? '#ef4444' : isMe ? '#059669' : '#10b981',
+                        borderWidth: 1,
+                        borderColor: m.priority === 'urgent' ? '#fca5a5' : '#e2e8f0',
+                        alignSelf: 'stretch',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+                          <View style={{ backgroundColor: '#0a1f11', width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '900' }}>{m.avatar}</Text>
+                          </View>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#0f172a' }}>{m.sender}</Text>
+                          {m.role && (
+                            <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748b' }}>{getRoleLabel(m.role, currentLang)}</Text>
+                            </View>
+                          )}
+                          {m.priority === 'urgent' && (
+                            <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: '#b91c1c' }}>{t.urgentBadge || 'ACİL'}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#94a3b8' }}>{m.time}</Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: '#334155', lineHeight: 17, flexWrap: 'wrap' }}>
+                        {m.text}
+                      </Text>
+                    </View>
+                  );
+                })}
+            </ScrollView>
+
+            {/* Mesaj Yazma Alanı */}
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: 4 }}>
+              <TouchableOpacity
+                style={{
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: chatIsUrgent ? '#fee2e2' : '#f1f5f9',
+                  borderWidth: 1,
+                  borderColor: chatIsUrgent ? '#ef4444' : '#cbd5e1',
+                }}
+                onPress={() => setChatIsUrgent(!chatIsUrgent)}
+              >
+                <Text style={{ fontSize: 14 }}>{chatIsUrgent ? '⚡' : '⚪'}</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.modalInput, { flex: 1, minHeight: 38, paddingVertical: 6, paddingHorizontal: 10, marginBottom: 0 }]}
+                placeholder={`${t.writeMessage || 'Mesaj yaz'}...`}
+                placeholderTextColor={THEME.colors.textLight}
+                value={chatInputMsg}
+                onChangeText={setChatInputMsg}
+              />
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#059669',
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                }}
+                onPress={handleSendChatMessage}
+              >
+                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>{t.confirm || 'Gönder'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Web ile Birebir Kaydırmalı & Sıkışmayan Alt Menü Çubuğu (Web NAV_ITEMS Sırası ile) */}
+      <View style={[styles.bottomNavAndroid, { paddingBottom: androidBottomPadding, height: 60 + androidBottomPadding }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 8, alignItems: 'center', gap: 6 }}
+        >
+          {/* 1. Finansal Özet */}
           {allowedScreens.includes('dashboard') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'dashboard' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('dashboard')}
             >
               <Text style={[styles.bottomNavIcon, currentScreen === 'dashboard' && styles.bottomNavIconActive]}>🏠</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'dashboard' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Finansal Özet
+              <Text style={[styles.bottomNavLabel, currentScreen === 'dashboard' && styles.bottomNavLabelActive]}>
+                {t.dashboard || 'Finansal Özet'}
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* 2. Kasa & Muhasebe (Web /cashier) */}
+          {(allowedScreens.includes('cashier') || allowedScreens.includes('accounting')) && (
+            <TouchableOpacity
+              style={[styles.bottomNavTab, (currentScreen === 'cashier' || currentScreen === 'accounting') && styles.bottomNavTabActive]}
+              onPress={() => navigateTo('cashier')}
+            >
+              <Text style={[styles.bottomNavIcon, (currentScreen === 'cashier' || currentScreen === 'accounting') && styles.bottomNavIconActive]}>
+                💰
+              </Text>
+              <Text style={[styles.bottomNavLabel, (currentScreen === 'cashier' || currentScreen === 'accounting') && styles.bottomNavLabelActive]}>
+                {t.cashierAccounting || 'Kasa & Muhasebe'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* 3. Mali Müşavir Defteri (Web /advisor-ledger) */}
+          {allowedScreens.includes('advisor') && (
+            <TouchableOpacity
+              style={[styles.bottomNavTab, currentScreen === 'advisor' && styles.bottomNavTabActive]}
+              onPress={() => navigateTo('advisor')}
+            >
+              <Text style={[styles.bottomNavIcon, currentScreen === 'advisor' && styles.bottomNavIconActive]}>
+                📖
+              </Text>
+              <Text style={[styles.bottomNavLabel, currentScreen === 'advisor' && styles.bottomNavLabelActive]}>
+                {t.advisorLedger || 'Müşavir Defteri'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* 3. Stok Yönetimi */}
           {allowedScreens.includes('inventory') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'inventory' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('inventory')}
             >
               <Text style={[styles.bottomNavIcon, currentScreen === 'inventory' && styles.bottomNavIconActive]}>📦</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'inventory' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Stok Yönetimi
+              <Text style={[styles.bottomNavLabel, currentScreen === 'inventory' && styles.bottomNavLabelActive]}>
+                {t.inventory || 'Stok Yönetimi'}
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* 4. Reçete Merkezi */}
           {allowedScreens.includes('recipes') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'recipes' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('recipes')}
             >
               <Text style={[styles.bottomNavIcon, currentScreen === 'recipes' && styles.bottomNavIconActive]}>📖</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'recipes' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Reçete Merkezi
+              <Text style={[styles.bottomNavLabel, currentScreen === 'recipes' && styles.bottomNavLabelActive]}>
+                {t.recipes || 'Reçete Merkezi'}
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* 5. Satış Analizi */}
           {allowedScreens.includes('sales') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'sales' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('sales')}
             >
               <Text style={[styles.bottomNavIcon, currentScreen === 'sales' && styles.bottomNavIconActive]}>📊</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'sales' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Satış Analizi
+              <Text style={[styles.bottomNavLabel, currentScreen === 'sales' && styles.bottomNavLabelActive]}>
+                {t.sales || 'Satış Analizi'}
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* 6. Depo Terminali */}
           {allowedScreens.includes('warehouse') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'warehouse' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('warehouse')}
             >
-              <Text style={[styles.bottomNavIcon, currentScreen === 'warehouse' && styles.bottomNavIconActive]}>📦</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'warehouse' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Depo Terminali
+              <Text style={[styles.bottomNavIcon, currentScreen === 'warehouse' && styles.bottomNavIconActive]}>🏬</Text>
+              <Text style={[styles.bottomNavLabel, currentScreen === 'warehouse' && styles.bottomNavLabelActive]}>
+                {t.warehouse || 'Depo & Mal Kabul'}
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* 7. Kullanıcı Yönetimi */}
           {allowedScreens.includes('users') && (
             <TouchableOpacity
               style={[styles.bottomNavTab, currentScreen === 'users' && styles.bottomNavTabActive]}
               onPress={() => navigateTo('users')}
             >
               <Text style={[styles.bottomNavIcon, currentScreen === 'users' && styles.bottomNavIconActive]}>👥</Text>
-              <Text
-                style={[styles.bottomNavLabel, currentScreen === 'users' && styles.bottomNavLabelActive]}
-                numberOfLines={2}
-              >
-                Kullanıcı Yönetimi
+              <Text style={[styles.bottomNavLabel, currentScreen === 'users' && styles.bottomNavLabelActive]}>
+                {t.users || 'Kullanıcı Yönetimi'}
               </Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -3966,37 +4926,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   bottomNavTab: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 2,
-    minHeight: 52,
-    borderRadius: 8,
-    marginHorizontal: 2,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    borderRadius: 20,
+    marginHorizontal: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.1)',
   },
   bottomNavTabActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: '#10b981',
   },
   bottomNavIcon: {
     fontSize: 16,
     marginBottom: 2,
-    opacity: 0.7,
+    opacity: 0.75,
   },
   bottomNavIconActive: {
     opacity: 1,
+    transform: [{ scale: 1.05 }],
   },
   bottomNavLabel: {
-    fontSize: 9.5,
+    fontSize: 11,
     color: '#96be9f',
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 11,
-    paddingHorizontal: 1,
+    letterSpacing: 0.2,
   },
   bottomNavLabelActive: {
     color: '#10b981',
-    fontWeight: '800',
+    fontWeight: '900',
   },
   modalOverlay: {
     flex: 1,
@@ -4146,7 +5109,7 @@ const styles = StyleSheet.create({
     width: (width - 42) / 2,
     backgroundColor: '#ffffff',
     borderRadius: 14,
-    padding: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#dbe7df',
     shadowColor: '#0a1f11',
@@ -4154,37 +5117,41 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 2,
+    minHeight: 96,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   webMetricHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   webMetricLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#64748b',
     flex: 1,
+    marginRight: 4,
   },
   webMetricIcon: {
-    fontSize: 16,
+    fontSize: 15,
   },
   webMetricValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     color: '#0a1f11',
   },
   webMetricChange: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#059669',
-    marginTop: 4,
+    marginTop: 2,
   },
   webMetricSubTxt: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#94a3b8',
-    marginTop: 4,
+    marginTop: 2,
   },
   webMiniStatsRow: {
     flexDirection: 'row',
@@ -4195,21 +5162,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: '#dbe7df',
     alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   webMiniStatVal: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: '#0a1f11',
+    textAlign: 'center',
   },
   webMiniStatLbl: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#64748b',
     marginTop: 2,
+    textAlign: 'center',
   },
   webHeaderRow: {
     flexDirection: 'row',
@@ -4277,6 +5249,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#475569',
+  },
+  catFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dbe7df',
+    marginRight: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catFilterChipActive: {
+    backgroundColor: '#0a1f11',
+    borderColor: '#0a1f11',
+  },
+  catFilterTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  catFilterTxtActive: {
+    color: '#ffffff',
+    fontWeight: '800',
   },
   webChipTxtActive: {
     color: '#ffffff',
@@ -4471,6 +5468,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#dbe7df',
     marginBottom: 10,
+    overflow: 'hidden',
     shadowColor: '#0a1f11',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,

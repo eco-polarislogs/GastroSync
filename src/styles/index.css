@@ -90,7 +90,7 @@
   --transition-slow: 350ms ease;
 
   /* Layout */
-  --sidebar-width: 260px;
+  --sidebar-width: 285px;
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
   --mobile-nav-height: 64px;

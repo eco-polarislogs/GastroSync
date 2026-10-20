@@ -9,12 +9,12 @@ export const TRANSLATIONS = {
     appName: 'GastroSync',
     restaurantTitle: 'Lezzet Rotası Restoranı',
     dashboard: 'Finansal Özet',
-    cashierAccounting: 'Kasa & Muhasebe (Gelir/Gider)',
-    advisorLedger: 'Mali Müşavir Defteri & Onay',
+    cashierAccounting: 'Kasa & Muhasebe',
+    advisorLedger: 'Mali Müşavir Defteri',
     inventory: 'Stok Yönetimi',
     recipes: 'Reçete Merkezi',
     sales: 'Satış Analizi',
-    warehouse: 'Depo & Mal Kabul Terminali',
+    warehouse: 'Depo & Mal Kabul',
     users: 'Kullanıcı Yönetimi',
     logout: 'Çıkış',
     search: 'Ara...',
@@ -125,6 +125,12 @@ export const TRANSLATIONS = {
     totalValueCol: 'Toplam Değer',
     statusCritical: 'Kritik',
     statusSufficient: 'Tier A • Yeterli',
+    orderModalItem: 'Sipariş Talebi Aç',
+    orderQuantityLabel: 'Sipariş Miktarı',
+    urgentOrderLabel: 'Acil İkmal Talebi',
+    orderNoteLabel: 'Şef / Depo Notu veya Tercihi',
+    sendOrderToCashierBtn: 'Talebi Aç ve Kasaya İlet',
+    availableStockLabel: 'Mevcut Stok',
 
     // Reçeteler Sayfası (Recipes Page)
     addNewRecipe: '+ Yeni Reçete Oluştur',
@@ -139,11 +145,12 @@ export const TRANSLATIONS = {
 
     // Muhasebe & Kasa
     dailyRevenue: 'GÜNLÜK KASA CİROSU (GELİR)',
+    dailySalesTab: 'Günlük Satış',
     operatingProfit: 'GÜNLÜK NET İŞLETME KÂRI',
     profitMargin: 'Kâr Marjı',
     unpaidDebt: 'Bekleyen Borç / Vadeli',
     rubricDiagnostic: 'Finansal Rubrik Soruları & Kasa Teşhisi',
-    allocateCash: 'Kasaya Para Girişi & Dağıt',
+    allocateCash: 'Kasaya Para Girişi & Gider Ödemesi',
     newExpense: 'Yeni Gider Çıkışı (Öde)',
     fixedExpenses: 'Sabit Giderler',
     variableExpenses: 'Değişken Giderler',
@@ -201,7 +208,8 @@ export const TRANSLATIONS = {
     expRenovation: 'Tadilat & Bakım',
 
     // Rubrik Bölümü
-    rubrikTitle: 'Finansal Rubrik Soruları & Kasa Teşhisi (Otomatik Yanıtlar)',
+    rubrikTitle: 'Finansal Rubrik Soruları & Kasa Teşhisi',
+    rubrikTitleShort: 'Finansal Rubrik Soruları',
     rubrikSubtitle: 'İşletmenin kârlılık, maliyet, borç ve mali müşavir onay süreçlerinin rubrik kriterlerine göre anlık karnesi',
     rubrikScore: 'Rubrik Puanı',
     rubrikExcellent: 'Pekiyi / A+',
@@ -250,12 +258,17 @@ export const TRANSLATIONS = {
     chKitchen: 'Mutfak & Şefler',
     chCashier: 'Kasa & Muhasebe',
     chShift: 'Vardiya Devir Defteri',
+    chGeneralShort: 'Genel',
+    chKitchenShort: 'Mutfak',
+    chCashierShort: 'Kasa',
+    chShiftShort: 'Vardiya',
     chGeneralTarget: 'Tüm Restoran',
     chKitchenTarget: 'Mutfak & Depo',
     chCashierTarget: 'Kasa, Muhasebe & Müşavir',
     chShiftTarget: 'Müdür & Vardiya Ekibi',
     noMessagesYet: 'Bu kanalda henüz mesaj yok. İlk mesajı siz gönderin!',
     writeMessage: 'Mesaj yaz',
+    urgentBadge: 'ACİL',
 
     // Muhasebe Sub-headers
     advisorLedgerHeader: '📖 Mali Müşavir Defteri & Onay',
@@ -313,7 +326,7 @@ export const TRANSLATIONS = {
     editRecipeTitle: 'Reçete Düzenle',
     editRecipeDesc: 'reçetesini ve malzeme bileşenlerini düzenleyin',
     recipeNameLabel: 'Reçete Adı',
-    recipeNamePlaceholder: 'Örn: Izgara Levrek',
+    recipeNamePlaceholder: 'Izgara Levrek, Somon Poke Bowl, Risotto...',
     categoryLabel: 'Kategori',
     salePriceLabel: 'Satış Fiyatı (₺)',
     ingredientListGrammage: 'Malzeme Listesi & Porsiyon Gramajları',
@@ -401,6 +414,11 @@ export const TRANSLATIONS = {
     warehouseModules: 'Mobil Mal Kabul (Barkod), Zayiat Bildirimi, Sayım Ekranı',
     warehousePerms: 'Depo terminali: Barkod okuma ile mal kabulü, fire ve zayiat düşümü',
     dismissUserBtn: 'Görevden Al',
+    fullNameLabel: 'Personel Adı Soyadı',
+    usernameLabel: 'Kullanıcı Adı',
+    emailLabel: 'E-posta Adresi',
+    passwordLabel: 'Başlangıç Şifresi',
+    passwordHint: 'Personel sisteme bu şifre ile giriş yapacaktır.',
 
     // Yetkisiz Erişim (403 Security)
     unauthorizedTitle: '403 — Yetkisiz Erişim Engellendi',
@@ -534,6 +552,12 @@ export const TRANSLATIONS = {
     totalValueCol: 'Asset Value',
     statusCritical: 'Critical',
     statusSufficient: 'Tier A • Optimal',
+    orderModalItem: 'Create Order Request',
+    orderQuantityLabel: 'Order Quantity',
+    urgentOrderLabel: 'Urgent Supply Request',
+    orderNoteLabel: 'Chef / Warehouse Notes',
+    sendOrderToCashierBtn: 'Submit Order to Cashier',
+    availableStockLabel: 'Available Stock',
 
     // Recipes Page
     addNewRecipe: '+ New Recipe Formula',
@@ -548,6 +572,7 @@ export const TRANSLATIONS = {
 
     // Accounting & Cashier
     dailyRevenue: 'DAILY CASH REGISTER SALES (REVENUE)',
+    dailySalesTab: 'Daily Sales',
     operatingProfit: 'DAILY NET OPERATING PROFIT',
     profitMargin: 'Profit Margin',
     unpaidDebt: 'Outstanding Payable / Credit',
@@ -610,7 +635,8 @@ export const TRANSLATIONS = {
     expRenovation: 'Renovation & Maintenance',
 
     // Rubric Section
-    rubrikTitle: 'Financial Rubric & Register Diagnostics (Auto-Answers)',
+    rubrikTitle: 'Financial Rubric & Register Diagnostics',
+    rubrikTitleShort: 'Financial Rubric Questions',
     rubrikSubtitle: 'Real-time scorecard of profitability, costs, debt and CPA audit status based on rubric criteria',
     rubrikScore: 'Rubric Score',
     rubrikExcellent: 'Excellent / A+',
@@ -659,12 +685,17 @@ export const TRANSLATIONS = {
     chKitchen: 'Kitchen & Chefs',
     chCashier: 'Cashier & Accounting',
     chShift: 'Shift Handover Log',
+    chGeneralShort: 'General',
+    chKitchenShort: 'Kitchen',
+    chCashierShort: 'Cashier',
+    chShiftShort: 'Shift',
     chGeneralTarget: 'Entire Restaurant',
     chKitchenTarget: 'Kitchen & Warehouse',
     chCashierTarget: 'Cashier, Accounting & CPA',
     chShiftTarget: 'Manager & Shift Team',
     noMessagesYet: 'No messages yet in this channel. Send the first one!',
     writeMessage: 'Write a message',
+    urgentBadge: 'URGENT',
 
     // Accounting Sub-headers
     advisorLedgerHeader: '📖 CPA General Ledger & Approvals',
@@ -810,6 +841,11 @@ export const TRANSLATIONS = {
     warehouseModules: 'Mobile Terminal Receiving, Barcode Scanning, Spoilage & Waste',
     warehousePerms: 'Warehouse terminal: Barcode receiving, stock increment and spoilage deduction',
     dismissUserBtn: 'Dismiss User',
+    fullNameLabel: 'Full Name',
+    usernameLabel: 'Username',
+    emailLabel: 'Email Address',
+    passwordLabel: 'Initial Password',
+    passwordHint: 'The user will use this password for first system login.',
 
     // Unauthorized 403
     unauthorizedTitle: '403 — Unauthorized Access Blocked',
@@ -943,6 +979,12 @@ export const TRANSLATIONS = {
     totalValueCol: 'Gesamtwert',
     statusCritical: 'Kritisch',
     statusSufficient: 'Tier A • Optimal',
+    orderModalItem: 'Bestellauftrag erstellen',
+    orderQuantityLabel: 'Bestellmenge',
+    urgentOrderLabel: 'Dringende Nachschubbestellung',
+    orderNoteLabel: 'Notiz von Küchenchef / Lager',
+    sendOrderToCashierBtn: 'Auftrag an Kasse senden',
+    availableStockLabel: 'Verfügbarer Bestand',
 
     // Recipes Page
     addNewRecipe: '+ Neues Rezept erstellen',
@@ -957,6 +999,7 @@ export const TRANSLATIONS = {
 
     // Accounting & Cashier
     dailyRevenue: 'TÄGLICHER KASSENUMSATZ',
+    dailySalesTab: 'Tagesverkäufe',
     operatingProfit: 'TÄGLICHER BETRIEBSGEWINN',
     profitMargin: 'Gewinnmarge',
     unpaidDebt: 'Offene Verbindlichkeiten',
@@ -1019,7 +1062,8 @@ export const TRANSLATIONS = {
     expRenovation: 'Renovierung & Wartung',
 
     // Rubric Section
-    rubrikTitle: 'Finanzielle Rubrik & Kassendiagnose (Auto-Antworten)',
+    rubrikTitle: 'Finanzielle Rubrik & Kassendiagnose',
+    rubrikTitleShort: 'Finanzielle Rubrik-Fragen',
     rubrikSubtitle: 'Echtzeit-Bewertung der Rentabilität, Kosten, Schulden und Steuerberater-Prüfstatus',
     rubrikScore: 'Rubrik-Bewertung',
     rubrikExcellent: 'Ausgezeichnet / A+',
@@ -1068,12 +1112,17 @@ export const TRANSLATIONS = {
     chKitchen: 'Küche & Köche',
     chCashier: 'Kasse & Buchhaltung',
     chShift: 'Schichtübergabe-Protokoll',
+    chGeneralShort: 'Allgemein',
+    chKitchenShort: 'Küche',
+    chCashierShort: 'Kasse',
+    chShiftShort: 'Schicht',
     chGeneralTarget: 'Gesamtes Restaurant',
     chKitchenTarget: 'Küche & Lager',
     chCashierTarget: 'Kasse, Buchhaltung & Steuerberater',
     chShiftTarget: 'Manager & Schichtteam',
     noMessagesYet: 'Noch keine Nachrichten in diesem Kanal. Schreiben Sie die erste!',
     writeMessage: 'Nachricht schreiben',
+    urgentBadge: 'DRINGEND',
 
     // Accounting Sub-headers
     advisorLedgerHeader: '📖 Steuerberater Hauptbuch & Freigaben',
@@ -1219,6 +1268,11 @@ export const TRANSLATIONS = {
     warehouseModules: 'Mobiles Terminal, Barcode-Scanning, Verlustmeldung & Inventur',
     warehousePerms: 'Lagerterminal: Barcode-Wareneingang, Bestandszubuchung und Schwunderfassung',
     dismissUserBtn: 'Benutzer entlassen',
+    fullNameLabel: 'Vollständiger Name',
+    usernameLabel: 'Benutzername',
+    emailLabel: 'E-Mail-Adresse',
+    passwordLabel: 'Startpasswort',
+    passwordHint: 'Der Mitarbeiter nutzt dieses Passwort für den ersten System-Login.',
 
     // 403 Unbefugt
     unauthorizedTitle: '403 — Zugriff verweigert',
@@ -1352,6 +1406,12 @@ export const TRANSLATIONS = {
     totalValueCol: 'القيمة الإجمالية',
     statusCritical: 'حرج',
     statusSufficient: 'الفئة A • كافٍ',
+    orderModalItem: 'إنشاء طلب توريد ومواد',
+    orderQuantityLabel: 'الكمية المطلوبة',
+    urgentOrderLabel: 'طلب توريد عاجل',
+    orderNoteLabel: 'ملاحظة الشيف / المستودع',
+    sendOrderToCashierBtn: 'فتح الطلب وإحالته للصندوق',
+    availableStockLabel: 'المخزون المتوفر',
 
     // Recipes Page
     addNewRecipe: '+ إنشاء وصفة جديدة',
@@ -1366,6 +1426,7 @@ export const TRANSLATIONS = {
 
     // Accounting & Cashier
     dailyRevenue: 'إيراد الصندوق اليومي (المبيعات)',
+    dailySalesTab: 'المبيعات اليومية',
     operatingProfit: 'صافي الربح التشغيلي اليومي',
     profitMargin: 'هامش الربح',
     unpaidDebt: 'الديون المستحقة / المؤجلة',
@@ -1428,7 +1489,8 @@ export const TRANSLATIONS = {
     expRenovation: 'الصيانة والترميم',
 
     // Rubric Section
-    rubrikTitle: 'معايير التقييم المالي وتشخيص الصندوق (إجابات تلقائية)',
+    rubrikTitle: 'معايير التقييم وتشخيص الصندوق',
+    rubrikTitleShort: 'أسئلة التقييم المالي',
     rubrikSubtitle: 'بطاقة أداء فورية للربحية والتكاليف والديون وحالة مراجعة المستشار المالي',
     rubrikScore: 'درجة التقييم',
     rubrikExcellent: 'ممتاز / +A',
@@ -1477,12 +1539,17 @@ export const TRANSLATIONS = {
     chKitchen: 'المطبخ والطهاة',
     chCashier: 'الصندوق والمحاسبة',
     chShift: 'سجل تسليم الوردية',
+    chGeneralShort: 'عام',
+    chKitchenShort: 'المطبخ',
+    chCashierShort: 'الصندوق',
+    chShiftShort: 'الوردية',
     chGeneralTarget: 'المطعم بالكامل',
     chKitchenTarget: 'المطبخ والمستودع',
     chCashierTarget: 'الصندوق والمحاسبة والمستشار',
     chShiftTarget: 'المدير وفريق الوردية',
     noMessagesYet: 'لا توجد رسائل في هذه القناة بعد. أرسل الرسالة الأولى!',
     writeMessage: 'اكتب رسالة',
+    urgentBadge: 'عاجل',
 
     // Accounting Sub-headers
     advisorLedgerHeader: '📖 دفتر المستشار المالي والاعتمادات',
@@ -1628,6 +1695,11 @@ export const TRANSLATIONS = {
     warehouseModules: 'محطة المستودع المتنقلة، مسح الباركود، تسجيل التالف',
     warehousePerms: 'أمين المستودع: فحص واستلام البضائع وإسقاط التالف بالباركود',
     dismissUserBtn: 'إعفاء الموظف',
+    fullNameLabel: 'الاسم الكامل للموظف',
+    usernameLabel: 'اسم المستخدم',
+    emailLabel: 'البريد الإلكتروني',
+    passwordLabel: 'كلمة المرور الأولية',
+    passwordHint: 'سيستخدم الموظف كلمة المرور هذه لتسجيل الدخول الأول إلى النظام.',
 
     // صفحة عدم التصريح 403
     unauthorizedTitle: '403 — تم حظر الوصول غير المصرح به',
@@ -1689,6 +1761,9 @@ export const getExpenseTypeLabel = (expenseKey, lang = 'tr') => {
 const CATEGORY_MAP = {
   // TR Key mappings
   'Ana Yemek': { tr: 'Ana Yemek', en: 'Main Course', de: 'Hauptgericht', ar: 'طبق رئيسي' },
+  'Makarna': { tr: 'Makarna', en: 'Pasta', de: 'Nudeln & Pasta', ar: 'معكرونة' },
+  'Pizza': { tr: 'Pizza', en: 'Pizza', de: 'Pizza', ar: 'بيتزا' },
+  'Burger': { tr: 'Burger', en: 'Burger', de: 'Burger', ar: 'برجر' },
   'Salata': { tr: 'Salata', en: 'Salad', de: 'Salat', ar: 'سلطة' },
   'Kahvaltı': { tr: 'Kahvaltı', en: 'Breakfast', de: 'Frühstück', ar: 'إفطار' },
   'Tatlı': { tr: 'Tatlı', en: 'Dessert', de: 'Dessert', ar: 'حلويات' },

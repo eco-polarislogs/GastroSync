@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore, useInventoryStore, ROLE_COLORS } from '../store'
-import { FiAlertTriangle, FiSearch, FiFilter, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft, FiCamera } from 'react-icons/fi'
+import { useAuthStore, useInventoryStore, useExpenseStore, useNotificationStore, ROLE_COLORS } from '../store'
+import { FiAlertTriangle, FiSearch, FiFilter, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft, FiCamera, FiTruck, FiClock, FiCheckCircle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
+import RestaurantTeamChat from '../components/RestaurantTeamChat'
 import '../styles/warehouse.css'
 
 export default function WarehouseMobile({ isEmbedded = false }) {
@@ -12,13 +13,16 @@ export default function WarehouseMobile({ isEmbedded = false }) {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
   const { user, logout } = useAuthStore()
   const { items, recentActions, addStock, reportWaste, fetchItems, fetchTransactions } = useInventoryStore()
+  const { expenses, updateExpense, fetchExpenses } = useExpenseStore()
+  const { sendNotification } = useNotificationStore()
 
   useEffect(() => {
     if (fetchItems) fetchItems()
     if (fetchTransactions) fetchTransactions()
-  }, [fetchItems, fetchTransactions])
+    if (fetchExpenses) fetchExpenses()
+  }, [fetchItems, fetchTransactions, fetchExpenses])
 
-  const [activeTab, setActiveTab] = useState('operations')
+  const [activeTab, setActiveTab] = useState('operations') // 'operations', 'deliveries', 'stock', 'settings'
   const [showBarcodeModal, setShowBarcodeModal] = useState(false)
   const [showWasteModal, setShowWasteModal] = useState(false)
   const [wasteSearchQuery, setWasteSearchQuery] = useState('')
@@ -99,6 +103,35 @@ export default function WarehouseMobile({ isEmbedded = false }) {
     })
   }
 
+  const notifyChefStockRestored = (item, newStock) => {
+    // Şef ve Yöneticiye bildirim
+    sendNotification({
+      title: '✓ Stok Tehlikesi Kalktı — Ürün Depoya Ulaştı',
+      message: `Depo sorumlusu "${item.name}" için mal kabulü tamamladı. Yeni stok: ${newStock} ${item.unit} (Min: ${item.minStock}). Reçeteler ve mutfak servisi güvenle devam edebilir.`,
+      targetRole: 'CHEF',
+      senderName: user?.name || 'Depo Sorumlusu',
+      type: 'STOCK_RESTORED',
+      relatedEntityId: item.id
+    })
+
+    // Ekip telsizine mesaj
+    try {
+      const savedChat = localStorage.getItem('gastrosync_team_chat')
+      const chatList = savedChat ? JSON.parse(savedChat) : []
+      const newChatMessage = {
+        id: Date.now(),
+        channelId: 'kitchen',
+        sender: user?.name || 'Ali Depocu',
+        role: 'warehouse',
+        text: `Şefim, ${item.name} depoya ulaştı ve sisteme işlendi. Güncel stok: ${newStock} ${item.unit}. Tehlike geçti, akşam menüsü için hazır!`,
+        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        avatar: user?.avatar || 'AD',
+        priority: 'normal'
+      }
+      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+    } catch (_) { }
+  }
+
   const handleReceive = async () => {
     if (selectedItem && quantity > 0) {
       const parsedQty = parseFloat(quantity)
@@ -116,12 +149,62 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         notifySuccess(`${selectedItem.name} stoğa eklendi (+${parsedQty} ${selectedItem.unit})`, 'Mal Kabul Onaylandı')
       }
       addStock(selectedItem.id, parsedQty)
+
+      const finalStock = Math.round(((selectedItem.stock || 0) + parsedQty) * 100) / 100
+      if (finalStock >= selectedItem.minStock) {
+        notifyChefStockRestored(selectedItem, finalStock)
+      }
+
       if (fetchItems) fetchItems()
       if (fetchTransactions) fetchTransactions()
       setShowBarcodeModal(false)
       setSelectedItem(null)
       setQuantity('')
     }
+  }
+
+  // Toptancı / Şef siparişini depocunun miktar girmesine gerek kalmadan tek dokunuşla otomatik depoya alması
+  const handleAutoReceiveDelivery = async (delivery) => {
+    const matchedItem = items.find(i =>
+      (delivery.inventoryItemId && i.id === delivery.inventoryItemId) ||
+      i.name.toLowerCase().includes(delivery.itemName.toLowerCase()) ||
+      delivery.itemName.toLowerCase().includes(i.name.toLowerCase())
+    )
+
+    const qty = delivery.quantity
+    const unit = delivery.unit || (matchedItem ? matchedItem.unit : 'kg')
+
+    if (matchedItem) {
+      try {
+        await fetch(`http://localhost:8080/api/inventory/${matchedItem.id}/receive`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity: qty, recordedBy: user?.name || 'Depo Sorumlusu' })
+        })
+      } catch (_) { }
+      addStock(matchedItem.id, qty)
+      const finalStock = Math.round(((matchedItem.stock || 0) + qty) * 100) / 100
+      if (finalStock >= matchedItem.minStock) {
+        notifyChefStockRestored(matchedItem, finalStock)
+      }
+    } else {
+      notifySuccess(`${delivery.itemName} (${qty} ${unit}) depoya teslim alındı.`, 'Mal Kabul Tamamlandı ✓')
+    }
+
+    // İlgili gider kaydı varsa notunu teslim alındı olarak güncelle
+    if (delivery.expenseId) {
+      await updateExpense(delivery.expenseId, {
+        note: `${delivery.originalNote || ''} | [Depo: ${qty} ${unit} fiilen teslim alındı ve stoğa işlendi ✓]`
+      })
+    }
+
+    notifySuccess(
+      `Sistem tarafından hesaplanan ${qty} ${unit} "${delivery.itemName}" hatasız olarak depoya kabul edildi ve mutfak şefine bildirildi!`,
+      'Otomatik Mal Kabul Onaylandı 📦✓'
+    )
+
+    if (fetchItems) fetchItems()
+    if (fetchTransactions) fetchTransactions()
   }
 
   const handleWaste = async () => {
@@ -143,6 +226,35 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         notifySuccess(`${selectedItem.name} için -${parsedQty} ${selectedItem.unit} zayiat kaydedildi`, 'Zayiat Kaydedildi')
       }
       reportWaste(selectedItem.id, parsedQty, wasteReason)
+
+      // Piyasa standardı: Zayiat bildirildiğinde Mutfak Şefi, Muhasebe ve İşletme Müdürüne anlık alarm
+      const wasteAmountTL = Math.round(parsedQty * (selectedItem.price || 0))
+      sendNotification({
+        title: '⚠️ Kritik Zayiat / Fire Bildirildi',
+        message: `${user?.name || 'Depo Sorumlusu'} tarafından "${selectedItem.name}" için ${parsedQty} ${selectedItem.unit} fire kaydedildi (${wasteAmountTL > 0 ? wasteAmountTL.toLocaleString('tr-TR') + ' ₺' : ''}). Neden: ${wasteReason}. Stok düştü.`,
+        targetRole: 'ALL',
+        senderName: user?.name || 'Depo Sorumlusu',
+        type: 'STOCK_WASTE',
+        relatedEntityId: selectedItem.id
+      })
+
+      // Ekip telsiz kanalına anlık telsiz mesajı
+      try {
+        const savedChat = localStorage.getItem('gastrosync_team_chat')
+        const chatList = savedChat ? JSON.parse(savedChat) : []
+        const newChatMessage = {
+          id: Date.now(),
+          channelId: 'kitchen',
+          sender: user?.name || 'Ali Depocu',
+          role: 'warehouse',
+          text: `⚠️ DİKKAT: ${selectedItem.name} için ${parsedQty} ${selectedItem.unit} zayiat/fire ayrıldı. Gerekçe: ${wasteReason}. Kalan stok: ${Math.max(0, (selectedItem.stock || 0) - parsedQty)} ${selectedItem.unit}.`,
+          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+          avatar: user?.avatar || 'AD',
+          priority: 'urgent'
+        }
+        localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+      } catch (_) { }
+
       if (fetchItems) fetchItems()
       if (fetchTransactions) fetchTransactions()
       setShowWasteModal(false)
@@ -177,6 +289,55 @@ export default function WarehouseMobile({ isEmbedded = false }) {
   })
 
   const todayActions = recentActions.filter((a) => a.date === new Date().toISOString().split('T')[0] || a.date === '2026-10-13')
+
+  // Depoya düşen bekleyen hammadde ve mutfak siparişleri (Elektrik, su, doğalgaz, SGK vb. faturalar depoya DÜŞMEZ; yalnızca toptancı/hal/mutfak alımları düşer)
+  const pendingDeliveries = expenses
+    .filter(e => {
+      // Elektrik, su, gaz, telefon, internet, vergi, sgk, kira, reklam, tadilat gibi işletme faturalarını kesinlikle ele
+      const nonWarehouseSubTypes = ['RENT', 'LABOR', 'ACCOUNTANT', 'ELECTRICITY', 'WATER', 'GAS', 'PHONE', 'INTERNET', 'TAX', 'SGK', 'MARKETING', 'RENOVATION']
+      if (nonWarehouseSubTypes.includes(e.subType)) return false
+      
+      // Sadece mutfak tedarik, toptancı, hal veya sarf malzeme siparişleri
+      const isFoodOrMaterial = e.subType === 'FOOD_SUPPLY' || 
+        e.title?.toLowerCase().includes('sipariş') ||
+        e.title?.toLowerCase().includes('alım') ||
+        e.title?.toLowerCase().includes('tedarik') ||
+        e.counterparty?.toLowerCase().includes('hal') ||
+        e.counterparty?.toLowerCase().includes('tedarik') ||
+        e.counterparty?.toLowerCase().includes('toptan') ||
+        items.some(i => e.title?.toLowerCase().includes(i.name.toLowerCase()))
+
+      const notDeliveredYet = !e.note?.includes('[Depo:')
+      return isFoodOrMaterial && notDeliveredYet
+    })
+    .map(exp => {
+      // Başlıktan miktar ve ürün adını otomatik ayrıştır (örn: "Kırmızı Pancar (Taze Tarla) Malzeme Alımı (15 kg)")
+      const match = exp.title.match(/(.*?)(?:Malzeme Alımı|\(Sipariş\)|Alımı)?\s*(?:\((\d+(?:\.\d+)?)\s*([a-zA-ZğüşıöçĞÜŞİÖÇ]+)\))?/)
+      const rawName = match && match[1] ? match[1].replace('Malzeme Alımı', '').trim() : exp.title
+      const parsedQty = match && match[2] ? parseFloat(match[2]) : 15
+      const parsedUnit = match && match[3] ? match[3] : 'kg'
+
+      // İlgili envanter ürününü bul
+      const matchedItem = items.find(i =>
+        i.name.toLowerCase().includes(rawName.toLowerCase()) ||
+        rawName.toLowerCase().includes(i.name.toLowerCase())
+      )
+
+      return {
+        expenseId: exp.id,
+        inventoryItemId: matchedItem?.id || null,
+        itemName: matchedItem?.name || rawName,
+        barcode: matchedItem?.barcode || '—',
+        quantity: parsedQty,
+        unit: matchedItem?.unit || parsedUnit,
+        unitCost: matchedItem?.price || (exp.amount / (parsedQty || 1)),
+        totalCost: exp.amount,
+        isPaid: exp.paymentStatus === 'PAID' || exp.paidByCashier,
+        supplier: exp.counterparty || 'Toptancı Hal Tedarik',
+        originalNote: exp.note || '',
+        orderDate: exp.expenseDate || 'Bugün'
+      }
+    })
 
   return (
     <div className="wh-page">
@@ -236,6 +397,133 @@ export default function WarehouseMobile({ isEmbedded = false }) {
       <div className="wh-content">
         {activeTab === 'operations' && (
           <>
+            {/* 1. SEVKİYAT & BEKLEYEN MAL KABUL MASASI (Otomatik Hesaplanan Siparişler) */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              padding: '18px 20px',
+              border: '1.5px solid #a7f3d0',
+              boxShadow: '0 4px 16px rgba(16, 185, 129, 0.08)',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#047857' }}>
+                    🚚
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#064e3b' }}>
+                      Sevkiyat & Bekleyen Mal Kabul Masası
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                      Şef veya muhasebe tarafından onaylanmış sevkiyatlar. Miktar otomatik belirlenmiştir; tartıp tek tuşla stoğa alabilirsiniz.
+                    </p>
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  backgroundColor: pendingDeliveries.length > 0 ? '#fef3c7' : '#f1f5f9',
+                  color: pendingDeliveries.length > 0 ? '#92400e' : '#64748b',
+                  border: `1px solid ${pendingDeliveries.length > 0 ? '#fde68a' : '#cbd5e1'}`
+                }}>
+                  {pendingDeliveries.length} Bekleyen Teslimat
+                </span>
+              </div>
+
+              {pendingDeliveries.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1', color: '#64748b', fontSize: '0.85rem' }}>
+                  ✓ Şu an bekleyen açık mal kabul sevkiyatı bulunmuyor. Tüm mutfak siparişleri depoya eksiksiz alınmıştır.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {pendingDeliveries.map((del, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '14px 16px',
+                        backgroundColor: '#f8fbf9',
+                        borderRadius: '12px',
+                        border: '1px solid #d1fae5',
+                        flexWrap: 'wrap',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                          📦
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{del.itemName}</strong>
+                            <span style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              backgroundColor: del.isPaid ? '#ecfdf5' : '#fffbeb',
+                              color: del.isPaid ? '#047857' : '#b45309',
+                              border: `1px solid ${del.isPaid ? '#a7f3d0' : '#fde68a'}`
+                            }}>
+                              {del.isPaid ? '✓ Kasa Ödedi' : '⏳ Kasa Onayında'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                            Tedarikçi: <strong>{del.supplier}</strong> | Barkod: <code style={{ color: '#047857' }}>{del.barcode}</code>
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
+                            {del.originalNote}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                            Sistem Tarafından Hesaplanan
+                          </span>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#047857' }}>
+                            +{del.quantity} {del.unit}
+                          </span>
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: '#475569', fontWeight: 700 }}>
+                            {del.totalCost ? `${del.totalCost.toLocaleString('tr-TR')} ₺` : ''}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAutoReceiveDelivery(del)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '10px 18px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <FiCheck size={16} /> Tek Dokunuşla Depoya Al
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Primary Action Buttons */}
             <div className="wh-actions" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
               <button className="wh-action-btn wh-action-btn--primary" onClick={handleBarcodeScanned}>
@@ -248,8 +536,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 <span className="wh-action-label">{t.reportWasteBtn}</span>
                 <span className="wh-action-sub">{t.spoilageRecordSub}</span>
               </button>
-              <button 
-                className="wh-action-btn" 
+              <button
+                className="wh-action-btn"
                 onClick={() => setShowNewItemModal(true)}
                 style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)' }}
               >
@@ -739,9 +1027,42 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 <div className="wh-modal-selected">
                   <span className="wh-modal-selected-name">{selectedItem.name}</span>
                   <span className="wh-modal-selected-stock">
-                    {t.stockCol}: {selectedItem.stock} {selectedItem.unit}
+                    {t.stockCol}: {selectedItem.stock} {selectedItem.unit} (Min: {selectedItem.minStock} {selectedItem.unit})
                   </span>
                 </div>
+
+                {/* Sistem Otomatik Miktar Hesaplayıcı (Depocu hesaplama yapmaz) */}
+                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+                  <span style={{ display: 'block', fontSize: '11.5px', fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    🤖 Sistem Tarafından Otomatik Önerilen Sipariş / Kabul Miktarı:
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {(() => {
+                      const needed = Math.max(5, Math.ceil(selectedItem.minStock * 2 - selectedItem.stock))
+                      const stdPack = selectedItem.unit === 'kg' ? 10 : selectedItem.unit === 'adet' ? 30 : 5
+                      return [needed, stdPack, stdPack * 2].filter((v, i, a) => a.indexOf(v) === i).map((qtyVal) => (
+                        <button
+                          key={qtyVal}
+                          type="button"
+                          onClick={() => setQuantity(qtyVal.toString())}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: quantity === qtyVal.toString() ? '2px solid #059669' : '1px solid #bbf7d0',
+                            backgroundColor: quantity === qtyVal.toString() ? '#dcfce7' : '#ffffff',
+                            color: '#065f46',
+                            fontWeight: 800,
+                            fontSize: '12.5px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          +{qtyVal} {selectedItem.unit} (Önerilen)
+                        </button>
+                      ))
+                    })()}
+                  </div>
+                </div>
+
                 <div className="wh-modal-field">
                   <label>{t.incomingQuantityLabel} ({selectedItem.unit})</label>
                   <input
@@ -1151,6 +1472,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
           </div>
         </div>
       )}
+      {/* Bağımsız depo personeli modunda ekip telsizini kullanılabilir yap */}
+      {!isEmbedded && <RestaurantTeamChat />}
     </div>
   )
 }

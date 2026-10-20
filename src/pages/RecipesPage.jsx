@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useRecipeStore, useInventoryStore, useAuthStore } from '../store'
+import { useRecipeStore, useInventoryStore, useAuthStore, useNotificationStore } from '../store'
 import { FiPlus, FiEdit3, FiTrash2, FiChevronDown, FiChevronUp, FiSearch, FiFilter, FiAlertTriangle, FiX, FiCheck } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
@@ -7,10 +7,12 @@ import '../styles/pages.css'
 
 export default function RecipesPage() {
   const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+  const currentUser = useAuthStore((s) => s.user)
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
 
   const { recipes, addRecipe, updateRecipe, deleteRecipe, fetchRecipes } = useRecipeStore()
   const { items, fetchItems } = useInventoryStore()
+  const { sendNotification } = useNotificationStore()
 
   useEffect(() => {
     if (fetchRecipes) fetchRecipes()
@@ -187,6 +189,33 @@ export default function RecipesPage() {
       foodCostPercent: Math.round(foodCostPercent * 10) / 10,
     })
 
+    // Piyasa standardı: Şef yeni bir reçete tanımladığında Yönetici ve Kasiyere bildirim
+    sendNotification({
+      title: '🍽️ Yeni Menü Reçetesi Tanımlandı',
+      message: `${currentUser?.name || 'Mutfak Şefi'} tarafından "${newRecipe.name}" reçetesi eklendi (Porsiyon Maliyeti: ${Math.round(cost).toLocaleString('tr-TR')} ₺, Satış: ${salePrice.toLocaleString('tr-TR')} ₺, Food Cost: %${foodCostPercent.toFixed(1)}).`,
+      targetRole: 'MANAGER',
+      senderName: currentUser?.name || 'Mutfak Şefi',
+      type: 'RECIPE_CREATED',
+      relatedEntityId: null
+    })
+
+    // Telsiz kanalına mesaj düşür
+    try {
+      const savedChat = localStorage.getItem('gastrosync_team_chat')
+      const chatList = savedChat ? JSON.parse(savedChat) : []
+      const newChatMessage = {
+        id: Date.now(),
+        channelId: 'kitchen',
+        sender: currentUser?.name || 'Fatma Şef',
+        role: 'chef',
+        text: `Yeni "${newRecipe.name}" reçetesini menüye ekledim! Food Cost oranı: %${foodCostPercent.toFixed(1)}. Satışa hazır.`,
+        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        avatar: currentUser?.avatar || 'FŞ',
+        priority: 'normal'
+      }
+      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+    } catch (_) { }
+
     notifySuccess(`${newRecipe.name} başarıyla eklendi`, 'Yeni Reçete Eklendi')
 
     setNewRecipe({
@@ -244,7 +273,46 @@ export default function RecipesPage() {
           <div key={recipe.id} className="recipe-card animate-fade-in">
             <div className="recipe-card-top" onClick={() => toggleExpand(recipe.id)} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px' }}>
               <div className="recipe-card-info" style={{ flex: '1 1 0%', minWidth: 0 }}>
-                <span className="recipe-card-category">{getCategoryLabel(recipe.category, currentLanguage)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                  <span className="recipe-card-category">{getCategoryLabel(recipe.category, currentLanguage)}</span>
+                  {(() => {
+                    const hasLowStockIng = recipe.ingredients?.some(ing => {
+                      const item = items.find(i => i.id === ing.itemId || (ing.name && i.name.toLowerCase().includes(ing.name.toLowerCase())))
+                      return item && item.stock <= item.minStock
+                    })
+                    return hasLowStockIng ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        backgroundColor: '#fef2f2',
+                        color: '#b91c1c',
+                        border: '1px solid #fecaca'
+                      }}>
+                        ⚠️ Kritik Malzeme
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        backgroundColor: '#ecfdf5',
+                        color: '#047857',
+                        border: '1px solid #a7f3d0'
+                      }}>
+                        ✓ Stok Güvende (Servise Hazır)
+                      </span>
+                    )
+                  })()}
+                </div>
                 <h3 className="recipe-card-name" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', lineHeight: '1.35' }}>
                   {recipe.name}
                 </h3>
@@ -310,18 +378,40 @@ export default function RecipesPage() {
                       <th>{t.quantity}</th>
                       <th>{t.unitPriceCol}</th>
                       <th>{t.totalValueCol}</th>
+                      <th>Depo Durumu</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recipe.ingredients.map((ing, idx) => {
-                      const item = items.find((i) => i.id === ing.itemId)
+                      const item = items.find((i) => i.id === ing.itemId || (ing.name && i.name.toLowerCase().includes(ing.name.toLowerCase())))
                       const unitCost = item ? item.price : 0
+                      const isLow = item ? item.stock <= item.minStock : false
                       return (
                         <tr key={idx}>
                           <td className="td-bold">{ing.name}</td>
                           <td>{ing.amount} {ing.unit}</td>
                           <td>{unitCost.toFixed(2)} ₺/{ing.unit}</td>
                           <td className="td-bold">{(unitCost * ing.amount).toFixed(2)} ₺</td>
+                          <td>
+                            {item ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                backgroundColor: isLow ? '#fee2e2' : '#ecfdf5',
+                                color: isLow ? '#b91c1c' : '#047857',
+                                border: `1px solid ${isLow ? '#fca5a5' : '#a7f3d0'}`
+                              }}>
+                                {isLow ? '⚠️ Az Kaldı' : '✓ Yeterli'} ({item.stock} {item.unit})
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>—</span>
+                            )}
+                          </td>
                         </tr>
                       )
                     })}
@@ -448,7 +538,7 @@ export default function RecipesPage() {
                     style={{ background: '#f8fafc', border: '1px solid #dbe7df', padding: '10px 14px', borderRadius: '8px' }}
                     value={editForm.salePrice}
                     onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
-                    placeholder="Örn: 350"
+                    placeholder="350"
                     min="0"
                     step="0.01"
                     required
@@ -727,7 +817,7 @@ export default function RecipesPage() {
                     style={{ background: '#f8fafc', border: '1px solid #dbe7df', padding: '10px 14px', borderRadius: '8px' }}
                     value={newRecipe.salePrice}
                     onChange={(e) => setNewRecipe({ ...newRecipe, salePrice: e.target.value })}
-                    placeholder="Örn: 350"
+                    placeholder="350"
                     min="0"
                     step="0.01"
                     required

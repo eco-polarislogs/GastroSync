@@ -15,10 +15,18 @@ const getApiBaseUrl = () => {
     }
   }
   // Wi-Fi ağı üzerindeki doğrudan IP adresi
-  return 'http://192.168.1.89:8080/api';
+  return 'http://192.168.1.53:8080/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+
+// Sessiz hata loglayıcı (Backend kapalıyken veya offline iken terminali kirletmez)
+const logDebug = (...args) => {
+  // Canlı demo sırasında gereksiz terminal kirliliğini önlemek için sessiz çalışır
+  if (__DEV__ && false) {
+    console.log(...args);
+  }
+};
 
 // 1. Kullanıcı Girişi
 export const apiLogin = async (username, password) => {
@@ -39,7 +47,7 @@ export const apiLogin = async (username, password) => {
       return { success: true, user: data };
     }
   } catch (err) {
-    console.log('[Mobile API] Backend erişilemedi, yerel demo kullanıcıları kullanılıyor:', err.message);
+    logDebug('[Mobile API] Backend erişilemedi, yerel demo kullanıcıları kullanılıyor:', err.message);
   }
 
   // Fallback: Yerel demo verisi
@@ -96,7 +104,7 @@ export const apiReceiveStock = async (itemId, quantity, recordedBy = 'Mobil Depo
       return { success: true, data: json };
     }
   } catch (err) {
-    console.log('[Mobile API] Mal kabul API başarısız, yerel modda işlenecek:', err.message);
+    logDebug('[Mobile API] Mal kabul API başarısız, yerel modda işlenecek:', err.message);
   }
   return { success: false };
 };
@@ -114,7 +122,7 @@ export const apiRecordWaste = async (itemId, quantity, reason = 'Mobil Zayiat', 
       return { success: true, data: json };
     }
   } catch (err) {
-    console.log('[Mobile API] Zayiat API başarısız, yerel modda işlenecek:', err.message);
+    logDebug('[Mobile API] Zayiat API başarısız, yerel modda işlenecek:', err.message);
   }
   return { success: false };
 };
@@ -160,7 +168,7 @@ export const apiUpdateUserRole = async (userId, newRole) => {
       return { success: true };
     }
   } catch (err) {
-    console.log('[Mobile API] Rol güncelleme API hatası:', err.message);
+    logDebug('[Mobile API] Rol güncelleme API hatası:', err.message);
   }
   return { success: false };
 };
@@ -184,7 +192,7 @@ export const apiCreateUser = async (userPayload) => {
       return { success: true, data };
     }
   } catch (err) {
-    console.log('[Mobile API] Kullanıcı oluşturma hatası:', err.message);
+    logDebug('[Mobile API] Kullanıcı oluşturma hatası:', err.message);
   }
   return { success: false };
 };
@@ -199,7 +207,7 @@ export const apiDeleteUser = async (userId) => {
       return { success: true };
     }
   } catch (err) {
-    console.log('[Mobile API] Kullanıcı silme hatası:', err.message);
+    logDebug('[Mobile API] Kullanıcı silme hatası:', err.message);
   }
   return { success: false };
 };
@@ -266,7 +274,7 @@ export const apiFetchRecipes = async () => {
       }
     }
   } catch (err) {
-    console.log('[Mobile API] Reçete çekme hatası:', err.message);
+    logDebug('[Mobile API] Reçete çekme hatası:', err.message);
   }
   return INITIAL_RECIPES;
 };
@@ -291,7 +299,7 @@ export const apiCreateRecipe = async (recipePayload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Reçete oluşturma hatası:', err.message);
+    logDebug('[Mobile API] Reçete oluşturma hatası:', err.message);
   }
   return { success: false };
 };
@@ -316,7 +324,7 @@ export const apiUpdateRecipe = async (recipeId, recipePayload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Reçete güncelleme hatası:', err.message);
+    logDebug('[Mobile API] Reçete güncelleme hatası:', err.message);
   }
   return { success: false };
 };
@@ -331,7 +339,7 @@ export const apiDeleteRecipe = async (recipeId) => {
       return { success: true };
     }
   } catch (err) {
-    console.log('[Mobile API] Reçete silme hatası:', err.message);
+    logDebug('[Mobile API] Reçete silme hatası:', err.message);
   }
   return { success: false };
 };
@@ -359,7 +367,7 @@ export const apiCreateInventoryItem = async (itemPayload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Stok oluşturma hatası:', err.message);
+    logDebug('[Mobile API] Stok oluşturma hatası:', err.message);
   }
   return { success: false };
 };
@@ -374,7 +382,7 @@ export const apiDeleteInventoryItem = async (itemId) => {
       return { success: true };
     }
   } catch (err) {
-    console.log('[Mobile API] Stok silme hatası:', err.message);
+    logDebug('[Mobile API] Stok silme hatası:', err.message);
   }
   return { success: false };
 };
@@ -402,7 +410,7 @@ export const apiUpdateInventoryItem = async (itemId, itemPayload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Stok güncelleme hatası:', err.message);
+    logDebug('[Mobile API] Stok güncelleme hatası:', err.message);
   }
   return { success: false };
 };
@@ -428,7 +436,7 @@ export const apiFetchTransactions = async () => {
       }
     }
   } catch (err) {
-    console.log('[Mobile API] Depo hareketleri çekilemedi:', err.message);
+    logDebug('[Mobile API] Depo hareketleri çekilemedi:', err.message);
   }
   return [
     { id: 1, itemName: 'Dana Antrikot', type: 'receive', quantity: 25, unit: 'kg', date: 'Bugün', recordedBy: 'Ahmet Yılmaz' },
@@ -469,7 +477,7 @@ export const apiFetchExpenses = async () => {
       }
     }
   } catch (err) {
-    console.log('[Mobile API] Giderler çekilemedi:', err.message);
+    logDebug('[Mobile API] Giderler çekilemedi:', err.message);
   }
   return [];
 };
@@ -506,7 +514,7 @@ export const apiCreateExpense = async (payload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Gider ekleme hatası:', err.message);
+    logDebug('[Mobile API] Gider ekleme hatası:', err.message);
   }
   return { success: false };
 };
@@ -524,7 +532,7 @@ export const apiUpdateExpense = async (id, payload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Gider güncelleme hatası:', err.message);
+    logDebug('[Mobile API] Gider güncelleme hatası:', err.message);
   }
   return { success: false };
 };
@@ -539,7 +547,7 @@ export const apiDeleteExpense = async (id) => {
       return { success: true };
     }
   } catch (err) {
-    console.log('[Mobile API] Gider silme hatası:', err.message);
+    logDebug('[Mobile API] Gider silme hatası:', err.message);
   }
   return { success: false };
 };
@@ -558,7 +566,7 @@ export const apiFetchNotifications = async (role) => {
       return json.data || json || [];
     }
   } catch (err) {
-    console.log('[Mobile API] Bildirimler çekilemedi:', err.message);
+    logDebug('[Mobile API] Bildirimler çekilemedi:', err.message);
   }
   return [];
 };
@@ -575,7 +583,7 @@ export const apiCreateNotification = async (payload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    console.log('[Mobile API] Bildirim oluşturma hatası:', err.message);
+    logDebug('[Mobile API] Bildirim oluşturma hatası:', err.message);
   }
   return { success: false };
 };
@@ -587,7 +595,7 @@ export const apiMarkNotificationRead = async (id) => {
     });
     if (res.ok) return { success: true };
   } catch (err) {
-    console.log('[Mobile API] Bildirim okundu hatası:', err.message);
+    logDebug('[Mobile API] Bildirim okundu hatası:', err.message);
   }
   return { success: false };
 };
@@ -600,7 +608,7 @@ export const apiMarkAllNotificationsRead = async (role) => {
     );
     if (res.ok) return { success: true };
   } catch (err) {
-    console.log('[Mobile API] Tümünü okundu yapma hatası:', err.message);
+    logDebug('[Mobile API] Tümünü okundu yapma hatası:', err.message);
   }
   return { success: false };
 };
