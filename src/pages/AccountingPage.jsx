@@ -50,9 +50,9 @@ export default function AccountingPage({ viewMode }) {
   const [expenseToReject, setExpenseToReject] = useState(null)
   const [rejectReasonText, setRejectReasonText] = useState('')
 
-  // Rol kontrolü: Muhasebeci (Kasa) ve Mali Müşavir (Resmi Defter)
-  const isAccountant = user?.role === ROLES.ACCOUNTANT || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER
-  const isFinancialAdvisor = user?.role === ROLES.FINANCIAL_ADVISOR || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER
+  // Rol ve Mod bazlı kesin ayrım (Enterprise RBAC: Muhasebeci kasayı yönetir, Mali Müşavir resmi defteri denetler)
+  const isAccountant = (user?.role === ROLES.ACCOUNTANT || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && !isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR
+  const isFinancialAdvisor = (user?.role === ROLES.FINANCIAL_ADVISOR || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && !isCashierMode && user?.role !== ROLES.ACCOUNTANT
 
   // Form State
   const [newExpense, setNewExpense] = useState({
@@ -372,13 +372,24 @@ export default function AccountingPage({ viewMode }) {
             </button>
           )}
 
-          <button
-            className="action-btn action-btn--primary"
-            onClick={() => setShowAddModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <FiPlus size={16} /> {isAdvisorMode ? (t.advisorDefter || 'Deftere Yeni Kayıt Gir') : `+ ${t.newExpense}`}
-          </button>
+          {/* Mali Müşavir doğrudan kasa ödemesi yapmaz, resmi yevmiyeye doğrudan kayıt girer veya muhasebeye gider bildirir */}
+          {isAccountant ? (
+            <button
+              className="action-btn action-btn--primary"
+              onClick={() => setShowAddModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <FiPlus size={16} /> + {t.newExpense}
+            </button>
+          ) : isFinancialAdvisor ? (
+            <button
+              className="action-btn action-btn--primary"
+              onClick={() => setShowAddModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#7c3aed', borderColor: '#6d28d9' }}
+            >
+              <FiPlus size={16} /> + Resmi Defter Kaydı Aç
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1131,52 +1142,90 @@ export default function AccountingPage({ viewMode }) {
                     <td style={{ padding: '14px 16px' }}>
                       {isUnpaid ? (
                         <div>
-                          <button
-                            onClick={() => handlePayDebtNow(exp)}
-                            title="Kasadan fiilen öde ve borcu kapat"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '5px 12px',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
-                              backgroundColor: '#fee2e2',
-                              color: '#b91c1c',
-                              border: '1.5px solid #f87171',
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.15)',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <span>💳</span> {t.debtUnpaid} — <strong>Öde</strong>
-                          </button>
+                          {isAccountant ? (
+                            <button
+                              onClick={() => handlePayDebtNow(exp)}
+                              title="Kasadan fiilen öde ve borcu kapat"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '5px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                backgroundColor: '#fee2e2',
+                                color: '#b91c1c',
+                                border: '1.5px solid #f87171',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 6px rgba(220, 38, 38, 0.15)',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <span>💳</span> {t.debtUnpaid} — <strong>Öde</strong>
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '5px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                backgroundColor: '#fee2e2',
+                                color: '#b91c1c',
+                                border: '1.5px solid #f87171'
+                              }}
+                            >
+                              <span>💳</span> {t.debtUnpaid}
+                            </span>
+                          )}
                           <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, marginTop: '3px' }}>
                             {t.onCreditRemaining}
                           </div>
                         </div>
                       ) : isPartial ? (
                         <div>
-                          <button
-                            onClick={() => handlePayDebtNow(exp)}
-                            title="Kalan tutarı kasadan öde ve borcu tamamla"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '5px 12px',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
-                              backgroundColor: '#fffbeb',
-                              color: '#b45309',
-                              border: '1.5px solid #fde68a',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <span>⚡</span> {t.partialPaid} — <strong>Tamamla</strong>
-                          </button>
+                          {isAccountant ? (
+                            <button
+                              onClick={() => handlePayDebtNow(exp)}
+                              title="Kalan tutarı kasadan öde ve borcu tamamla"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '5px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                backgroundColor: '#fffbeb',
+                                color: '#b45309',
+                                border: '1.5px solid #fde68a',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <span>⚡</span> {t.partialPaid} — <strong>Tamamla</strong>
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '5px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                backgroundColor: '#fffbeb',
+                                color: '#b45309',
+                                border: '1.5px solid #fde68a'
+                              }}
+                            >
+                              <span>⚡</span> {t.partialPaid}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <span
@@ -1915,43 +1964,49 @@ export default function AccountingPage({ viewMode }) {
                 </div>
               </div>
 
-              {/* Ödeme Durumu: Peşin Ödendi vs Borca Bırak (Vade) */}
+              {/* Ödeme Durumu: Muhasebeci için Kasa Ödeme Durumu, Mali Müşavir için Resmi Tahakkuk / Defter Tipi */}
               <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>
-                  Kasa Ödeme Durumu (Peşin / Borç / Kısmi)
+                  {isFinancialAdvisor ? '🏛️ Resmi Defter Kayıt Tipi (SMMM)' : '💵 Kasa Ödeme Durumu (Peşin / Borç / Kısmi)'}
                 </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="paymentStatus"
-                      value="PAID"
-                      checked={newExpense.paymentStatus === 'PAID'}
-                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
-                    />
-                    <span>💵 Kasadan Peşin Ödendi</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="paymentStatus"
-                      value="UNPAID"
-                      checked={newExpense.paymentStatus === 'UNPAID'}
-                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
-                    />
-                    <span>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="paymentStatus"
-                      value="PARTIAL"
-                      checked={newExpense.paymentStatus === 'PARTIAL'}
-                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
-                    />
-                    <span>⚡ Kısmi Ödeme (Avans / Parçalı)</span>
-                  </label>
-                </div>
+                {isFinancialAdvisor ? (
+                  <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600 }}>
+                    ℹ️ Mali Müşavir resmi defter tahakkuku açar. Bu kalem işletme kasasından onaylandığında fiili ödeme statüsüne geçer.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="paymentStatus"
+                        value="PAID"
+                        checked={newExpense.paymentStatus === 'PAID'}
+                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
+                      />
+                      <span>💵 Kasadan Peşin Ödendi</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="paymentStatus"
+                        value="UNPAID"
+                        checked={newExpense.paymentStatus === 'UNPAID'}
+                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
+                      />
+                      <span>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="paymentStatus"
+                        value="PARTIAL"
+                        checked={newExpense.paymentStatus === 'PARTIAL'}
+                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
+                      />
+                      <span>⚡ Kısmi Ödeme (Avans / Parçalı)</span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>

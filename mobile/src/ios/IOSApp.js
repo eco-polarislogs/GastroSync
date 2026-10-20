@@ -2042,38 +2042,38 @@ export default function AndroidApp({ initialUser, onLogout }) {
               </View>
 
               <View style={{ gap: 6 }}>
-                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                <View style={{ backgroundColor: '#f8fafc', padding: 9, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b', lineHeight: 16 }}>
                     ❓ {t.rubrikQ1 || 'Bugün ne satıldı ve ne kadar gelir sağlandı?'}
                   </Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 3, lineHeight: 16 }}>
                     ✓ {t.rubrikA1 || 'Kasaya'} {totalRevenue.toLocaleString('tr-TR')} ₺ {t.rubrikA1Suffix || 'ciro girdi.'} ({INITIAL_SALES_ITEMS[0]?.name || 'Izgara Köfte'})
                   </Text>
                 </View>
 
-                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                <View style={{ backgroundColor: '#f8fafc', padding: 9, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b', lineHeight: 16 }}>
                     ❓ {t.rubrikQ2 || 'Gerçek net kâr ve hammadde maliyeti nedir?'}
                   </Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginTop: 3, lineHeight: 16 }}>
                     ✓ {t.rubrikA2 || 'Brüt kâr'} {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺, {t.operatingProfit || 'Faaliyet Kârı'} {netOperatingProfit.toLocaleString('tr-TR')} ₺.
                   </Text>
                 </View>
 
-                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                <View style={{ backgroundColor: '#f8fafc', padding: 9, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b', lineHeight: 16 }}>
                     ❓ {t.rubrikQ3 || 'Kasada bekleyen borçlar ve vadeli harcamalar ne durumda?'}
                   </Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#dc2626', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#dc2626', marginTop: 3, lineHeight: 16 }}>
                     ✓ {t.rubrikA3 || 'Toplam'} {totalDebtAmount.toLocaleString('tr-TR')} ₺ {t.rubrikA3Suffix || 'vadesi bekleyen borç var.'}
                   </Text>
                 </View>
 
-                <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b' }}>
+                <View style={{ backgroundColor: '#f8fafc', padding: 9, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e293b', lineHeight: 16 }}>
                     ❓ {t.rubrikQ4 || 'Mali Müşavir denetiminde reddedilen veya bekleyen var mı?'}
                   </Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#047857', marginTop: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#047857', marginTop: 3, lineHeight: 16 }}>
                     ✓ {expenses.filter(e => e.recordedInLedger).length} {t.rubrikA4Ledger || 'Kalem deftere işlendi,'} {totalRejectedCount} {t.rubrikA4Rejected || 'Kalem reddedildi.'}
                   </Text>
                 </View>
@@ -2253,18 +2253,18 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <View style={[styles.webUserAvatar, { backgroundColor: '#dcfce7', borderRadius: 8 }]}>
                         <Text style={{ fontSize: 16 }}>🍽️</Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.webUserName}>{item.name}</Text>
-                        <Text style={styles.webUserEmail}>
+                      <View style={{ flex: 1, minWidth: 120 }}>
+                        <Text style={styles.webUserName} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
+                        <Text style={styles.webUserEmail} numberOfLines={1} ellipsizeMode="tail">
                           Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{item.qty} porsiyon</Text> • Hammadde: {item.cost.toLocaleString('tr-TR')} ₺
                         </Text>
                       </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }}>
+                      <View style={{ alignItems: 'flex-end', flexShrink: 0, minWidth: 95 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                           +{item.revenue.toLocaleString('tr-TR')} ₺
                         </Text>
                         <View style={[styles.webRolePill, { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }]}>
-                          <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
+                          <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]} numberOfLines={1}>
                             %{item.foodCost} Food Cost
                           </Text>
                         </View>
@@ -2385,7 +2385,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3', flexWrap: 'wrap' }}>
                       <TouchableOpacity
                         style={[
-                          { flex: 1, minWidth: 120, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+                          { flex: 1, minWidth: 110, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
                           isPaid
                             ? { backgroundColor: '#dcfce7', borderColor: '#86efac' }
                             : { backgroundColor: '#fef2f2', borderColor: '#fecaca' }
@@ -2393,7 +2393,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         onPress={() => handleToggleExpensePaid(exp)}
                         activeOpacity={0.7}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: isPaid ? '#15803d' : '#b91c1c' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: isPaid ? '#15803d' : '#b91c1c', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                           {isPaid ? `💵 ${t.paidFromCashier || 'Ödendi'} ↷` : `⚡ ${t.colCashPayment ? t.colCashPayment.split(' ')[0] : 'Kasa'} ${t.confirm || 'Öde'} ✓`}
                         </Text>
                       </TouchableOpacity>
@@ -2401,12 +2401,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       {(!exp.recordedInLedger && !exp.sentToAdvisor && !isRejected) && (
                         <TouchableOpacity
                           style={[
-                            { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
+                            { minWidth: 110, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
                           ]}
                           onPress={() => handleSendToAdvisor(exp)}
                           activeOpacity={0.7}
                         >
-                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#1d4ed8' }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#1d4ed8', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                             🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}
                           </Text>
                         </TouchableOpacity>
@@ -2414,7 +2414,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
                       <View
                         style={[
-                          { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+                          { minWidth: 110, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
                           exp.recordedInLedger
                             ? { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
                             : isRejected
@@ -2422,7 +2422,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                               : { backgroundColor: '#fffbeb', borderColor: '#fde68a' }
                         ]}
                       >
-                        <Text style={{ fontSize: 10, fontWeight: '800', color: exp.recordedInLedger ? '#047857' : isRejected ? '#991b1b' : '#b45309' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: exp.recordedInLedger ? '#047857' : isRejected ? '#991b1b' : '#b45309', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                           {exp.recordedInLedger ? `✓ ${t.recordedLedgerBadge || 'Deftere İşlendi'}` : isRejected ? `❌ ${t.rejectedBadge || 'Reddedildi'}` : `⏳ ${t.awaitingApprovalBadge || 'Müşavir Onayında'}`}
                         </Text>
                       </View>
@@ -2475,20 +2475,24 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <TouchableOpacity
-                  style={[styles.webBtnPrimary, { flex: 1, backgroundColor: '#0d9488', paddingVertical: 9, alignItems: 'center', justifyContent: 'center' }]}
+                  style={[styles.webBtnPrimary, { flex: 1, minWidth: 130, backgroundColor: '#0d9488', paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' }]}
                   onPress={() => showToast('📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.webBtnPrimaryTxt}>📥 Luca/Zirve Aktar</Text>
+                  <Text style={[styles.webBtnPrimaryTxt, { textAlign: 'center', fontSize: 11 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                    📥 Luca/Zirve Aktar
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.webBtnPrimary, { flex: 1, backgroundColor: '#047857', paddingVertical: 9, alignItems: 'center', justifyContent: 'center' }]}
+                  style={[styles.webBtnPrimary, { flex: 1, minWidth: 130, backgroundColor: '#7c3aed', paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' }]}
                   onPress={() => setShowAddExpenseModal(true)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.webBtnPrimaryTxt}>+ {t.advisorDefter || 'Deftere Kaydet'}</Text>
+                  <Text style={[styles.webBtnPrimaryTxt, { textAlign: 'center', fontSize: 11 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                    + Resmi Kayıt Aç
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2504,14 +2508,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 borderColor: '#10b981',
                 borderLeftWidth: 4,
                 borderLeftColor: '#059669',
+                justifyContent: 'space-between',
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   📑 {t.recordedLedgerBadge || 'ONAYLANAN DEFTER'}
                 </Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#047857', marginTop: 4 }}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#047857', marginTop: 4 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   {expenses.filter(e => e.recordedInLedger).length} {t.recordsListed || 'Kalem'}
                 </Text>
-                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }} numberOfLines={1}>
+                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }} numberOfLines={1} ellipsizeMode="tail">
                   Yevmiyeye kesinleşen kayıtlar
                 </Text>
               </View>
@@ -2525,14 +2530,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 borderColor: '#f59e0b',
                 borderLeftWidth: 4,
                 borderLeftColor: '#d97706',
+                justifyContent: 'space-between',
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   ✍️ {t.awaitingApprovalBadge || 'ONAY BEKLEYEN'}
                 </Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#92400e', marginTop: 4 }}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#92400e', marginTop: 4 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false)).length} {t.recordsListed || 'Kalem'}
                 </Text>
-                <Text style={{ fontSize: 10, color: '#b91c1c', marginTop: 2 }} numberOfLines={1}>
+                <Text style={{ fontSize: 10, color: '#b91c1c', marginTop: 2 }} numberOfLines={1} ellipsizeMode="tail">
                   {totalRejectedCount} {t.rejectedBadge || 'Reddedildi'}
                 </Text>
               </View>
@@ -2618,76 +2624,76 @@ export default function AndroidApp({ initialUser, onLogout }) {
             {/* TDHP HESAP PLANI GÖRÜNÜMÜ */}
             {advisorTab === 'tdhp' ? (
               <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#0d9488', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#115e59' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#115e59', flex: 1, minWidth: 150 }} numberOfLines={1}>
                     🏛️ Tek Düzen Hesap Planı (TDHP)
                   </Text>
                   <TouchableOpacity
-                    style={{ backgroundColor: '#0d9488', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                    style={{ backgroundColor: '#0d9488', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
                     onPress={() => showToast('Luca/Zirve XML fişi dışa aktarıldı')}
                   >
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>XML İndir</Text>
+                    <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800' }}>XML İndir</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={{ gap: 6 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>100.01 Merkez Kasa (Nakit)</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">100.01 Merkez Kasa (Nakit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857', flexShrink: 0 }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>108.01 POS / Kredi Kartı Bloke</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.65).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">108.01 POS / Kredi Kartı Bloke</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857', flexShrink: 0 }}>{Math.round(totalRevenue * 0.65).toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>150.01 İlk Madde & Malzeme (Stok)</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#b45309' }}>{foodCostTotal.toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">150.01 İlk Madde & Malzeme (Stok)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#b45309', flexShrink: 0 }}>{foodCostTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.01 Genel Yönetim (Sabit)</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#4338ca' }}>{fixedExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">770.01 Genel Yönetim (Sabit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#4338ca', flexShrink: 0 }}>{fixedExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.02 Operasyonel Gider (Değişken)</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#0284c7' }}>{variableExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">770.02 Operasyonel Gider (Değişken)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#0284c7', flexShrink: 0 }}>{variableExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#ecfdf5', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#065f46' }}>391.10 Hesaplanan KDV (%10)</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#166534' }}>{Math.round(totalRevenue - (totalRevenue / 1.1)).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#ecfdf5', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#065f46', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">391.10 Hesaplanan KDV (%10)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#166534', flexShrink: 0 }}>{Math.round(totalRevenue - (totalRevenue / 1.1)).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                 </View>
               </View>
             ) : advisorTab === 'z_report' ? (
               /* Z RAPORU & GÜN SONU KASA MUTABAKATI */
               <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#d97706', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#92400e' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#92400e', flex: 1, minWidth: 150 }} numberOfLines={1}>
                     🧾 Gün Sonu Z-Raporu (Z-0284)
                   </Text>
                   <TouchableOpacity
-                    style={{ backgroundColor: '#d97706', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                    style={{ backgroundColor: '#d97706', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
                     onPress={() => showToast('🖨️ Z-Raporu PDF çıktısı oluşturuldu!')}
                   >
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>🖨️ PDF Yazdır</Text>
+                    <Text style={{ color: '#fff', fontSize: 10.5, fontWeight: '800' }}>🖨️ PDF Yazdır</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={{ gap: 6 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Nakit Tahsilat (Çekmece):</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">Nakit Tahsilat (Çekmece):</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a', flexShrink: 0 }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Banka POS & Temassız:</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.55).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">Banka POS & Temassız:</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a', flexShrink: 0 }}>{Math.round(totalRevenue * 0.55).toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Yemek Kartları (Sodexo/Multi):</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.10).toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8, gap: 8 }}>
+                    <Text style={{ fontSize: 11, color: '#713f12', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">Yemek Kartları (Sodexo/Multi):</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a', flexShrink: 0 }}>{Math.round(totalRevenue * 0.10).toLocaleString('tr-TR')} ₺</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 10, backgroundColor: '#ecfdf5', borderRadius: 8, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065f46' }}>TOPLAM GÜNLÜK Z-HASILATI:</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857' }}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, backgroundColor: '#ecfdf5', borderRadius: 8, borderWidth: 1, borderColor: '#a7f3d0', gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065f46', flex: 1 }} numberOfLines={1} ellipsizeMode="tail">TOPLAM GÜNLÜK Z-HASILATI:</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857', flexShrink: 0 }}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
                   </View>
                 </View>
               </View>
@@ -2816,36 +2822,36 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           {isApproved ? (
                             <TouchableOpacity
                               style={[
-                                { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
+                                { flex: 1, minWidth: 140, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
                               ]}
                               onPress={() => handleToggleExpenseLedger(exp)}
                               activeOpacity={0.7}
                             >
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                                 ✓ {t.recordedLedgerBadge || 'Deftere İşlendi'} ({t.undo || 'Geri Al'})
                               </Text>
                             </TouchableOpacity>
                           ) : (
-                            <View style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
+                            <View style={{ flex: 1, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                               <TouchableOpacity
                                 style={[
-                                  { flex: 1.2, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }
+                                  { flex: 1.2, minWidth: 110, paddingVertical: 9, paddingHorizontal: 6, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }
                                 ]}
                                 onPress={() => handleApproveExpenseLedger(exp)}
                                 activeOpacity={0.7}
                               >
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                                   ✓ {t.approveBtn || 'Deftere Onayla'}
                                 </Text>
                               </TouchableOpacity>
                               <TouchableOpacity
                                 style={[
-                                  { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
+                                  { flex: 1, minWidth: 80, paddingVertical: 9, paddingHorizontal: 6, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
                                 ]}
                                 onPress={() => handleOpenRejectModal(exp)}
                                 activeOpacity={0.7}
                               >
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#b91c1c' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#b91c1c', textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                                   ✕ {t.rejectBtn || 'Reddet'}
                                 </Text>
                               </TouchableOpacity>
@@ -2854,11 +2860,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         </View>
 
                         <View style={styles.webUserCardFooter}>
-                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1 }]} numberOfLines={1}>
+                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1, marginRight: 8 }]} numberOfLines={1}>
                             TDHP: <Text style={{ fontWeight: '700' }}>{isFixed ? '770.01 Genel Yönetim' : '770.02 Operasyonel'}</Text>
                             {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
                           </Text>
-                          <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700' }}>
+                          <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700', flexShrink: 0 }} numberOfLines={1}>
                             {exp.paidByCashier ? `💵 ${t.paidFromCashier || 'Kasadan Ödendi'}` : `⏳ ${t.onCreditRemaining || 'Vadeli / Borç'}`}
                           </Text>
                         </View>
@@ -3564,8 +3570,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
           <View style={[styles.modalCard, { maxHeight: '90%', padding: 16 }]}>
             <View style={styles.webModalHeader}>
               <View>
-                <Text style={styles.modalTitle}>➕ {t.newExpense || 'Yeni Gider Kaydı Ekle'}</Text>
-                <Text style={styles.webModalSub}>{t.rawPlusFplusV || 'Sabit veya değişken işletme maliyet kalemi'}</Text>
+                <Text style={styles.modalTitle}>
+                  {isAdvisorUser ? '🏛️ Mali Müşavir Resmi Defter Girişi' : ('➕ ' + (t.newExpense || 'Yeni Kasa Gideri'))}
+                </Text>
+                <Text style={styles.webModalSub}>
+                  {isAdvisorUser ? 'Resmi yevmiye defterine doğrudan kanuni tahakkuk kaydı' : (t.rawPlusFplusV || 'Sabit veya değişken işletme maliyet kalemi')}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setShowAddExpenseModal(false)}>
                 <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
@@ -3832,46 +3842,54 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
               {/* Ödeme Durumu (Gerçekçi Muhasebe: Peşin Ödendi vs Borca Bırakıldı vs Kısmi) */}
               <Text style={{ fontSize: 11, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 4 }}>
-                Ödeme Şekli & Kasa Durumu:
+                {isAdvisorUser ? '🏛️ Kayıt Türü & Defter Niteliği:' : 'Ödeme Şekli & Kasa Durumu:'}
               </Text>
-              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.chipBtn,
-                    { flex: 1, alignItems: 'center' },
-                    newExpense.paymentStatus === 'PAID' && { backgroundColor: '#059669', borderColor: '#059669' }
-                  ]}
-                  onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
-                >
-                  <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PAID' && { color: '#ffffff', fontWeight: '800' }]}>
-                    💵 {t.paidFromCashier || 'Peşin Ödendi'}
+              {isAdvisorUser ? (
+                <View style={{ backgroundColor: '#f5f3ff', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#ddd6fe', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, color: '#6d28d9', fontWeight: '700' }}>
+                    ℹ️ Mali Müşavir resmi defter kaydı açar. Bu kalem muhasebeci kasası tarafından teyit edildiğinde fiili kasa ödemesi tamamlanır.
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.chipBtn,
-                    { flex: 1, alignItems: 'center' },
-                    newExpense.paymentStatus === 'UNPAID' && { backgroundColor: '#dc2626', borderColor: '#dc2626' }
-                  ]}
-                  onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
-                >
-                  <Text style={[styles.chipTxt, newExpense.paymentStatus === 'UNPAID' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ⏳ {t.unpaidDebt ? t.unpaidDebt.split(' ')[0] : 'Borçta'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.chipBtn,
-                    { flex: 1, alignItems: 'center' },
-                    newExpense.paymentStatus === 'PARTIAL' && { backgroundColor: '#d97706', borderColor: '#d97706' }
-                  ]}
-                  onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
-                >
-                  <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PARTIAL' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ⚡ {t.share || 'Kısmi'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.chipBtn,
+                      { flex: 1, alignItems: 'center' },
+                      newExpense.paymentStatus === 'PAID' && { backgroundColor: '#059669', borderColor: '#059669' }
+                    ]}
+                    onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
+                  >
+                    <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PAID' && { color: '#ffffff', fontWeight: '800' }]}>
+                      💵 {t.paidFromCashier || 'Peşin Ödendi'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.chipBtn,
+                      { flex: 1, alignItems: 'center' },
+                      newExpense.paymentStatus === 'UNPAID' && { backgroundColor: '#dc2626', borderColor: '#dc2626' }
+                    ]}
+                    onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
+                  >
+                    <Text style={[styles.chipTxt, newExpense.paymentStatus === 'UNPAID' && { color: '#ffffff', fontWeight: '800' }]}>
+                      ⏳ {t.unpaidDebt ? t.unpaidDebt.split(' ')[0] : 'Borçta'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.chipBtn,
+                      { flex: 1, alignItems: 'center' },
+                      newExpense.paymentStatus === 'PARTIAL' && { backgroundColor: '#d97706', borderColor: '#d97706' }
+                    ]}
+                    onPress={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
+                  >
+                    <Text style={[styles.chipTxt, newExpense.paymentStatus === 'PARTIAL' && { color: '#ffffff', fontWeight: '800' }]}>
+                      ⚡ {t.share || 'Kısmi'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <TextInput
                 style={styles.modalInput}
@@ -4660,7 +4678,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   shortcutBtn: {
-    width: (width - 42) / 2,
+    flexGrow: 1,
+    flexBasis: width > 360 ? (width - 44) / 2 : '100%',
+    minWidth: 140,
     backgroundColor: THEME.colors.surface,
     borderRadius: 12,
     padding: 14,
@@ -4676,6 +4696,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
+    textAlign: 'center',
   },
   searchCard: {
     backgroundColor: THEME.colors.surface,
@@ -4928,11 +4949,11 @@ const styles = StyleSheet.create({
   bottomNavTab: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    minHeight: 48,
-    borderRadius: 20,
-    marginHorizontal: 3,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    minHeight: 46,
+    borderRadius: 18,
+    marginHorizontal: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.1)',
@@ -4942,7 +4963,7 @@ const styles = StyleSheet.create({
     borderColor: '#10b981',
   },
   bottomNavIcon: {
-    fontSize: 16,
+    fontSize: 15,
     marginBottom: 2,
     opacity: 0.75,
   },
@@ -4951,11 +4972,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
   bottomNavLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#96be9f',
     fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   bottomNavLabelActive: {
     color: '#10b981',
@@ -5106,7 +5127,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   webMetricCard: {
-    width: (width - 42) / 2,
+    flexGrow: 1,
+    flexBasis: width > 360 ? (width - 44) / 2 : '100%',
+    minWidth: 140,
     backgroundColor: '#ffffff',
     borderRadius: 14,
     padding: 10,

@@ -31,8 +31,10 @@ export default function LoginPage() {
           navigate('/dashboard')
           break
         case ROLES.ACCOUNTANT:
+          navigate('/cashier')
+          break
         case ROLES.FINANCIAL_ADVISOR:
-          navigate('/accounting')
+          navigate('/advisor-ledger')
           break
         case ROLES.CHEF:
           navigate('/recipes')
