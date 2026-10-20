@@ -32,7 +32,7 @@ public class InventoryController {
 
     @GetMapping("/{id}")
     @Operation(summary = "ID ile stok kalemi detayı getir")
-    public ResponseEntity<ApiResponse<InventoryItem>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<InventoryItem>> getById(@PathVariable("id") Long id) {
         return inventoryService.getItemById(id)
                 .map(item -> ResponseEntity.ok(ApiResponse.ok("Ürün bulundu", item)))
                 .orElse(ResponseEntity.status(404).body(ApiResponse.error("Belirtilen ID ile ürün bulunamadı: " + id)));
@@ -40,7 +40,7 @@ public class InventoryController {
 
     @GetMapping("/barcode/{barcode}")
     @Operation(summary = "Barkod veya QR kod ile ürün sorgula")
-    public ResponseEntity<ApiResponse<InventoryItem>> getByBarcode(@PathVariable String barcode) {
+    public ResponseEntity<ApiResponse<InventoryItem>> getByBarcode(@PathVariable("barcode") String barcode) {
         return inventoryService.getItemByBarcode(barcode)
                 .map(item -> ResponseEntity.ok(ApiResponse.ok("Barkod başarıyla eşleşti", item)))
                 .orElse(ResponseEntity.status(404).body(ApiResponse.error("Barkod sistemde bulunamadı: " + barcode)));
@@ -55,7 +55,7 @@ public class InventoryController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Mevcut stok kalemini güncelle")
-    public ResponseEntity<ApiResponse<InventoryItem>> update(@PathVariable Long id, @RequestBody InventoryItem updated) {
+    public ResponseEntity<ApiResponse<InventoryItem>> update(@PathVariable("id") Long id, @RequestBody InventoryItem updated) {
         return inventoryService.getItemById(id).map(item -> {
             item.setName(updated.getName());
             item.setCategory(updated.getCategory());
@@ -73,7 +73,7 @@ public class InventoryController {
 
     @PostMapping("/{id}/receive")
     @Operation(summary = "Mal kabul işlemi yap (Stoğa miktar ekler ve loglar)")
-    public ResponseEntity<ApiResponse<StockTransaction>> receiveStock(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<ApiResponse<StockTransaction>> receiveStock(@PathVariable("id") Long id, @RequestBody Map<String, Object> payload) {
         if (!payload.containsKey("quantity")) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Lütfen eklenecek miktarı ('quantity') belirtin"));
         }
@@ -85,7 +85,7 @@ public class InventoryController {
 
     @PostMapping("/{id}/waste")
     @Operation(summary = "Zayiat / Fire kaydı oluştur (Stoktan düşer ve loglar)")
-    public ResponseEntity<ApiResponse<StockTransaction>> recordWaste(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<ApiResponse<StockTransaction>> recordWaste(@PathVariable("id") Long id, @RequestBody Map<String, Object> payload) {
         if (!payload.containsKey("quantity")) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Lütfen zayiat miktarını ('quantity') belirtin"));
         }

@@ -84,6 +84,9 @@ public class UserController {
         }
 
         newUser.setUsername(newUser.getUsername().trim().toLowerCase());
+        if (newUser.getName() == null || newUser.getName().trim().isEmpty()) {
+            newUser.setName(newUser.getUsername());
+        }
         if (newUser.getPassword() == null || newUser.getPassword().trim().isEmpty()) {
             newUser.setPassword("123456");
         }
@@ -98,7 +101,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/role")
-    public ResponseEntity<Object> updateRole(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<Object> updateRole(@PathVariable("id") Long id, @RequestBody Map<String, String> payload) {
         String newRole = payload.get("role");
         if (newRole == null || newRole.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Yeni rol belirtilmelidir"));
@@ -117,7 +120,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Object> deleteUser(@PathVariable("id") Long id) {
         Optional<AppUser> userOpt = repository.findById(id);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Kullanıcı bulunamadı"));
