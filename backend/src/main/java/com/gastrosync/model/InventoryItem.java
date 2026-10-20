@@ -1,16 +1,27 @@
 package com.gastrosync.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "inventory_items")
+@Table(
+    name = "inventory_items",
+    indexes = {
+        @Index(name = "idx_inventory_barcode", columnList = "barcode"),
+        @Index(name = "idx_inventory_category", columnList = "category"),
+        @Index(name = "idx_inventory_supplier", columnList = "supplier")
+    }
+)
 public class InventoryItem {
 
     @Id
@@ -23,16 +34,16 @@ public class InventoryItem {
     @Column(nullable = false)
     private String category;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal currentStock;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal minStock;
 
     @Column(nullable = false)
     private String unit;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal unitCost;
 
     @Column(nullable = false)
@@ -41,6 +52,30 @@ public class InventoryItem {
     private String barcode;
 
     private String lastUpdated;
+
+    // Enterprise Audit Fields
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.lastUpdated == null) {
+            this.lastUpdated = LocalDateTime.now().toString();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+        this.lastUpdated = LocalDateTime.now().toString();
+    }
 
     public InventoryItem() {}
 
@@ -86,4 +121,10 @@ public class InventoryItem {
 
     public String getLastUpdated() { return lastUpdated; }
     public void setLastUpdated(String lastUpdated) { this.lastUpdated = lastUpdated; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

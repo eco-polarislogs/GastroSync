@@ -7,10 +7,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "notifications")
+@Table(
+    name = "notifications",
+    indexes = {
+        @Index(name = "idx_notifications_role_read", columnList = "targetRole, isRead"),
+        @Index(name = "idx_notifications_created_at", columnList = "createdAt DESC")
+    }
+)
 public class Notification {
 
     @Id
@@ -34,7 +42,18 @@ public class Notification {
 
     private Boolean isRead = false;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.isRead == null) {
+            this.isRead = false;
+        }
+    }
 
     public Notification() {
         this.createdAt = LocalDateTime.now();

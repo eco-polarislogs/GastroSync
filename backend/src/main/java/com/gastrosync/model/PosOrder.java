@@ -8,10 +8,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "pos_orders")
+@Table(
+    name = "pos_orders",
+    indexes = {
+        @Index(name = "idx_pos_order_number", columnList = "orderNumber", unique = true),
+        @Index(name = "idx_pos_order_status", columnList = "status"),
+        @Index(name = "idx_pos_order_created_at", columnList = "createdAt DESC")
+    }
+)
 public class PosOrder {
 
     @Id

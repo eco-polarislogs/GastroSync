@@ -3,7 +3,13 @@ package com.gastrosync.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "suppliers")
+@Table(
+    name = "suppliers",
+    indexes = {
+        @Index(name = "idx_suppliers_name", columnList = "name", unique = true),
+        @Index(name = "idx_suppliers_tax_number", columnList = "taxNumber")
+    }
+)
 public class Supplier {
 
     @Id

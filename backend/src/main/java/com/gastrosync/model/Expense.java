@@ -3,9 +3,19 @@ package com.gastrosync.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "expenses")
+@Table(
+    name = "expenses",
+    indexes = {
+        @Index(name = "idx_expenses_period", columnList = "period"),
+        @Index(name = "idx_expenses_category_subtype", columnList = "category, subType"),
+        @Index(name = "idx_expenses_status", columnList = "status"),
+        @Index(name = "idx_expenses_payment_status", columnList = "paymentStatus"),
+        @Index(name = "idx_expenses_date", columnList = "expenseDate DESC")
+    }
+)
 public class Expense {
 
     @Id
@@ -26,8 +36,10 @@ public class Expense {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(nullable = false)
     private String period; // Örn: "2026-10" (Ekim 2026)
 
+    @Column(nullable = false)
     private LocalDate expenseDate;
 
     private String recordedBy;
@@ -47,6 +59,41 @@ public class Expense {
     private LocalDate dueDate; // Son ödeme vadesi (borç/vade takibi için)
     private String invoiceNumber; // Resmi Fatura / Fiş / Dekont No
     private String counterparty; // Alacaklı / Tedarikçi / Kurum (örn: "Enerjisa", "İSKİ", "Mal Sahibi Mehmet Bey")
+
+    // Enterprise Audit Fields
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.expenseDate == null) {
+            this.expenseDate = LocalDate.now();
+        }
+        if (this.period == null || this.period.isBlank()) {
+            this.period = this.expenseDate.getYear() + "-" + String.format("%02d", this.expenseDate.getMonthValue());
+        }
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "PENDING_APPROVAL";
+        }
+        if (this.paymentStatus == null || this.paymentStatus.isBlank()) {
+            this.paymentStatus = "PAID";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+        if (this.expenseDate != null && (this.period == null || this.period.isBlank())) {
+            this.period = this.expenseDate.getYear() + "-" + String.format("%02d", this.expenseDate.getMonthValue());
+        }
+    }
 
     public Expense() {}
 
@@ -134,4 +181,10 @@ public class Expense {
 
     public String getCounterparty() { return counterparty; }
     public void setCounterparty(String counterparty) { this.counterparty = counterparty; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

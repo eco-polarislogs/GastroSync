@@ -5,7 +5,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "stock_transactions")
+@Table(
+    name = "stock_transactions",
+    indexes = {
+        @Index(name = "idx_stock_tx_item", columnList = "item_id"),
+        @Index(name = "idx_stock_tx_type", columnList = "type"),
+        @Index(name = "idx_stock_tx_timestamp", columnList = "timestamp DESC")
+    }
+)
 public class StockTransaction {
 
     @Id
@@ -35,6 +42,16 @@ public class StockTransaction {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.timestamp == null) {
+            this.timestamp = LocalDateTime.now();
+        }
+        if (this.totalAmount == null && this.unitCost != null && this.quantity != null) {
+            this.totalAmount = this.unitCost.multiply(this.quantity);
+        }
+    }
+
     public StockTransaction() {
         this.timestamp = LocalDateTime.now();
     }
@@ -45,7 +62,7 @@ public class StockTransaction {
         this.type = type;
         this.quantity = quantity;
         this.unitCost = unitCost;
-        this.totalAmount = unitCost != null ? unitCost.multiply(quantity) : BigDecimal.ZERO;
+        this.totalAmount = (unitCost != null && quantity != null) ? unitCost.multiply(quantity) : BigDecimal.ZERO;
         this.reason = reason;
         this.recordedBy = recordedBy;
         this.timestamp = LocalDateTime.now();
