@@ -1,0 +1,16 @@
+# GitHub Linguist Dil Algılama Konfigürasyonu
+# GastroSync bir React, React Native ve Java Spring Boot projesidir.
+# Kök dizindeki yardımcı JS betiklerinin veya derleme dosyalarının projeyi sadece "JavaScript" olarak göstermesini engeller.
+
+# Yardımcı ve tek seferlik scriptler Linguist istatistiklerinden hariç tutulur:
+seed-recipes.js linguist-vendored
+compile_backend.ps1 linguist-vendored
+start-all.bat linguist-vendored
+start-all.sh linguist-vendored
+phone_dump.xml linguist-vendored
+
+# React Native Mobil Proje dosyaları (Açıkça React Native / JSX olarak işaretlenir):
+mobile/App.js linguist-detectable=true
+mobile/src/android/AndroidApp.js linguist-detectable=true
+mobile/src/ios/IOSApp.js linguist-detectable=true
+mobile/src/components/*.js linguist-detectable=true
