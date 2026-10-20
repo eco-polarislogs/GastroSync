@@ -255,20 +255,10 @@ Sisteme giriş yapabileceğiniz hazır roller (Tüm hesapların şifresi `123456
 | **`chef`** | `chef@gastrosync.com` | Mutfak Şefi | Reçete gramajları, porsiyon maliyeti ve tüketim |
 | **`warehouse`** | `depo@gastrosync.com` | Depo Sorumlusu | Barkodlu mal kabul, zayiat ve stok sayımı |
 
----
 
-## 🗺️ Yakında Gelecek Özellikler (Roadmap)
-
-Henüz geliştirme aşamasında olan veya sıradaki sürümlerde sisteme dahil edilecek yapılar:
-
-- [ ] **Luca & Zirve Canlı SOAP/REST Web Servis Entegrasyonu:** Mevcut XML/XLS dışa aktarımına ek olarak doğrudan SMMM mali müşavir yazılımlarına tek tuşla otomatik yevmiye kaydı fırlatma.
-- [ ] **Mali Mühür & e-Fatura / e-Arşiv Entegratör Bağlantısı:** Mal kabul sırasında faturanın GİB (Gelir İdaresi Başkanlığı) e-Fatura portalından UUID ile otomatik çekilmesi.
-- [ ] **Telsiz Modülüne Gerçek Zamanlı WebRTC / WebSocket Sesli Telsiz Desteği:** Mevcut metin ve öncelikli anons telsizine ek olarak mutfak-salon arası gerçek zamanlı bas-konuş (Push-to-Talk) ses aktarımı.
-- [ ] **Yapay Zeka (AI) Destekli Dinamik Menü Fiyatlandırması:** Enflasyonist hammadde artışlarına göre kâr marjını korumak için otomatik menü satış fiyatı öneren tahmin motoru.
-- [ ] **Çok Şubeli (Multi-Branch) Konsolide Kasa:** Birden fazla restoran şubesinin cirolarını ve merkez depo transferlerini tek ekranda toplayan konsolide genel merkez paneli.
-
----
 
 ## 📄 Lisans
 Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.  
 GastroSync © 2026 Tüm Hakları Saklıdır.
+---
+Geliştirici - Ecren Solmazgül
