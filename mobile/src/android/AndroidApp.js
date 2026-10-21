@@ -2760,7 +2760,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 style={[
                                   styles.webUserAvatar,
                                   { backgroundColor: isFinalized ? '#7e22ce' : isNeedsCorrection ? '#dc2626' : '#d97706', borderRadius: 10, width: 36, height: 36 }
-                                ]
+                                ]}
                               >
                                 <Text style={{ fontSize: 16 }}>{isFinalized ? '✓' : isNeedsCorrection ? '⚠️' : '⏳'}</Text>
                               </View>
@@ -2793,7 +2793,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                     paddingVertical: 2,
                                     paddingHorizontal: 6,
                                   }
-                                ]
+                                ]}
                               >
                                 <Text style={[styles.webRolePillTxt, { color: isFinalized ? '#7e22ce' : isNeedsCorrection ? '#b91c1c' : '#b45309', fontSize: 10 }]}>
                                   {isFinalized ? `✓ ${t.statusFinalized ? t.statusFinalized.toUpperCase() : 'DEFTERE KESİNLEŞTİ'}` : isNeedsCorrection ? `⚠️ ${t.statusNeedsCorrection ? t.statusNeedsCorrection.toUpperCase() : 'DÜZELTME BEKLİYOR'}` : `⏳ ${t.statusPendingApproval ? t.statusPendingApproval.toUpperCase() : 'ONAY BEKLİYOR'}`}
@@ -2803,7 +2803,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 style={[
                                   styles.webRolePill,
                                   { backgroundColor: isFixed ? '#eff6ff' : '#fffbeb', borderColor: isFixed ? '#bfdbfe' : '#fde68a', paddingVertical: 2, paddingHorizontal: 6 }
-                                ]
+                                ]}
                               >
                                 <Text style={[styles.webRolePillTxt, { color: isFixed ? '#2563eb' : '#d97706', fontSize: 10 }]}>
                                   {isFixed ? `770.01 ${t.fixedLabel ? t.fixedLabel.toUpperCase() : 'SABİT'}` : `770.02 ${t.variableLabel ? t.variableLabel.toUpperCase() : 'DEĞİŞKEN'}`}
