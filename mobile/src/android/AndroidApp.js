@@ -286,7 +286,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
     try {
       await apiSendChatMessage(newMsg);
       refreshAllData();
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const handleCreateOrderRequest = async () => {
@@ -353,7 +353,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
     try {
       await apiCreateExpense(newExpenseObj);
       refreshAllData();
-    } catch (_) {}
+    } catch (_) { }
 
     showToast(`✓ "${orderModalItem.name}" talebi açıldı ve Kasa/Muhasebe/Depo ekranına iletildi.`);
     setOrderModalItem(null);
@@ -645,7 +645,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       );
       try {
         await apiReceiveStock(matchedItem.id, qty, `${currentUser.name || 'Depo Sorumlusu'} (Mobile)`);
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (delivery.expenseId) {
@@ -657,7 +657,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       );
       try {
         await apiUpdateExpense(delivery.expenseId, updatedExpense);
-      } catch (_) {}
+      } catch (_) { }
     }
 
     showToast(`✓ ${qty} ${unit} "${delivery.itemName}" depoya teslim alındı ve stoğa işlendi!`);
@@ -4994,15 +4994,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         ? (newExpense.subType === 'RENT' ? '🏢 Kira (İşyeri)' : newExpense.subType === 'LABOR' ? '👥 İşçilik (Maaş)' : '📑 Mali Müşavir')
                         : (newExpense.subType === 'ELECTRICITY' ? '⚡ Elektrik'
                           : newExpense.subType === 'WATER' ? '💧 Su'
-                          : newExpense.subType === 'GAS' ? '🔥 Doğalgaz'
-                          : newExpense.subType === 'PHONE' ? '📞 Telefon'
-                          : newExpense.subType === 'INTERNET' ? '🌐 İnternet & Ağ'
-                          : newExpense.subType === 'TAX' ? '🏛️ Vergi (KDV/Stopaj)'
-                          : newExpense.subType === 'SGK' ? '🛡️ Sigorta (SGK Prim)'
-                          : newExpense.subType === 'CONSUMABLES' ? '📦 Sarf Malzeme'
-                          : newExpense.subType === 'LOGISTICS' ? '🚚 Lojistik & Nakliye'
-                          : newExpense.subType === 'MARKETING' ? '📣 Reklam & Tanıtım'
-                          : '🔨 Tadilat & Bakım')}
+                            : newExpense.subType === 'GAS' ? '🔥 Doğalgaz'
+                              : newExpense.subType === 'PHONE' ? '📞 Telefon'
+                                : newExpense.subType === 'INTERNET' ? '🌐 İnternet & Ağ'
+                                  : newExpense.subType === 'TAX' ? '🏛️ Vergi (KDV/Stopaj)'
+                                    : newExpense.subType === 'SGK' ? '🛡️ Sigorta (SGK Prim)'
+                                      : newExpense.subType === 'CONSUMABLES' ? '📦 Sarf Malzeme'
+                                        : newExpense.subType === 'LOGISTICS' ? '🚚 Lojistik & Nakliye'
+                                          : newExpense.subType === 'MARKETING' ? '📣 Reklam & Tanıtım'
+                                            : '🔨 Tadilat & Bakım')}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#64748b' }}>▼</Text>
                   </TouchableOpacity>
@@ -5429,8 +5429,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       {cashInflowSource === 'POS_CASH'
                         ? 'Nakit POS & Restoran Kasa Hasılatı'
                         : cashInflowSource === 'PARTNER'
-                        ? 'Ortak / Sermaye İlavesi'
-                        : 'Banka Hesabından Nakit Çekim'}
+                          ? 'Ortak / Sermaye İlavesi'
+                          : 'Banka Hesabından Nakit Çekim'}
                     </Text>
                     <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>▼</Text>
                   </TouchableOpacity>
@@ -5688,14 +5688,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             {customExpenseSubType === 'CONSUMABLES'
                               ? '📦 Sarf Malzeme'
                               : customExpenseSubType === 'LOGISTICS'
-                              ? '🚚 Hal / Lojistik'
-                              : customExpenseSubType === 'ELECTRICITY'
-                              ? '⚡ Elektrik'
-                              : customExpenseSubType === 'LABOR'
-                              ? '👥 İşçilik'
-                              : customExpenseSubType === 'RENT'
-                              ? '🏢 Kira'
-                              : '🏛️ Vergi'}
+                                ? '🚚 Hal / Lojistik'
+                                : customExpenseSubType === 'ELECTRICITY'
+                                  ? '⚡ Elektrik'
+                                  : customExpenseSubType === 'LABOR'
+                                    ? '👥 İşçilik'
+                                    : customExpenseSubType === 'RENT'
+                                      ? '🏢 Kira'
+                                      : '🏛️ Vergi'}
                           </Text>
                           <Text style={{ fontSize: 10, color: '#64748b' }}>▼</Text>
                         </TouchableOpacity>
