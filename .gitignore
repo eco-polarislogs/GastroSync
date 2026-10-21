@@ -34,3 +34,4 @@ backend/maven/
 mobile/dist-test/
 mobile/.expo/
 .expo/
+.env
