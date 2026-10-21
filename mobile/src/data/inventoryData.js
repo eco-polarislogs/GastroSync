@@ -162,22 +162,139 @@ export const INITIAL_RECIPES = [
       { name: 'Espresso Kahve', amount: '0.02 kg' },
     ]
   },
+  {
+    id: 8,
+    name: 'Kuzu İncik & İsli Firik Pilavı',
+    category: 'Ana Yemek',
+    salePrice: 540.00,
+    cost: 165.20,
+    foodCostPercent: 30.6,
+    ingredients: [
+      { name: 'Kuzu İncik', amount: '0.38 kg' },
+      { name: 'Firik Bulguru', amount: '0.08 kg' },
+      { name: 'Köy Tereyağı', amount: '0.025 kg' },
+      { name: 'Kök Sebzeler', amount: '0.05 kg' },
+    ]
+  },
+  {
+    id: 9,
+    name: 'Çıtır Kalamar Tava & Ege Tarator',
+    category: 'Deniz Ürünleri',
+    salePrice: 390.00,
+    cost: 112.50,
+    foodCostPercent: 28.8,
+    ingredients: [
+      { name: 'Kalamar Halka', amount: '0.18 kg' },
+      { name: 'Süzme Yoğurt & Ceviz (Tarator)', amount: '0.06 kg' },
+      { name: 'Ayçiçek & Zeytinyağı', amount: '0.04 lt' },
+    ]
+  },
+  {
+    id: 10,
+    name: 'Fırında Güveç Karides & Kaşar',
+    category: 'Sıcak Başlangıç',
+    salePrice: 340.00,
+    cost: 95.40,
+    foodCostPercent: 28.1,
+    ingredients: [
+      { name: 'Ayıklanmış Çimçim Karides', amount: '0.15 kg' },
+      { name: 'Köy Tereyağı & Sarımsak', amount: '0.02 kg' },
+      { name: 'Rende Eski Kaşar', amount: '0.04 kg' },
+      { name: 'Çeri Domates Sosu', amount: '0.05 kg' },
+    ]
+  },
+  {
+    id: 11,
+    name: 'Yanık Bask San Sebastian Cheesecake',
+    category: 'Tatlı',
+    salePrice: 240.00,
+    cost: 54.20,
+    foodCostPercent: 22.6,
+    ingredients: [
+      { name: 'Taze Krem Peynir', amount: '0.12 kg' },
+      { name: 'Mutfak Kreması', amount: '0.08 lt' },
+      { name: 'Organik Yumurta', amount: '1 adet' },
+      { name: 'Eritilmiş Belçika Çikolatası', amount: '0.03 kg' },
+    ]
+  },
+  {
+    id: 12,
+    name: 'Taze Sıkım Naneli Çilek Limonatası',
+    category: 'İçecek',
+    salePrice: 140.00,
+    cost: 22.80,
+    foodCostPercent: 16.3,
+    ingredients: [
+      { name: 'Taze Sıkılmış Limon Suyu', amount: '0.09 lt' },
+      { name: 'Dağ Çileği Püresi', amount: '0.04 kg' },
+      { name: 'Taze Bahçe Nanesi', amount: '0.01 bağ' },
+      { name: 'Doğal Şeker Şurubu', amount: '0.02 lt' },
+    ]
+  },
+];
+
+export const INITIAL_EXPENSES = [
+  { id: 1, title: 'Merkez Restoran Kirası', category: 'FIXED', subType: 'RENT', amount: 45000, period: '2026-10', expenseDate: '2026-10-01', dueDate: '2026-10-05', invoiceNumber: 'KRA-2026/10', counterparty: 'Ahmet Yılmaz (Mal Sahibi)', paymentStatus: 'PAID', note: 'Ana cadde dükkan kirası - Havale ile ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 2, title: 'Mutfak & Servis Personel Maaşları', category: 'FIXED', subType: 'LABOR', amount: 85000, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-05', invoiceNumber: 'BORDRO-2026-10', counterparty: 'Restoran Personeli (6 Kişi)', paymentStatus: 'PAID', note: '6 Personel net maaş banka ödemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 3, title: 'Mali Müşavirlik & Danışmanlık', category: 'FIXED', subType: 'ACCOUNTANT', amount: 8500, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-10', invoiceNumber: 'SMMM-2026-089', counterparty: 'SMMM Selim Aydın', paymentStatus: 'PAID', note: 'Aylık defter tutma ve vergi beyanname danışmanlığı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 4, title: 'Sanayi Tipi Elektrik Faturası', category: 'VARIABLE', subType: 'ELECTRICITY', amount: 14200, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-24', invoiceNumber: 'ELEK-8839210', counterparty: 'Enerjisa Dağıtım A.Ş.', paymentStatus: 'UNPAID', note: 'Son ödeme tarihi 24 Ekim - Kasa nakit akışı bekleniyor, borca bırakıldı', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 5, title: 'Şebeke Su Faturası & Arıtma', category: 'VARIABLE', subType: 'WATER', amount: 3800, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-18', invoiceNumber: 'ISKI-2026-443', counterparty: 'İSKİ Genel Müdürlüğü', paymentStatus: 'PAID', note: 'Bulaşıkhane ve mutfak tüketimi vezneden ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 6, title: 'Endüstriyel Mutfak Doğalgaz Tüketimi', category: 'VARIABLE', subType: 'GAS', amount: 9600, period: '2026-10', expenseDate: '2026-10-11', dueDate: '2026-10-28', invoiceNumber: 'IGDAS-9921', counterparty: 'İGDAŞ A.Ş.', paymentStatus: 'UNPAID', note: 'Ocak ve fırın hattı - Gelecek hafta ödenecek (Borç/Vade)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 7, title: 'Restoran Rezervasyon Telefonları', category: 'VARIABLE', subType: 'PHONE', amount: 850, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'TEL-5542', counterparty: 'Türk Telekom', paymentStatus: 'PAID', note: 'Müşteri rezervasyon iletişim hattı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 8, title: 'Fiber İnternet & POS Hattı', category: 'VARIABLE', subType: 'INTERNET', amount: 1250, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'INT-9901', counterparty: 'Turkcell Superonline', paymentStatus: 'PAID', note: 'POS ve restoran Wi-Fi altyapısı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 9, title: 'KDV ve Geçici Vergi Beyanı', category: 'VARIABLE', subType: 'TAX', amount: 18500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-26', invoiceNumber: 'GIB-2026-9', counterparty: 'Gelir İdaresi (Vergi Dairesi)', paymentStatus: 'UNPAID', note: 'Aylık vergi tahakkukları yapıldı, son ödeme 26 Ekim (Borçta)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'SMMM Selim Aydın' },
+  { id: 10, title: 'Personel SGK & Prim Ödemesi', category: 'VARIABLE', subType: 'SGK', amount: 27500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-31', invoiceNumber: 'SGK-BİLD-10', counterparty: 'Sosyal Güvenlik Kurumu', paymentStatus: 'UNPAID', note: 'Ekim ayı sigorta prim bildirgesi tahakkuku - Vadesi ay sonu', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'SMMM Selim Aydın' },
+  { id: 11, title: 'Peçete, Paket & Temizlik Sarf', category: 'VARIABLE', subType: 'CONSUMABLES', amount: 6400, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-13', invoiceNumber: 'SRF-8821', counterparty: 'Paket & Hijyen Toptancısı', paymentStatus: 'PAID', note: 'Ambalaj ve temizlik malzemesi peşin ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 12, title: 'Soğuk Zincir Et & Sebze Lojistik Nakliyesi', category: 'VARIABLE', subType: 'LOGISTICS', amount: 4800, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-20', invoiceNumber: 'LOJ-3341', counterparty: 'Örnek Soğuk Hava Taşımacılık', paymentStatus: 'PAID', note: 'Haftalık et ve sebze lojistiği kasadan ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 13, title: 'Instagram & Gurme Tanıtım Reklamı', category: 'VARIABLE', subType: 'MARKETING', amount: 5000, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-14', invoiceNumber: 'REK-4001', counterparty: 'Meta Ads / Dijital Ajans', paymentStatus: 'PAID', note: 'Mali Müşavir Reddetmişti: Fatura e-arşiv PDF belgesi bekleniyor', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'NEEDS_CORRECTION', rejectionReason: 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 14, title: 'Mutfak Havalandırma & Davlumbaz Bakımı', category: 'VARIABLE', subType: 'RENOVATION', amount: 8500, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-25', invoiceNumber: 'TDL-102', counterparty: 'Usta Havalandırma Ltd.', paymentStatus: 'PARTIAL', note: 'Davlumbaz motor değişimi: 4.000 TL avans verildi, kalan 4.500 TL iş tesliminde ödenecek', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 15, title: 'Taze Sebze & Meyve Hal Alımı (Haftalık)', category: 'VARIABLE', subType: 'CONSUMABLES', amount: 16400, period: '2026-10', expenseDate: '2026-10-16', dueDate: '2026-10-16', invoiceNumber: 'HAL-2026-88', counterparty: 'Bayrampaşa Sebze Hali - Özkaya Tic.', paymentStatus: 'PAID', note: 'Günlük taze yeşillik, domates, mantar ve avokado alımı kasadan ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 16, title: 'Belediye Çevre Temizlik & İlan Reklam Vergisi', category: 'FIXED', subType: 'TAX', amount: 6200, period: '2026-10', expenseDate: '2026-10-17', dueDate: '2026-10-27', invoiceNumber: 'BLD-2026-44', counterparty: 'Belediye Gelirler Müdürlüğü', paymentStatus: 'UNPAID', note: '2. Taksit ilan reklam ve çöp vergisi tahakkuku - Son ödeme 27 Ekim (Borçta)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'SMMM Selim Aydın' },
+  { id: 17, title: 'Banka POS Cihazı Komisyon & Ekstre Bedeli', category: 'VARIABLE', subType: 'ACCOUNTANT', amount: 4850, period: '2026-10', expenseDate: '2026-10-17', dueDate: '2026-10-17', invoiceNumber: 'POS-EKSTRE-10', counterparty: 'Garanti BBVA Üye İşyeri', paymentStatus: 'PAID', note: 'Ekim ayı POS cihazı bakım ve komisyon ekstresi kesintisi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 18, title: 'Restoran Haşere İlaçlama & Biyosidal Hizmeti', category: 'VARIABLE', subType: 'RENOVATION', amount: 2800, period: '2026-10', expenseDate: '2026-10-18', dueDate: '2026-10-25', invoiceNumber: 'ILC-774', counterparty: 'Biyokim Hijyen ve İlaçlama A.Ş.', paymentStatus: 'PAID', note: 'Aylık periyodik mutfak ve depo haşere kontrolü, fatura kesildi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 19, title: 'Paket Servis Kurye & Motosiklet Yakıt Masrafı', category: 'VARIABLE', subType: 'LOGISTICS', amount: 3950, period: '2026-10', expenseDate: '2026-10-18', dueDate: '2026-10-18', invoiceNumber: 'YKT-991', counterparty: 'Petrol Ofisi - İstasyon 14', paymentStatus: 'PAID', note: 'Kurye motosikletlerinin haftalık yakıt alımı fişleri', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'NEEDS_CORRECTION', rejectionReason: 'Taşıt tanıma fişleri ile plaka eşleşmesi yapılmalı, fatura işletme unvanına düzenlenmeli', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 20, title: 'Derin Dondurucu Kompresör Gaz Dolumu', category: 'VARIABLE', subType: 'RENOVATION', amount: 7200, period: '2026-10', expenseDate: '2026-10-19', dueDate: '2026-10-29', invoiceNumber: 'SGT-550', counterparty: 'Termo Soğutma Sistemleri', paymentStatus: 'PARTIAL', note: 'Kompresör gaz dolumu yapıldı, 3.500 ₺ peşin verildi, 3.700 ₺ ay sonu teslimde ödenecek', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL', recordedBy: 'Canan Öztürk (Kasa)' },
+  { id: 21, title: 'Mutfak & Bar Personeli OSGB Sağlık Raporu', category: 'FIXED', subType: 'LABOR', amount: 5400, period: '2026-10', expenseDate: '2026-10-19', dueDate: '2026-10-20', invoiceNumber: 'OSGB-339', counterparty: 'Vizyon OSGB Ortak Sağlık Birimi', paymentStatus: 'PAID', note: 'Personel portör ve akciğer grafisi muayeneleri tamamlandı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED', recordedBy: 'Canan Öztürk (Kasa)' },
 ];
 
 export const INITIAL_SALES_SUMMARY = {
-  totalRevenue: 76485,
-  totalCost: 18785.85,
-  foodCostPercent: 24.5,
-  netProfit: 57699.15,
-  orderCount: 185,
+  totalRevenue: 128450,
+  totalCost: 34180.20,
+  foodCostPercent: 26.6,
+  netProfit: 94269.80,
+  orderCount: 265,
 };
 
 export const INITIAL_SALES_ITEMS = [
   { id: 1, name: 'Odun Ateşinde Izgara Köfte', qty: 38, revenue: 12920, cost: 2591.60, foodCost: 20.1 },
   { id: 2, name: 'Somon & Avokado Poke Bowl', qty: 26, revenue: 10920, cost: 3036.80, foodCost: 27.8 },
   { id: 3, name: 'Dry-Aged Izgara Antrikot', qty: 16, revenue: 10880, cost: 3878.40, foodCost: 35.6 },
-  { id: 4, name: 'Otantik İtalyan Tiramisu', qty: 34, revenue: 7480, cost: 1676.20, foodCost: 22.4 },
-  { id: 5, name: 'Kremalı Trüflü Penne', qty: 18, revenue: 6480, cost: 875.70, foodCost: 13.5 },
-  { id: 6, name: 'Izgara Tavuklu Sezar Salata', qty: 24, revenue: 6240, cost: 1225.20, foodCost: 19.6 },
-  { id: 7, name: 'Trüflü Mantarlı Risotto', qty: 15, revenue: 5925, cost: 1092.75, foodCost: 18.4 },
+  { id: 4, name: 'Kuzu İncik & İsli Firik Pilavı', qty: 18, revenue: 9720, cost: 2973.60, foodCost: 30.6 },
+  { id: 5, name: 'Otantik İtalyan Tiramisu', qty: 34, revenue: 7480, cost: 1676.20, foodCost: 22.4 },
+  { id: 6, name: 'Çıtır Kalamar Tava & Ege Tarator', qty: 18, revenue: 7020, cost: 2025.00, foodCost: 28.8 },
+  { id: 7, name: 'Kremalı Trüflü Penne', qty: 18, revenue: 6480, cost: 875.70, foodCost: 13.5 },
+  { id: 8, name: 'Izgara Tavuklu Sezar Salata', qty: 24, revenue: 6240, cost: 1225.20, foodCost: 19.6 },
+  { id: 9, name: 'Trüflü Mantarlı Risotto', qty: 15, revenue: 5925, cost: 1092.75, foodCost: 18.4 },
+  { id: 10, name: 'Fırında Güveç Karides & Kaşar', qty: 16, revenue: 5440, cost: 1526.40, foodCost: 28.1 },
+  { id: 11, name: 'Yanık Bask San Sebastian', qty: 22, revenue: 5280, cost: 1192.40, foodCost: 22.6 },
+  { id: 12, name: 'Taze Naneli Çilek Limonatası', qty: 32, revenue: 4480, cost: 729.60, foodCost: 16.3 },
 ];
+
+export const EXPENSE_TYPES = {
+  // Sabit Giderler
+  RENT: { label: 'Kira (İşyeri)', category: 'FIXED', icon: '🏢' },
+  LABOR: { label: 'İşçilik & Personel Maaşları', category: 'FIXED', icon: '👥' },
+  ACCOUNTANT: { label: 'Mali Müşavir', category: 'FIXED', icon: '📑' },
+  // Değişken Giderler
+  ELECTRICITY: { label: 'Elektrik', category: 'VARIABLE', icon: '⚡' },
+  WATER: { label: 'Su', category: 'VARIABLE', icon: '💧' },
+  GAS: { label: 'Doğalgaz', category: 'VARIABLE', icon: '🔥' },
+  PHONE: { label: 'Telefon', category: 'VARIABLE', icon: '📞' },
+  INTERNET: { label: 'İnternet & Ağ', category: 'VARIABLE', icon: '🌐' },
+  TAX: { label: 'Vergi (KDV / Stopaj)', category: 'VARIABLE', icon: '🏛️' },
+  SGK: { label: 'Sigorta (SGK Prim)', category: 'VARIABLE', icon: '🛡️' },
+  CONSUMABLES: { label: 'Sarf Malzeme', category: 'VARIABLE', icon: '📦' },
+  LOGISTICS: { label: 'Lojistik & Nakliye', category: 'VARIABLE', icon: '🚚' },
+  MARKETING: { label: 'Reklam & Tanıtım', category: 'VARIABLE', icon: '📣' },
+  RENOVATION: { label: 'Tadilat & Bakım', category: 'VARIABLE', icon: '🔨' },
+};

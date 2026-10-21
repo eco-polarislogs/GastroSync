@@ -19,6 +19,7 @@ import {
   INITIAL_RECIPES,
   INITIAL_SALES_SUMMARY,
   INITIAL_SALES_ITEMS,
+  INITIAL_EXPENSES,
   ROLE_MODULES,
 } from '../data/inventoryData';
 import { TRANSLATIONS, getCategoryLabel, getRoleLabel, getExpenseTypeLabel, getLocalizedNotification } from '../data/translations';
@@ -84,22 +85,7 @@ export default function IOSApp({ initialUser, onLogout }) {
   const [recipes, setRecipes] = useState(INITIAL_RECIPES);
   const [users, setUsers] = useState(DEMO_USERS);
   const [transactions, setTransactions] = useState([]);
-  const [expenses, setExpenses] = useState([
-    { id: 1, title: 'Merkez Restoran Kirası', category: 'FIXED', subType: 'RENT', amount: 45000, period: '2026-10', expenseDate: '2026-10-01', dueDate: '2026-10-05', invoiceNumber: 'KRA-2026/10', counterparty: 'Ahmet Yılmaz (Mal Sahibi)', paymentStatus: 'PAID', note: 'Ana cadde dükkan kirası - Havale ile ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 2, title: 'Mutfak & Servis Personel Maaşları', category: 'FIXED', subType: 'LABOR', amount: 85000, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-05', invoiceNumber: 'BORDRO-2026-10', counterparty: 'Restoran Personeli (6 Kişi)', paymentStatus: 'PAID', note: '6 Personel net maaş banka ödemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 3, title: 'Mali Müşavirlik & Danışmanlık', category: 'FIXED', subType: 'ACCOUNTANT', amount: 8500, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-10', invoiceNumber: 'SMMM-2026-089', counterparty: 'SMMM Selim Aydın', paymentStatus: 'PAID', note: 'Aylık defter tutma ve vergi beyanname danışmanlığı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 4, title: 'Sanayi Tipi Elektrik Faturası', category: 'VARIABLE', subType: 'ELECTRICITY', amount: 14200, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-24', invoiceNumber: 'ELEK-8839210', counterparty: 'Enerjisa Dağıtım A.Ş.', paymentStatus: 'UNPAID', note: 'Son ödeme tarihi 24 Ekim - Kasa nakit akışı bekleniyor, borca bırakıldı', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
-    { id: 5, title: 'Şebeke Su Faturası & Arıtma', category: 'VARIABLE', subType: 'WATER', amount: 3800, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-18', invoiceNumber: 'ISKI-2026-443', counterparty: 'İSKİ Genel Müdürlüğü', paymentStatus: 'PAID', note: 'Bulaşıkhane ve mutfak tüketimi vezneden ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 6, title: 'Endüstriyel Mutfak Doğalgaz', category: 'VARIABLE', subType: 'GAS', amount: 9600, period: '2026-10', expenseDate: '2026-10-11', dueDate: '2026-10-28', invoiceNumber: 'IGDAS-992', counterparty: 'İGDAŞ', paymentStatus: 'UNPAID', note: 'Ocak ve fırın hattı - Gelecek hafta ödenecek (Borç/Vade)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
-    { id: 7, title: 'Restoran Rezervasyon Telefonları', category: 'VARIABLE', subType: 'PHONE', amount: 850, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'TEL-5542', counterparty: 'Türk Telekom', paymentStatus: 'PAID', note: 'İletişim hatları', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 8, title: 'Fiber İnternet & POS Hattı', category: 'VARIABLE', subType: 'INTERNET', amount: 1250, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'INT-9901', counterparty: 'Superonline', paymentStatus: 'PAID', note: 'POS ve Wi-Fi altyapısı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 9, title: 'KDV ve Geçici Vergi Beyanı', category: 'VARIABLE', subType: 'TAX', amount: 18500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-26', invoiceNumber: 'GIB-2026-9', counterparty: 'Vergi Dairesi', paymentStatus: 'UNPAID', note: 'Aylık vergi tahakkukları yapıldı, son ödeme 26 Ekim (Borçta)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 10, title: 'Personel SGK & Prim Ödemesi', category: 'VARIABLE', subType: 'SGK', amount: 27500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-31', invoiceNumber: 'SGK-10', counterparty: 'SGK', paymentStatus: 'UNPAID', note: 'Ekim SGK primi - Vadesi ay sonu', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 11, title: 'Peçete, Paket & Temizlik Sarf', category: 'VARIABLE', subType: 'CONSUMABLES', amount: 6400, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-13', invoiceNumber: 'SRF-88', counterparty: 'Paketçi Toptan', paymentStatus: 'PAID', note: 'Ambalaj ve hijyen malzemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
-    { id: 12, title: 'Soğuk Hava Zinciri Sevkiyatı', category: 'VARIABLE', subType: 'LOGISTICS', amount: 4800, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-20', invoiceNumber: 'LOJ-33', counterparty: 'Örnek Lojistik', paymentStatus: 'PAID', note: 'Haftalık et ve sebze lojistiği', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
-    { id: 13, title: 'Instagram & Gurme Tanıtım Reklamı', category: 'VARIABLE', subType: 'MARKETING', amount: 5000, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-14', invoiceNumber: 'REK-4001', counterparty: 'Meta Ads / Dijital Ajans', paymentStatus: 'PAID', note: 'Mali Müşavir Reddetmişti: Fatura e-arşiv PDF belgesi bekleniyor', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'NEEDS_CORRECTION', rejectionReason: 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli' },
-    { id: 14, title: 'Mutfak Davlumbaz ve Izgara Bakımı', category: 'VARIABLE', subType: 'RENOVATION', amount: 3750, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-25', invoiceNumber: 'TDL-10', counterparty: 'Usta Havalandırma', paymentStatus: 'PARTIAL', note: 'Davlumbaz motor değişimi: avans verildi, kalan teslimatta ödenecek', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
-  ]);
+  const [expenses, setExpenses] = useState(INITIAL_EXPENSES);
   const [currentLang, setCurrentLang] = useState('tr');
   const [showLangModal, setShowLangModal] = useState(false);
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.tr;
@@ -112,8 +98,6 @@ export default function IOSApp({ initialUser, onLogout }) {
   const [advisorTab, setAdvisorTab] = useState('pending_approval'); // 'pending_approval' | 'ledger' | 'tdhp' | 'z_report' | 'rejected'
   const [advisorSearch, setAdvisorSearch] = useState('');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [showCashModal, setShowCashModal] = useState(false);
-  const [cashAllocationAmount, setCashAllocationAmount] = useState('5000');
   const [expenseToRejectMobile, setExpenseToRejectMobile] = useState(null);
   const [mobileRejectReason, setMobileRejectReason] = useState('');
   const [newExpense, setNewExpense] = useState({
@@ -724,98 +708,6 @@ export default function IOSApp({ initialUser, onLogout }) {
       type: 'EXPENSE_APPROVAL',
       relatedEntityId: created.id,
     });
-    refreshAllData();
-  };
-
-  // Muhasebecinin Mali Müşavire Onaya Göndermesi (Web ile birebir)
-  const handleSendToAdvisor = async (exp) => {
-    setExpenses((prev) =>
-      prev.map((e) => (e.id === exp.id ? { ...e, sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' } : e))
-    );
-    showToast(`🚀 "${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) Mali Müşavir defter onayına gönderildi.`);
-    await apiUpdateExpense(exp.id, { sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' });
-    await apiCreateNotification({
-      title: '🚀 Gider Defter Onayı Bekliyor (Mobil)',
-      message: `${currentUser.name || 'Kasa / Muhasebe'} mobilden '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' onaylanmak üzere Mali Müşavire iletildi.`,
-      targetRole: 'FINANCIAL_ADVISOR',
-      senderName: currentUser.name || 'Kasa / Muhasebe',
-      type: 'EXPENSE_APPROVAL',
-      relatedEntityId: exp.id,
-    });
-  };
-
-  // Kasa Dağıtımı (Örn: Kasaya Gelen 5000 TL'nin Giderlere Dağıtımı)
-  const handleAllocateCash = async () => {
-    const totalVal = parseFloat(cashAllocationAmount) || 5000;
-    const curDate = new Date().toISOString().split('T')[0];
-    const recBy = currentUser.name || 'Kasa / Muhasebe';
-
-    const item1 = {
-      id: Date.now(),
-      title: 'Günlük Sarf & Temizlik Çıkışı (Kasa Dağıtım)',
-      category: 'VARIABLE',
-      subType: 'CONSUMABLES',
-      amount: Math.round(totalVal * 0.3),
-      period: '2026-10',
-      expenseDate: curDate,
-      recordedBy: recBy,
-      note: `Kasaya gelen ${totalVal} ₺ içerisinden ayrılan pay`,
-      isOwnedProperty: false,
-      paidByCashier: true,
-      recordedInLedger: false,
-      sentToAdvisor: true,
-      status: 'PENDING_APPROVAL'
-    };
-    const item2 = {
-      id: Date.now() + 1,
-      title: 'Sanayi Mutfak Elektrik Avansı (Kasa Dağıtım)',
-      category: 'VARIABLE',
-      subType: 'ELECTRICITY',
-      amount: Math.round(totalVal * 0.4),
-      period: '2026-10',
-      expenseDate: curDate,
-      recordedBy: recBy,
-      note: `Kasaya gelen ${totalVal} ₺ içerisinden ayrılan pay`,
-      isOwnedProperty: false,
-      paidByCashier: true,
-      recordedInLedger: false,
-      sentToAdvisor: true,
-      status: 'PENDING_APPROVAL'
-    };
-    const item3 = {
-      id: Date.now() + 2,
-      title: 'Günlük Soğuk Zincir Lojistik Payı (Kasa Dağıtım)',
-      category: 'VARIABLE',
-      subType: 'LOGISTICS',
-      amount: Math.round(totalVal * 0.3),
-      period: '2026-10',
-      expenseDate: curDate,
-      recordedBy: recBy,
-      note: `Kasaya gelen ${totalVal} ₺ içerisinden ayrılan pay`,
-      isOwnedProperty: false,
-      paidByCashier: true,
-      recordedInLedger: false,
-      sentToAdvisor: true,
-      status: 'PENDING_APPROVAL'
-    };
-
-    setExpenses((prev) => [item1, item2, item3, ...prev]);
-    setShowCashModal(false);
-    showToast(`💵 ${totalVal.toLocaleString('tr-TR')} ₺ kasadan giderlere dağıtıldı ve Mali Müşavire iletildi!`);
-
-    await Promise.all([
-      apiCreateExpense(item1),
-      apiCreateExpense(item2),
-      apiCreateExpense(item3),
-      apiCreateNotification({
-        title: '💵 Kasadan Gider Dağıtımı Yapıldı (Mobil)',
-        message: `${currentUser.name || 'Kasa / Muhasebe'} kasaya giren ${totalVal.toLocaleString('tr-TR')} ₺ tutarı Elektrik, Sarf ve Lojistik giderlerine paylaştırdı.`,
-        targetRole: 'FINANCIAL_ADVISOR',
-        senderName: currentUser.name || 'Kasa / Muhasebe',
-        type: 'CASH_ALLOCATED',
-        relatedEntityId: null,
-      }),
-    ]);
     refreshAllData();
   };
 
@@ -1953,19 +1845,11 @@ export default function IOSApp({ initialUser, onLogout }) {
                     💰 {t.cashierAccounting || 'Kasa & Muhasebe'}
                   </Text>
                   <Text style={[styles.webPageSub, { fontSize: 11, marginTop: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                    {t.heroDesc || 'Restoran nakit akışı, kasa dağıtımı ve fiili ödemeler'}
+                    {t.accountingSubHeader || 'Restoran nakit akışı, sabit & değişken maliyetler ve gider ödemeleri'}
                   </Text>
                 </View>
 
-                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                  <TouchableOpacity
-                    style={[styles.webBtnSecondary, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 }]}
-                    onPress={() => setShowCashModal(true)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#065f46' }}>💵 {t.allocateCash || 'Kasa Dağıt'}</Text>
-                  </TouchableOpacity>
-
+                <View style={{ flexDirection: 'row', gap: 6 }}>
                   <TouchableOpacity
                     style={[styles.webBtnPrimary, { backgroundColor: '#047857', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }]}
                     onPress={() => setShowAddExpenseModal(true)}
@@ -2449,29 +2333,20 @@ export default function IOSApp({ initialUser, onLogout }) {
                       </View>
                     </View>
 
-                    {/* Sadece Aksiyon Gereken Durumlarda Buton Satırı */}
-                    {(isUnpaid || (!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor)) || currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
+                    {/* Sadece Aksiyon Gereken Durumlarda Buton Satırı (Web Parity: Sadece Borç Ödeme ve Silme) */}
+                    {(isUnpaid || isPartial || currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
                       <View style={styles.expActionRow}>
                         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
-                          {/* Borç Ödeme Butonu */}
-                          {isUnpaid && (
+                          {/* Borç / Kalan Tutar Ödeme Butonu */}
+                          {(isUnpaid || isPartial) && (
                             <TouchableOpacity
-                              style={styles.webBtnPayDebt}
+                              style={[styles.webBtnPayDebt, isPartial && { backgroundColor: '#fffbeb', borderColor: '#fde68a' }]}
                               onPress={() => handlePayDebtNow(exp)}
                               activeOpacity={0.8}
                             >
-                              <Text style={styles.webBtnPayDebtTxt}>💳 Kasadan Öde</Text>
-                            </TouchableOpacity>
-                          )}
-
-                          {/* Müşavire Gönder Butonu (Ret almışsa veya henüz gönderilmemişse) */}
-                          {!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor) && (
-                            <TouchableOpacity
-                              style={styles.webBtnSendAdvisor}
-                              onPress={() => handleSendToAdvisor(exp)}
-                              activeOpacity={0.8}
-                            >
-                              <Text style={styles.webBtnSendAdvisorTxt}>🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}</Text>
+                              <Text style={[styles.webBtnPayDebtTxt, isPartial && { color: '#b45309' }]}>
+                                {isPartial ? '⚡ Kalanı Kasadan Öde' : '💳 Kasadan Öde'}
+                              </Text>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -3814,7 +3689,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'RENT' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'RENT' && styles.chipTxtActive]}>
-                        🏢 Kira
+                        🏢 Kira (İşyeri)
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3822,7 +3697,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'LABOR' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'LABOR' && styles.chipTxtActive]}>
-                        👥 İşçilik / Maaş
+                        👥 İşçilik & Personel Maaşları
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3830,7 +3705,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'ACCOUNTANT' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'ACCOUNTANT' && styles.chipTxtActive]}>
-                        ⚖️ Mali Müşavir
+                        📑 Mali Müşavir
                       </Text>
                     </TouchableOpacity>
                   </>
@@ -3873,7 +3748,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'INTERNET' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'INTERNET' && styles.chipTxtActive]}>
-                        🌐 İnternet
+                        🌐 İnternet & Ağ
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3881,7 +3756,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'TAX' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'TAX' && styles.chipTxtActive]}>
-                        📑 Vergi
+                        🏛️ Vergi (KDV / Stopaj)
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3889,7 +3764,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'SGK' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'SGK' && styles.chipTxtActive]}>
-                        🛡️ Sigorta (SGK)
+                        🛡️ Sigorta (SGK Prim)
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -3921,7 +3796,7 @@ export default function IOSApp({ initialUser, onLogout }) {
                       onPress={() => setNewExpense({ ...newExpense, subType: 'RENOVATION' })}
                     >
                       <Text style={[styles.chipTxt, newExpense.subType === 'RENOVATION' && styles.chipTxtActive]}>
-                        🔧 Tadilat & Bakım
+                        🔨 Tadilat & Bakım
                       </Text>
                     </TouchableOpacity>
                   </>
@@ -4079,28 +3954,6 @@ export default function IOSApp({ initialUser, onLogout }) {
                 onChangeText={(tVal) => setNewExpense({ ...newExpense, note: tVal })}
               />
 
-              {/* Mali Müşavir Defter Onay Durumu */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: 8,
-                    borderRadius: 8,
-                    backgroundColor: newExpense.recordedInLedger ? '#faf5ff' : '#f8fafc',
-                    borderWidth: 1,
-                    borderColor: newExpense.recordedInLedger ? '#e9d5ff' : '#e2e8f0',
-                  }}
-                  onPress={() => setNewExpense({ ...newExpense, recordedInLedger: !newExpense.recordedInLedger })}
-                >
-                  <Text style={{ fontSize: 14 }}>{newExpense.recordedInLedger ? '☑️' : '⬜'}</Text>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: newExpense.recordedInLedger ? '#6b21a8' : '#64748b' }}>
-                    📑 {t.recordedLedgerBadge || 'Resmi Deftere Doğrudan Onayla'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </ScrollView>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
@@ -4174,68 +4027,6 @@ export default function IOSApp({ initialUser, onLogout }) {
         </View>
       </Modal>
 
-      {/* MODAL 6: KASAYA PARA GİRİŞİ & DAĞIT (Muhasebe Kasa Yönetimi) */}
-      <Modal visible={showCashModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { maxHeight: '90%', padding: 16 }]}>
-            <View style={styles.webModalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>💵 Kasaya Para Girişi & Dağıt</Text>
-                <Text style={styles.webModalSub}>Nakit bütçeyi gider kalemlerine paylaştırıp Müşavire ilet</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowCashModal(false)}>
-                <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-              <View style={{ marginVertical: 8 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: THEME.colors.textMuted, marginBottom: 4 }}>
-                  Kasaya Gelen Nakit Tutarı (₺)
-                </Text>
-                <TextInput
-                  style={[styles.modalInput, { fontSize: 16, fontWeight: '800', color: '#065f46' }]}
-                  placeholder="Örn: 5000"
-                  placeholderTextColor={THEME.colors.textLight}
-                  value={cashAllocationAmount}
-                  onChangeText={setCashAllocationAmount}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              {/* Otomatik Dağıtım Senaryosu */}
-              <View style={{ backgroundColor: '#f0fdf4', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 14 }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#166534', marginBottom: 6 }}>
-                  🎯 Otomatik Dağıtım Dağılımı:
-                </Text>
-                <View style={{ gap: 4 }}>
-                  <Text style={{ fontSize: 11, color: '#15803d' }}>
-                    • 📦 Sarf Malzeme & Peçete: {(Math.round((parseFloat(cashAllocationAmount || 0) * 0.3))).toLocaleString('tr-TR')} ₺
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#15803d' }}>
-                    • ⚡ Mutfak Elektrik & Enerji Avansı: {(Math.round((parseFloat(cashAllocationAmount || 0) * 0.4))).toLocaleString('tr-TR')} ₺
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#15803d' }}>
-                    • 🚚 Hal / Soğuk Zincir Lojistik: {(Math.round((parseFloat(cashAllocationAmount || 0) * 0.3))).toLocaleString('tr-TR')} ₺
-                  </Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <TouchableOpacity
-                style={[styles.modalSubmitBtn, { backgroundColor: '#059669', flex: 1.5 }]}
-                onPress={handleAllocateCash}
-              >
-                <Text style={styles.modalSubmitTxt}>🚀 Dağıt ve Müşavire Gönder</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowCashModal(false)}>
-                <Text style={styles.modalCancelTxt}>Vazgeç</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* MODAL 7: WEB BİREBİR "SİPARİŞ TALEBİ AÇ" (Stoktan Kasaya Otomatik Harcama & Bildirim) */}
       <Modal visible={!!orderModalItem} animationType="slide" transparent>

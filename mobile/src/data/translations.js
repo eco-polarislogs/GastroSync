@@ -1741,28 +1741,31 @@ export const getRoleLabel = (role, lang = 'tr') => {
   }
 }
 
-// EXPENSE_TYPES key → seçilen dile göre çevirisi
-const EXPENSE_KEY_MAP = {
-  RENT: 'expRent',
-  LABOR: 'expLabor',
-  ACCOUNTANT: 'expAccountant',
-  ELECTRICITY: 'expElectricity',
-  WATER: 'expWater',
-  GAS: 'expGas',
-  PHONE: 'expPhone',
-  INTERNET: 'expInternet',
-  TAX: 'expTax',
-  SGK: 'expSgk',
-  CONSUMABLES: 'expConsumables',
-  LOGISTICS: 'expLogistics',
-  MARKETING: 'expMarketing',
-  RENOVATION: 'expRenovation',
+// EXPENSE_TYPES key → seçilen dile göre çevirisi (Web ile Birebir)
+const EXPENSE_LABELS = {
+  RENT: { tr: 'Kira (İşyeri)', en: 'Rent (Workplace)', de: 'Miete (Betrieb)', ar: 'إيجار مكان العمل' },
+  LABOR: { tr: 'İşçilik & Personel Maaşları', en: 'Labor & Salaries', de: 'Löhne & Gehälter', ar: 'الرواتب والأجور' },
+  ACCOUNTANT: { tr: 'Mali Müşavir', en: 'Financial Advisor', de: 'Steuerberater', ar: 'المستشار المالي' },
+  ELECTRICITY: { tr: 'Elektrik', en: 'Electricity', de: 'Strom', ar: 'كهرباء' },
+  WATER: { tr: 'Su', en: 'Water', de: 'Wasser', ar: 'ماء' },
+  GAS: { tr: 'Doğalgaz', en: 'Natural Gas', de: 'Erdgas', ar: 'غاز طبيعي' },
+  PHONE: { tr: 'Telefon', en: 'Telephone', de: 'Telefon', ar: 'هاتف' },
+  INTERNET: { tr: 'İnternet & Ağ', en: 'Internet & Network', de: 'Internet & Netzwerk', ar: 'إنترنت وشبكة' },
+  TAX: { tr: 'Vergi (KDV / Stopaj)', en: 'Tax (VAT / Withholding)', de: 'Steuern (MwSt)', ar: 'ضرائب ورسوم' },
+  SGK: { tr: 'Sigorta (SGK Prim)', en: 'Social Security (SSI)', de: 'Sozialversicherung', ar: 'تأمينات اجتماعية' },
+  CONSUMABLES: { tr: 'Sarf Malzeme', en: 'Consumables & Supplies', de: 'Verbrauchsmaterial', ar: 'مواد استهلاكية' },
+  LOGISTICS: { tr: 'Lojistik & Nakliye', en: 'Logistics & Shipping', de: 'Logistik & Transport', ar: 'شحن ولوجستيات' },
+  MARKETING: { tr: 'Reklam & Tanıtım', en: 'Marketing & Ads', de: 'Werbung & Marketing', ar: 'إعلانات وتسويق' },
+  RENOVATION: { tr: 'Tadilat & Bakım', en: 'Maintenance & Repairs', de: 'Wartung & Reparatur', ar: 'صيانة وإصلاحات' },
 }
 
 export const getExpenseTypeLabel = (expenseKey, lang = 'tr') => {
-  const t = TRANSLATIONS[lang] || TRANSLATIONS.tr
-  const translationKey = EXPENSE_KEY_MAP[expenseKey]
-  return translationKey ? (t[translationKey] || expenseKey) : expenseKey
+  if (!expenseKey) return ''
+  const item = EXPENSE_LABELS[expenseKey]
+  if (item) {
+    return item[lang] || item.tr || expenseKey
+  }
+  return expenseKey
 }
 
 // Reçete ve Stok Kategori Etiketleri Helper
