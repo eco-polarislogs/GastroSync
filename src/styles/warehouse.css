@@ -196,7 +196,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
   pointer-events: none;
 }
 
@@ -355,8 +355,13 @@
   flex-shrink: 0;
 }
 
-.wh-recent-dot--success { background: var(--color-success); }
-.wh-recent-dot--danger { background: var(--color-danger); }
+.wh-recent-dot--success {
+  background: var(--color-success);
+}
+
+.wh-recent-dot--danger {
+  background: var(--color-danger);
+}
 
 .wh-recent-name {
   font-weight: 600;
@@ -379,15 +384,22 @@
   color: var(--color-text-primary);
 }
 
-.wh-recent-qty--danger { color: var(--color-danger); }
+.wh-recent-qty--danger {
+  color: var(--color-danger);
+}
 
 .wh-recent-type {
   font-size: var(--font-size-xs);
   font-weight: 500;
 }
 
-.wh-recent-type--success { color: var(--color-success); }
-.wh-recent-type--danger { color: var(--color-danger); }
+.wh-recent-type--success {
+  color: var(--color-success);
+}
+
+.wh-recent-type--danger {
+  color: var(--color-danger);
+}
 
 /* Bottom Navigation */
 .wh-bottom-nav {
@@ -686,8 +698,9 @@
   display: block !important;
 }
 
-#interactive-qr-reader video ~ video {
-  display: none !important; /* Çift video montajı varsa ikinci videoyu gizle */
+#interactive-qr-reader video~video {
+  display: none !important;
+  /* Çift video montajı varsa ikinci videoyu gizle */
 }
 
 /* Html5-Qrcode scanner viewfinder border styling */
@@ -905,4 +918,3 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   }
 }
-

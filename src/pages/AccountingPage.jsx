@@ -50,7 +50,7 @@ export default function AccountingPage({ viewMode }) {
   const [expenseToReject, setExpenseToReject] = useState(null)
   const [rejectReasonText, setRejectReasonText] = useState('')
 
-  // Rol ve Mod bazlı kesin ayrım (Enterprise RBAC: Muhasebeci kasayı yönetir, Mali Müşavir resmi defteri denetler)
+  // Rol ve Mod bazlı kesin ayrım (RBAC: Muhasebeci kasayı yönetir, Mali Müşavir resmi defteri denetler)
   const isAccountant = (user?.role === ROLES.ACCOUNTANT || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && !isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR
   const isFinancialAdvisor = (user?.role === ROLES.FINANCIAL_ADVISOR || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER) && !isCashierMode && user?.role !== ROLES.ACCOUNTANT
 
@@ -82,9 +82,9 @@ export default function AccountingPage({ viewMode }) {
       else if (activeTab === 'VARIABLE') matchCat = e.category === 'VARIABLE'
       else if (activeTab === 'RENT') matchCat = e.subType === 'RENT'
       else if (activeTab === 'DEBT') matchCat = e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier
-      else if (activeTab === 'REJECTED') matchCat = e.status === 'REJECTED'
+      else if (activeTab === 'REJECTED') matchCat = e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED'
       else if (activeTab === 'AWAITING_ADVISOR') {
-        matchCat = !e.recordedInLedger && e.status !== 'REJECTED'
+        matchCat = (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED'
       }
       else if (activeTab === 'LEDGER') {
         matchCat = isAdvisorMode ? (e.sentToAdvisor !== false) : true
@@ -113,9 +113,9 @@ export default function AccountingPage({ viewMode }) {
   const totalUnpaidDebt = expenses
     .filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier)
     .reduce((sum, e) => sum + (e.amount || 0), 0)
-  // Müşavir Tarafından Reddedilen Giderler Toplamı
+  // Müşavir Tarafından Düzeltme İstenen / Reddedilen Giderler Toplamı
   const totalRejectedAmount = expenses
-    .filter(e => e.status === 'REJECTED')
+    .filter(e => e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED')
     .reduce((sum, e) => sum + (e.amount || 0), 0)
 
   // Toplam Genel Giderler (Overheads)
@@ -149,17 +149,25 @@ export default function AccountingPage({ viewMode }) {
       note: newExpense.note.trim(),
       isOwnedProperty: !!newExpense.isOwnedProperty,
       paidByCashier: newExpense.paymentStatus === 'PAID',
-      recordedInLedger: !!newExpense.recordedInLedger,
+      recordedInLedger: false,
       sentToAdvisor: true,
-      status: newExpense.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR',
+      status: 'PENDING_APPROVAL',
     }
 
     await addExpense(payload)
+    sendNotification({
+      title: '📋 Yeni Gider İnceleme Bekliyor (Taslak)',
+      message: `${user?.name || 'Kasa / Muhasebe'} tarafından '${payload.title} (${payload.amount?.toLocaleString('tr-TR')} ₺)' sisteme girildi. Mali Müşavir denetimi ve defter onayı bekleniyor.`,
+      targetRole: 'FINANCIAL_ADVISOR',
+      senderName: user?.name || 'Kasa / Muhasebe',
+      type: 'EXPENSE_APPROVAL',
+      relatedEntityId: null
+    })
     notifySuccess(
       newExpense.paymentStatus === 'PAID'
-        ? `"${payload.title}" kasadan ödendi ve Mali Müşavir onayına iletildi!`
+        ? `"${payload.title}" kasadan ödendi ve taslak olarak Mali Müşavir onayına iletildi!`
         : `"${payload.title}" borç kaydı olarak sisteme işlendi (Vade: ${payload.dueDate})`,
-      'Gider Kaydedildi'
+      'Gider Kaydedildi (Taslak)'
     )
     setShowAddModal(false)
     setNewExpense({
@@ -178,13 +186,14 @@ export default function AccountingPage({ viewMode }) {
       paidByCashier: true,
       recordedInLedger: false,
       sentToAdvisor: true,
+      status: 'PENDING_APPROVAL',
       rejectionReason: '',
     })
   }
 
   // Muhasebecinin Mali Müşavire Gönderme İşlemi
   const handleSendToAdvisor = async (exp) => {
-    await updateExpense(exp.id, { sentToAdvisor: true, status: 'SENT_TO_ADVISOR', rejectionReason: '' })
+    await updateExpense(exp.id, { sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' })
     sendNotification({
       title: '🚀 Gider Defter Onayı Bekliyor',
       message: `${user?.name || 'Kasa / Muhasebe'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' onaylanmak üzere Mali Müşavire iletildi.`,
@@ -196,29 +205,29 @@ export default function AccountingPage({ viewMode }) {
     notifySuccess(`"${exp.title}" (${exp.amount} ₺) Mali Müşavir defter onayına gönderildi.`, 'Müşavire İletildi 🚀')
   }
 
-  // Mali Müşavir resmi deftere onaylama
+  // Mali Müşavir resmi deftere onaylama (Approve & Record -> FINALIZED)
   const handleApproveLedger = async (exp) => {
     await updateExpense(exp.id, {
       recordedInLedger: true,
-      status: 'APPROVED_IN_LEDGER',
+      status: 'FINALIZED',
       rejectionReason: ''
     })
     sendNotification({
-      title: '✓ Gider Deftere İşlendi & Onaylandı',
-      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' resmi yevmiye defterine kaydedildi.`,
+      title: '✓ Gider Deftere İşlendi & Kesinleşti',
+      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' resmi yevmiye defterine kaydedildi ve kesinleşti.`,
       targetRole: 'ACCOUNTANT',
       senderName: user?.name || 'Mali Müşavir',
       type: 'EXPENSE_APPROVAL',
       relatedEntityId: exp.id
     })
-    notifySuccess(`"${exp.title}" resmi yevmiye defterine ONAYLANDI ve kesinleşti.`, 'Mali Müşavir Defteri ✓')
+    notifySuccess(`"${exp.title}" resmi yevmiye defterine ONAYLANDI ve kesinleşti.`, 'Resmi Deftere İşlendi ✓')
   }
 
-  // Mali Müşavir Gideri Reddetme İşlemi (Gerekçeli Ret)
+  // Mali Müşavir Gideri Reddetme İşlemi (Reject -> NEEDS_CORRECTION)
   const handleRejectLedger = async () => {
     if (!expenseToReject) return
     if (!rejectReasonText.trim()) {
-      notifyError('Lütfen ret gerekçesini açıklayınız (örn: Fatura/dekont eksik, tevkifat oranı hatalı).')
+      notifyError('Lütfen ret gerekçesini açıklayınız (örn: Fatura/dekont eksik, vergi numarası hatalı).')
       return
     }
 
@@ -227,20 +236,20 @@ export default function AccountingPage({ viewMode }) {
 
     await updateExpense(exp.id, {
       recordedInLedger: false,
-      status: 'REJECTED',
+      status: 'NEEDS_CORRECTION',
       rejectionReason: reason
     })
 
     sendNotification({
-      title: '❌ Gider Defter Onayı Reddedildi',
-      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' kaydı reddedildi. Gerekçe: "${reason}"`,
+      title: '⚠️ Gider Düzeltme Bekliyor (Ret)',
+      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' kaydı reddedildi ve düzeltme istendi. Gerekçe: "${reason}"`,
       targetRole: 'ACCOUNTANT',
       senderName: user?.name || 'Mali Müşavir',
       type: 'EXPENSE_REJECTED',
       relatedEntityId: exp.id
     })
 
-    notifySuccess(`"${exp.title}" reddedildi ve gerekçesi muhasebeye bildirildi.`, 'Müşavir Onayı Reddedildi ❌')
+    notifySuccess(`"${exp.title}" için düzeltme talebi muhasebeye bildirildi.`, 'Düzeltme İstendi ⚠️')
     setExpenseToReject(null)
     setRejectReasonText('')
   }
@@ -372,8 +381,8 @@ export default function AccountingPage({ viewMode }) {
             </button>
           )}
 
-          {/* Mali Müşavir doğrudan kasa ödemesi yapmaz, resmi yevmiyeye doğrudan kayıt girer veya muhasebeye gider bildirir */}
-          {isAccountant ? (
+          {/* Gider Ekleme Butonu: Mali Müşavir günlük operasyonel gider girmez, sadece Muhasebe / Kasa girer */}
+          {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (
             <button
               className="action-btn action-btn--primary"
               onClick={() => setShowAddModal(true)}
@@ -381,15 +390,7 @@ export default function AccountingPage({ viewMode }) {
             >
               <FiPlus size={16} /> + {t.newExpense}
             </button>
-          ) : isFinancialAdvisor ? (
-            <button
-              className="action-btn action-btn--primary"
-              onClick={() => setShowAddModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#7c3aed', borderColor: '#6d28d9' }}
-            >
-              <FiPlus size={16} /> + Resmi Defter Kaydı Aç
-            </button>
-          ) : null}
+          )}
         </div>
       </div>
 
@@ -672,14 +673,14 @@ export default function AccountingPage({ viewMode }) {
                 className={`action-btn ${activeTab === 'LEDGER' ? 'action-btn--primary' : 'action-btn--secondary'}`}
                 style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined, borderColor: activeTab === 'LEDGER' ? '#7e22ce' : undefined }}
               >
-                📖 {t.advisorDefter} ({expenses.filter(e => e.recordedInLedger).length} Onaylı / {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED').length} Bekleyen)
+                📖 {t.advisorDefter} ({expenses.filter(e => e.status === 'FINALIZED' || e.recordedInLedger).length} Onaylı / {expenses.filter(e => (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED').length} Bekleyen)
               </button>
               <button
                 onClick={() => { setActiveTab('AWAITING_ADVISOR'); setSelectedSubType('all') }}
                 className={`action-btn ${activeTab === 'AWAITING_ADVISOR' ? 'action-btn--primary' : 'action-btn--secondary'}`}
                 style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'AWAITING_ADVISOR' ? '#d97706' : '#fffbeb', borderColor: '#fde68a', color: activeTab === 'AWAITING_ADVISOR' ? '#ffffff' : '#b45309', fontWeight: 800 }}
               >
-                ✍️ Onay Masası ({expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED').length})
+                ✍️ Onay Masası ({expenses.filter(e => (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED').length})
               </button>
               <button
                 onClick={() => { setActiveTab('TDHP_ERP'); setSelectedSubType('all') }}
@@ -700,7 +701,7 @@ export default function AccountingPage({ viewMode }) {
                 className={`action-btn ${activeTab === 'REJECTED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
                 style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'REJECTED' ? '#be123c' : '#fff1f2', borderColor: '#fecdd3', color: activeTab === 'REJECTED' ? '#ffffff' : '#9f1239', fontWeight: 800 }}
               >
-                ❌ Reddedilen Belgeler ({expenses.filter(e => e.status === 'REJECTED').length})
+                ⚠️ Düzeltme İstenenler ({expenses.filter(e => e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED').length})
               </button>
             </>
           ) : (
@@ -748,13 +749,13 @@ export default function AccountingPage({ viewMode }) {
               >
                 ⚡ {t.variableExpenses} ({expenses.filter(e => e.category === 'VARIABLE').length})
               </button>
-              {expenses.filter(e => e.status === 'REJECTED').length > 0 && (
+              {expenses.filter(e => e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED').length > 0 && (
                 <button
                   onClick={() => { setActiveTab('REJECTED'); setSelectedSubType('all') }}
                   className={`action-btn ${activeTab === 'REJECTED' ? 'action-btn--primary' : 'action-btn--secondary'}`}
                   style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: activeTab === 'REJECTED' ? '#be123c' : '#fff1f2', borderColor: '#fecdd3', color: activeTab === 'REJECTED' ? '#ffffff' : '#9f1239', fontWeight: 800 }}
                 >
-                  ❌ Müşavirin Reddettikleri ({expenses.filter(e => e.status === 'REJECTED').length})
+                  ⚠️ Müşavirin Düzeltme İstedikleri ({expenses.filter(e => e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED').length})
                 </button>
               )}
             </>
@@ -1083,10 +1084,11 @@ export default function AccountingPage({ viewMode }) {
                 const isFixed = exp.category === 'FIXED'
                 const isUnpaid = exp.paymentStatus === 'UNPAID' || !exp.paidByCashier
                 const isPartial = exp.paymentStatus === 'PARTIAL'
-                const isRejected = exp.status === 'REJECTED'
+                const isNeedsCorrection = exp.status === 'NEEDS_CORRECTION' || exp.status === 'REJECTED'
+                const isFinalized = exp.status === 'FINALIZED' || exp.recordedInLedger
 
                 return (
-                  <tr key={exp.id} style={{ borderBottom: '1px solid #f1f5f3', backgroundColor: isRejected ? '#fffbfb' : undefined }}>
+                  <tr key={exp.id} style={{ borderBottom: '1px solid #f1f5f3', backgroundColor: isNeedsCorrection ? '#fffbfb' : undefined }}>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>{exp.title}</div>
@@ -1095,14 +1097,19 @@ export default function AccountingPage({ viewMode }) {
                             🏠 {t.ownedPropertyBadge}
                           </span>
                         )}
+                        {isFinalized && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', backgroundColor: '#fdf2f8', color: '#be185d', fontWeight: 800, border: '1px solid #fbcfe8' }}>
+                            🔒 {t.statusFinalized || 'Deftere Kilitlendi'}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
                         📅 {t.transactionLabel}: {exp.expenseDate} • {t.periodLabel}: {exp.period} {exp.recordedBy ? `• ${t.recordLabel}: ${exp.recordedBy}` : ''}
                       </div>
                       {exp.note && <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>📝 {exp.note}</div>}
-                      {isRejected && exp.rejectionReason && (
+                      {isNeedsCorrection && exp.rejectionReason && (
                         <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700, backgroundColor: '#fef2f2', padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', marginTop: '4px' }}>
-                          ❌ {t.rejectionReasonPrefix}: {exp.rejectionReason}
+                          ⚠️ {t.rejectionReasonPrefix || 'Müşavir Düzeltme Talebi'}: {exp.rejectionReason}
                         </div>
                       )}
                     </td>
@@ -1165,21 +1172,19 @@ export default function AccountingPage({ viewMode }) {
                               <span>💳</span> {t.debtUnpaid} — <strong>Öde</strong>
                             </button>
                           ) : (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '5px 12px',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                backgroundColor: '#fee2e2',
-                                color: '#b91c1c',
-                                border: '1.5px solid #f87171'
-                              }}
-                            >
-                              <span>💳</span> {t.debtUnpaid}
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              backgroundColor: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #f87171'
+                            }}>
+                              ⏳ {t.debtUnpaid}
                             </span>
                           )}
                           <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, marginTop: '3px' }}>
@@ -1209,27 +1214,25 @@ export default function AccountingPage({ viewMode }) {
                               <span>⚡</span> {t.partialPaid} — <strong>Tamamla</strong>
                             </button>
                           ) : (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '5px 12px',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 800,
-                                backgroundColor: '#fffbeb',
-                                color: '#b45309',
-                                border: '1.5px solid #fde68a'
-                              }}
-                            >
-                              <span>⚡</span> {t.partialPaid}
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              backgroundColor: '#fffbeb',
+                              color: '#b45309',
+                              border: '1.5px solid #fde68a'
+                            }}>
+                              ⚡ {t.partialPaid}
                             </span>
                           )}
                         </div>
                       ) : (
                         <span
-                          title="Bu gider kasadan nakit/banka ile fiilen ödenmiştir (Kilitli)"
+                          title="Bu gider kasadan nakit/banka ile fiilen ödenmiştir"
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1250,7 +1253,7 @@ export default function AccountingPage({ viewMode }) {
                     </td>
                     {/* Mali Müşavir Defter & Onay Durumu */}
                     <td style={{ padding: '14px 16px' }}>
-                      {isRejected ? (
+                      {isNeedsCorrection ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <span style={{
                             display: 'inline-flex',
@@ -1264,15 +1267,15 @@ export default function AccountingPage({ viewMode }) {
                             color: '#991b1b',
                             border: '1px solid #f87171'
                           }}>
-                            ❌ {t.rejectedBadge}
+                            ⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor'}
                           </span>
                           {exp.rejectionReason && (
                             <span style={{ fontSize: '0.68rem', color: '#b91c1c', maxWidth: '180px', lineHeight: '1.2' }}>
-                              <strong>Neden:</strong> {exp.rejectionReason}
+                              <strong>Not:</strong> {exp.rejectionReason}
                             </span>
                           )}
                         </div>
-                      ) : exp.recordedInLedger ? (
+                      ) : isFinalized ? (
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1285,7 +1288,7 @@ export default function AccountingPage({ viewMode }) {
                           color: '#be185d',
                           border: '1px solid #fbcfe8'
                         }}>
-                          📖 {t.recordedLedgerBadge} ✓
+                          📖 {t.statusFinalized || 'Deftere Kesinleşti ✓'}
                         </span>
                       ) : (
                         <span style={{
@@ -1300,7 +1303,7 @@ export default function AccountingPage({ viewMode }) {
                           color: '#b45309',
                           border: '1px solid #fde68a'
                         }}>
-                          ✍️ {t.awaitingApprovalBadge}
+                          ⏳ {t.statusPendingApproval || 'Onay Bekliyor (Taslak)'}
                         </span>
                       )}
                     </td>
@@ -1311,8 +1314,8 @@ export default function AccountingPage({ viewMode }) {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {/* Muhasebeci / Kasa: Mali Müşavir Onayına Gönder Butonu */}
-                        {!isAdvisorMode && user?.role !== ROLES.FINANCIAL_ADVISOR && (!exp.recordedInLedger && (!exp.sentToAdvisor || isRejected)) && (
+                        {/* Muhasebeci / Kasa: Mali Müşavir Onayına Gönder Butonu (Eğer henüz gönderilmemişse veya ret alıp düzeltilmişse) */}
+                        {isAccountant && (!isFinalized && (!exp.sentToAdvisor || isNeedsCorrection)) && (
                           <button
                             onClick={() => handleSendToAdvisor(exp)}
                             title="Mali Müşavir defter onayına gönder"
@@ -1334,21 +1337,17 @@ export default function AccountingPage({ viewMode }) {
                           </button>
                         )}
 
-                        {/* Mali Müşavir: Sadece işlem yapılmamışsa butonları göster; onaylanmış veya reddedilmişse durum rozeti gösterip butonları kilitle */}
-                        {(isFinancialAdvisor || isAdvisorMode) && (
-                          exp.recordedInLedger ? (
+                        {/* Mali Müşavir: Bekleyen veya Düzeltme istenen kayıtları Onayla & Deftere İşle veya Gerekçeli Reddet */}
+                        {isFinancialAdvisor && (
+                          isFinalized ? (
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#be185d', padding: '4px 8px', background: '#fdf2f8', borderRadius: '6px', border: '1px solid #fbcfe8' }}>
                               ✓ Defter Kesinleşti
-                            </span>
-                          ) : isRejected ? (
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991b1b', padding: '4px 8px', background: '#fee2e2', borderRadius: '6px', border: '1px solid #fca5a5' }}>
-                              ❌ Ret İşlendi
                             </span>
                           ) : (
                             <>
                               <button
                                 onClick={() => handleApproveLedger(exp)}
-                                title="Mali Müşavir defterini onayla"
+                                title="Resmi deftere onayla ve kesinleştir"
                                 style={{
                                   padding: '6px 10px',
                                   backgroundColor: '#ecfdf5',
@@ -1370,7 +1369,7 @@ export default function AccountingPage({ viewMode }) {
                                   setExpenseToReject(exp)
                                   setRejectReasonText('')
                                 }}
-                                title="Gerekçe belirterek onayı reddet"
+                                title="Gerekçe belirterek düzeltme iste / reddet"
                                 style={{
                                   padding: '6px 10px',
                                   backgroundColor: '#fff1f2',
@@ -1391,22 +1390,29 @@ export default function AccountingPage({ viewMode }) {
                           )
                         )}
 
-                        <button
-                          onClick={() => setExpenseToDelete(exp)}
-                          title="Gider Kaydını Sil"
-                          style={{
-                            padding: '6px 10px',
-                            backgroundColor: '#fee2e2',
-                            border: '1px solid #fecaca',
-                            color: '#b91c1c',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 700
-                          }}
-                        >
-                          <FiTrash2 />
-                        </button>
+                        {/* Silme Yetkisi: RBAC Kuralı gereğince Onaylanmış (FINALIZED) bir kayıt Muhasebeci tarafından silinemez/değiştirilemez! */}
+                        {(!isFinalized || isFinancialAdvisor) ? (
+                          <button
+                            onClick={() => setExpenseToDelete(exp)}
+                            title="Gider Kaydını Sil"
+                            style={{
+                              padding: '6px 10px',
+                              backgroundColor: '#fee2e2',
+                              border: '1px solid #fecaca',
+                              color: '#b91c1c',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 700
+                            }}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        ) : (
+                          <span title="Deftere işlenmiş kayıt silinemez (Kilitli)" style={{ fontSize: '0.7rem', color: '#94a3b8', padding: '4px 6px' }}>
+                            🔒 Kilitli
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1964,49 +1970,43 @@ export default function AccountingPage({ viewMode }) {
                 </div>
               </div>
 
-              {/* Ödeme Durumu: Muhasebeci için Kasa Ödeme Durumu, Mali Müşavir için Resmi Tahakkuk / Defter Tipi */}
+              {/* Ödeme Durumu: Peşin Ödendi vs Borca Bırak (Vade) */}
               <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>
-                  {isFinancialAdvisor ? '🏛️ Resmi Defter Kayıt Tipi (SMMM)' : '💵 Kasa Ödeme Durumu (Peşin / Borç / Kısmi)'}
+                  Kasa Ödeme Durumu (Peşin / Borç / Kısmi)
                 </label>
-                {isFinancialAdvisor ? (
-                  <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600 }}>
-                    ℹ️ Mali Müşavir resmi defter tahakkuku açar. Bu kalem işletme kasasından onaylandığında fiili ödeme statüsüne geçer.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="paymentStatus"
-                        value="PAID"
-                        checked={newExpense.paymentStatus === 'PAID'}
-                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
-                      />
-                      <span>💵 Kasadan Peşin Ödendi</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="paymentStatus"
-                        value="UNPAID"
-                        checked={newExpense.paymentStatus === 'UNPAID'}
-                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
-                      />
-                      <span>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="paymentStatus"
-                        value="PARTIAL"
-                        checked={newExpense.paymentStatus === 'PARTIAL'}
-                        onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
-                      />
-                      <span>⚡ Kısmi Ödeme (Avans / Parçalı)</span>
-                    </label>
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#065f46', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="paymentStatus"
+                      value="PAID"
+                      checked={newExpense.paymentStatus === 'PAID'}
+                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PAID', paidByCashier: true })}
+                    />
+                    <span>💵 Kasadan Peşin Ödendi</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="paymentStatus"
+                      value="UNPAID"
+                      checked={newExpense.paymentStatus === 'UNPAID'}
+                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'UNPAID', paidByCashier: false })}
+                    />
+                    <span>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: '#b45309', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="paymentStatus"
+                      value="PARTIAL"
+                      checked={newExpense.paymentStatus === 'PARTIAL'}
+                      onChange={() => setNewExpense({ ...newExpense, paymentStatus: 'PARTIAL', paidByCashier: true })}
+                    />
+                    <span>⚡ Kısmi Ödeme (Avans / Parçalı)</span>
+                  </label>
+                </div>
               </div>
 
               <div>

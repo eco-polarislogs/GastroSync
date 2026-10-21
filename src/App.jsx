@@ -50,9 +50,15 @@ function getDefaultRoute(role) {
   }
 }
 
-// Açılış yönlendirmesi: Her açılışta en başta doğrudan login ekranı gelsin
+// Giriş sonrası yönlendirme
 function RoleRedirect() {
-  return <Navigate to="/login" replace />
+  const { isAuthenticated, user } = useAuthStore()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <Navigate to={getDefaultRoute(user?.role)} replace />
 }
 
 // Depo Ekranı Sarmalayıcısı: Yönetici ve Müdürler için yan menüyü (DashboardLayout) korur

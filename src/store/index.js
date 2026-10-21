@@ -1037,7 +1037,11 @@ export const useExpenseStore = create((set, get) => ({
           paidByCashier: e.paidByCashier !== false,
           recordedInLedger: !!e.recordedInLedger,
           sentToAdvisor: e.sentToAdvisor !== false,
-          status: e.status || (e.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR'),
+          status: (e.status === 'APPROVED_IN_LEDGER' || e.status === 'FINALIZED' || e.recordedInLedger)
+            ? 'FINALIZED'
+            : (e.status === 'REJECTED' || e.status === 'NEEDS_CORRECTION')
+              ? 'NEEDS_CORRECTION'
+              : 'PENDING_APPROVAL',
         }))
 
         const totalFixed = mapped.filter(e => e.category === 'FIXED').reduce((s, e) => s + e.amount, 0)
