@@ -64,7 +64,7 @@ public class NotificationService {
     }
 
     public List<Notification> getNotificationsForRole(String role) {
-        if (role == null || role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("MANAGER")) {
+        if (role == null || role.isBlank() || role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("MANAGER") || role.equalsIgnoreCase("ALL")) {
             return notificationRepository.findAllByOrderByCreatedAtDesc();
         }
         return notificationRepository.findByTargetRoleInOrderByCreatedAtDesc(Arrays.asList("ALL", role.toUpperCase()));

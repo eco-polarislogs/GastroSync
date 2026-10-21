@@ -44,6 +44,7 @@ export default function DashboardLayout({ children }) {
   const userNotifications = notifications.filter(
     (n) => n.targetRole === 'ALL' || n.targetRole === user?.role?.toUpperCase() || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER
   )
+  const userUnreadCount = userNotifications.filter((n) => !n.isRead).length
 
   const filteredNav = NAV_ITEMS.filter((item) => item.roles.includes(user?.role))
 
@@ -267,7 +268,7 @@ export default function DashboardLayout({ children }) {
                 title="Rol Bildirimleri"
               >
                 <FiBell />
-                {unreadCount > 0 && (
+                {userUnreadCount > 0 && (
                   <span
                     style={{
                       position: 'absolute',
@@ -287,7 +288,7 @@ export default function DashboardLayout({ children }) {
                       boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
                     }}
                   >
-                    {unreadCount}
+                    {userUnreadCount}
                   </span>
                 )}
               </button>
@@ -335,7 +336,7 @@ export default function DashboardLayout({ children }) {
                         {getRoleLabel(user?.role, currentLanguage)}
                       </span>
                     </div>
-                    {unreadCount > 0 && (
+                    {userUnreadCount > 0 && (
                       <button
                         onClick={() => markAllAsRead(user?.role)}
                         style={{

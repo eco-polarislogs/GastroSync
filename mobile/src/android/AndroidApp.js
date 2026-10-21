@@ -2394,6 +2394,120 @@ export default function AndroidApp({ initialUser, onLogout }) {
               </View>
             </View>
 
+            {/* CANLI İŞ AKIŞ & ONAY SÜREÇ DİYAGRAMI (Gider -> Kasa -> Müşavir -> Resmi Defter) */}
+            <View style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 14,
+              padding: 12,
+              marginBottom: 12,
+              borderWidth: 1.5,
+              borderColor: '#cbd5e1'
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ fontSize: 14 }}>🔄</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>
+                    Canlı Kasa & Müşavir Onay Süreç Akışı
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#047857' }}>● CANLI SENKRON</Text>
+                </View>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {/* Aşama 1 */}
+                  <TouchableOpacity
+                    style={{
+                      width: 135,
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: expenseTab === 'all' ? '#ecfdf5' : '#f8fafc',
+                      borderWidth: 1.5,
+                      borderColor: expenseTab === 'all' ? '#10b981' : '#e2e8f0'
+                    }}
+                    onPress={() => setExpenseTab('all')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748b' }}>1. AŞAMA</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#0f172a' }}>{expenses.length} Fiş</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>📝 Gider Girişi</Text>
+                    <Text style={{ fontSize: 9.5, color: '#059669', fontWeight: '700', marginTop: 4 }}>✓ Başlangıç</Text>
+                  </TouchableOpacity>
+
+                  {/* Aşama 2 */}
+                  <TouchableOpacity
+                    style={{
+                      width: 135,
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: expenseTab === 'debt' ? '#ecfdf5' : '#f0fdf4',
+                      borderWidth: 1.5,
+                      borderColor: expenseTab === 'debt' ? '#16a34a' : '#bbf7d0'
+                    }}
+                    onPress={() => setExpenseTab('debt')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#166534' }}>2. AŞAMA</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#166534' }}>{expenses.filter(e => e.paidByCashier).length} Ödendi</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#14532d' }}>💵 Kasa Ödemesi</Text>
+                    <Text style={{ fontSize: 9.5, color: totalDebtAmount > 0 ? '#dc2626' : '#166534', fontWeight: '700', marginTop: 4 }}>
+                      {expenses.filter(e => !e.paidByCashier).length > 0 ? `⏳ ${expenses.filter(e => !e.paidByCashier).length} Borçta` : '✓ Ödendi'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Aşama 3 */}
+                  <TouchableOpacity
+                    style={{
+                      width: 135,
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: expenseTab === 'awaiting_advisor' ? '#eff6ff' : '#f0f9ff',
+                      borderWidth: 1.5,
+                      borderColor: expenseTab === 'awaiting_advisor' ? '#2563eb' : '#bfdbfe'
+                    }}
+                    onPress={() => setExpenseTab('awaiting_advisor')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#1e40af' }}>3. AŞAMA</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#1d4ed8' }}>{totalPendingAdvisorCount} Fiş</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e3a8a' }}>📤 Müşavire Gönder</Text>
+                    <Text style={{ fontSize: 9.5, color: '#2563eb', fontWeight: '700', marginTop: 4 }}>✓ İletildi</Text>
+                  </TouchableOpacity>
+
+                  {/* Aşama 4 */}
+                  <TouchableOpacity
+                    style={{
+                      width: 135,
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: expenseTab === 'rejected' ? '#fff1f2' : '#faf5ff',
+                      borderWidth: 1.5,
+                      borderColor: expenseTab === 'rejected' ? '#be123c' : '#e9d5ff'
+                    }}
+                    onPress={() => setExpenseTab(totalRejectedCount > 0 ? 'rejected' : 'all')}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#6b21a8' }}>4. AŞAMA</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#7e22ce' }}>{expenses.filter(e => e.recordedInLedger).length} Onaylı</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#581c87' }}>🏛️ Defter Onayı</Text>
+                    <Text style={{ fontSize: 9.5, color: totalRejectedCount > 0 ? '#b91c1c' : '#7e22ce', fontWeight: '700', marginTop: 4 }}>
+                      {totalRejectedCount > 0 ? `⚠️ ${totalRejectedCount} Ret` : '✓ Deftere İşlendi'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+
             {/* Kasa & Muhasebe Sekmeleri */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', gap: 6 }}>

@@ -661,6 +661,184 @@ export default function AccountingPage({ viewMode }) {
         </div>
       </div>
 
+      {/* CANLI İŞ AKIŞ & ONAY SÜREÇ DİYAGRAMI (Gider -> Kasa -> Müşavir -> Resmi Defter) */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        border: '1.5px solid #cbd5e1',
+        marginBottom: '20px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.25rem' }}>🔄</span>
+            <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>Canlı Muhasebe, Kasa & Müşavir Onay Süreç Akışı</strong>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.7rem',
+              backgroundColor: '#ecfdf5',
+              color: '#047857',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontWeight: 800,
+              border: '1px solid #a7f3d0'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+              CANLI SENKRON
+            </span>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+            Adımlara tıklayarak ilgili harcama ve onay listesine anında geçebilirsiniz
+          </span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: '12px',
+          alignItems: 'stretch'
+        }}>
+          {/* Adım 1: Gider Girişi */}
+          <div
+            onClick={() => { setActiveTab('ALL'); setSelectedSubType('all'); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#f8fafc',
+              border: `1.5px solid ${activeTab === 'ALL' ? '#10b981' : '#e2e8f0'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>1. AŞAMA</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, backgroundColor: '#e2e8f0', color: '#334155', padding: '2px 6px', borderRadius: '6px' }}>
+                  {expenses.length} Fiş
+                </span>
+              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📝</span> Gider & Fiş Kaydı
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', lineHeight: '1.3' }}>
+                Kasa personeli veya şef tarafından harcama girişi yapılır.
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '0.72rem', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              ✓ Başlangıç Noktası
+            </div>
+          </div>
+
+          {/* Adım 2: Kasa Ödemesi */}
+          <div
+            onClick={() => { setActiveTab(isAdvisorMode ? 'LEDGER' : 'DEBT'); setSelectedSubType('all'); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#f0fdf4',
+              border: `1.5px solid ${activeTab === 'DEBT' ? '#16a34a' : '#bbf7d0'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase' }}>2. AŞAMA</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, backgroundColor: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px' }}>
+                  {expenses.filter(e => e.paidByCashier).length} Ödendi
+                </span>
+              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#14532d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>💵</span> Kasa Fiili Ödemesi
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#15803d', marginTop: '4px', lineHeight: '1.3' }}>
+                Nakit/Banka ile ödeme yapılır, bekleyen borçtan düşer.
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '0.72rem', fontWeight: 800, color: totalUnpaidDebt > 0 ? '#b91c1c' : '#15803d' }}>
+              {expenses.filter(e => !e.paidByCashier).length > 0 ? `⏳ ${expenses.filter(e => !e.paidByCashier).length} Bekleyen Borç` : '✓ Tüm Borçlar Ödendi'}
+            </div>
+          </div>
+
+          {/* Adım 3: Müşavire Gönderim */}
+          <div
+            onClick={() => { setActiveTab('AWAITING_ADVISOR'); setSelectedSubType('all'); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#eff6ff',
+              border: `1.5px solid ${activeTab === 'AWAITING_ADVISOR' ? '#2563eb' : '#bfdbfe'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase' }}>3. AŞAMA</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 6px', borderRadius: '6px' }}>
+                  {expenses.filter(e => e.sentToAdvisor || e.status === 'PENDING_APPROVAL').length} Masada
+                </span>
+              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📤</span> Müşavire Gönderildi
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#1d4ed8', marginTop: '4px', lineHeight: '1.3' }}>
+                Fatura e-Arşiv / fiş PDF SMMM denetim paneline iletilir.
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '0.72rem', fontWeight: 700, color: '#2563eb' }}>
+              ✓ Canlı Bildirim Üretildi
+            </div>
+          </div>
+
+          {/* Adım 4: Resmi Defter Onayı */}
+          <div
+            onClick={() => { setActiveTab(expenses.filter(e => e.status === 'REJECTED' || e.status === 'NEEDS_CORRECTION').length > 0 ? 'REJECTED' : (isAdvisorMode ? 'LEDGER' : 'FINAL')); setSelectedSubType('all'); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#faf5ff',
+              border: `1.5px solid ${activeTab === 'FINAL' || activeTab === 'LEDGER' ? '#7e22ce' : '#e9d5ff'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6b21a8', textTransform: 'uppercase' }}>4. AŞAMA</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, backgroundColor: '#f3e8ff', color: '#7e22ce', padding: '2px 6px', borderRadius: '6px' }}>
+                  {expenses.filter(e => e.recordedInLedger || e.status === 'FINALIZED').length} Onaylı
+                </span>
+              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#581c87', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🏛️</span> Resmi Defter Onayı
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#6b21a8', marginTop: '4px', lineHeight: '1.3' }}>
+                Mali Müşavir resmi yevmiye kaydına alır veya itiraz/ret notu düşer.
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '0.72rem', fontWeight: 800, color: expenses.filter(e => e.status === 'REJECTED').length > 0 ? '#b91c1c' : '#7e22ce' }}>
+              {expenses.filter(e => e.status === 'REJECTED').length > 0 ? `⚠️ ${expenses.filter(e => e.status === 'REJECTED').length} Düzeltme İstenen` : '✓ Yevmiye Defteri Mutabık'}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* FILTER & SEARCH BAR */}
       <div className="filters-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '16px' }}>
         {/* Category Tabs */}
