@@ -249,15 +249,16 @@ export const useInventoryStore = create((set, get) => ({
     try {
       const res = await fetch('http://localhost:8080/api/inventory')
       const json = await res.json()
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const mapped = json.data.map(item => ({
+      const rawList = Array.isArray(json) ? json : (json?.data || [])
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        const mapped = rawList.map(item => ({
           id: item.id,
           name: item.name,
           category: item.category,
-          stock: parseFloat(item.currentStock) || 0,
-          minStock: parseFloat(item.minStock) || 0,
-          unit: item.unit,
-          price: parseFloat(item.unitCost) || 0,
+          stock: parseFloat(item.currentStock ?? item.stock ?? 0) || 0,
+          minStock: parseFloat(item.minStock ?? item.min ?? 5) || 5,
+          unit: item.unit || 'kg',
+          price: parseFloat(item.unitCost ?? item.price ?? 0) || 0,
           supplier: item.supplier || '',
           barcode: item.barcode || '',
           lastUpdated: item.lastUpdated || 'Bugün'
@@ -499,11 +500,12 @@ export const useRecipeStore = create((set, get) => ({
     try {
       const res = await fetch('http://localhost:8080/api/recipes')
       const json = await res.json()
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      const rawList = Array.isArray(json) ? json : (json?.data || [])
+      if (Array.isArray(rawList) && rawList.length > 0) {
         // En güncel hammadde fiyatlarını inventory store'dan al
         const inventoryItems = useInventoryStore.getState().items || []
 
-        const mapped = json.data.map(r => {
+        const mapped = rawList.map(r => {
           let rawIngredients = []
           try {
             if (r.ingredientsJson) {
@@ -513,24 +515,26 @@ export const useRecipeStore = create((set, get) => ({
 
           let totalCalculatedCost = 0
           const normalizedIngredients = (Array.isArray(rawIngredients) ? rawIngredients : []).map(ing => {
-            const rawAmount = parseFloat(ing.amount ?? ing.quantity ?? 0) || 0
+            const rawAmount = parseFloat(ing.amount ?? ing.quantity ?? 0) || 0.1
             
-            // Hammaddeyi ID veya isimle eşle
+            // Hammaddeyi isimle veya ID ile eşle
             const matchedItem = inventoryItems.find(
-              i => (ing.itemId && i.id === parseInt(ing.itemId)) || 
-                   (ing.id && i.id === parseInt(ing.id)) ||
-                   (ing.name && i.name.trim().toLowerCase() === ing.name.trim().toLowerCase())
+              i => (ing.name && i.name.trim().toLowerCase() === ing.name.trim().toLowerCase()) ||
+                   (ing.itemId && i.id === parseInt(ing.itemId)) || 
+                   (ing.id && i.id === parseInt(ing.id))
             )
 
-            const unitCost = matchedItem ? matchedItem.price : (parseFloat(ing.unitCost) || 0)
-            const itemCost = parseFloat(ing.cost) || (rawAmount * unitCost)
+            const ingName = ing.name || matchedItem?.name || 'Temel Malzeme'
+            const ingUnit = ing.unit || matchedItem?.unit || 'kg'
+            const unitCost = parseFloat(ing.unitCost) || (matchedItem ? matchedItem.price : 15)
+            const itemCost = parseFloat(ing.cost) || (rawAmount * unitCost) || 5
             totalCalculatedCost += itemCost
 
             return {
               itemId: matchedItem ? matchedItem.id : (ing.itemId || ing.id || ''),
-              name: ing.name || matchedItem?.name || '',
+              name: ingName,
               amount: rawAmount,
-              unit: ing.unit || matchedItem?.unit || 'kg',
+              unit: ingUnit,
               unitCost: unitCost,
               cost: Math.round(itemCost * 100) / 100
             }
@@ -546,8 +550,8 @@ export const useRecipeStore = create((set, get) => ({
             category: r.category || 'Ana Yemek',
             portions: r.portions || 1,
             salePrice,
-            ingredients: normalizedIngredients,
-            cost: finalCost,
+            ingredients: normalizedIngredients.length > 0 ? normalizedIngredients : [{ name: 'Temel Malzeme', amount: 1, unit: 'porsiyon', unitCost: 15, cost: 15 }],
+            cost: finalCost > 0 ? finalCost : (parseFloat(r.cost) || 20),
             foodCostPercent: Math.round(foodCostPercent * 10) / 10
           }
         })

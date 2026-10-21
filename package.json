@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "cd backend && .\\maven\\apache-maven-3.9.9\\bin\\mvn.cmd spring-boot:run",
     "build": "vite build",
     "preview": "vite preview",
     "mobile": "npm --prefix mobile start",

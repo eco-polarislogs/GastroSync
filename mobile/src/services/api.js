@@ -7,6 +7,12 @@ try {
 } catch (_) {}
 
 import { INITIAL_INVENTORY, DEMO_USERS, INITIAL_RECIPES } from '../data/inventoryData';
+import {
+  getStoredExpenses,
+  saveStoredExpenses,
+  getStoredNotifications,
+  saveStoredNotifications,
+} from './storage';
 
 // Dinamik Host Belirleme (Expo Host, Wi-Fi LAN IP veya USB 127.0.0.1)
 const getApiBaseUrl = () => {
@@ -450,15 +456,19 @@ export const apiFetchTransactions = async () => {
   ];
 };
 
-// 16. Muhasebe Giderlerini Getir
+// 16. Muhasebe Giderlerini Getir (Kalıcı ve Canlı Senkronize)
 export const apiFetchExpenses = async () => {
   try {
-    const res = await fetch(`${API_BASE_URL}/expenses`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`${API_BASE_URL}/expenses`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const json = await res.json();
       const rawList = json.data || json || [];
-      if (Array.isArray(rawList)) {
-        return rawList.map((e) => ({
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        const mapped = rawList.map((e) => ({
           id: e.id,
           title: e.title,
           category: e.category,
@@ -477,55 +487,75 @@ export const apiFetchExpenses = async () => {
           paidByCashier: Boolean(e.paidByCashier),
           recordedInLedger: Boolean(e.recordedInLedger),
           sentToAdvisor: Boolean(e.sentToAdvisor),
-          status: e.status || (e.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR'),
+          status: e.status || (e.recordedInLedger ? 'FINALIZED' : 'PENDING_APPROVAL'),
         }));
+        saveStoredExpenses(mapped);
+        return mapped;
       }
     }
   } catch (err) {
-    logDebug('[Mobile API] Giderler çekilemedi:', err.message);
+    logDebug('[Mobile API] Giderler backendden çekilemedi, kalıcı depodan okunuyor:', err.message);
   }
-  return [];
+  // Backend kapalıysa veya offline iken yerel kalıcı veriyi döner
+  return getStoredExpenses();
 };
 
-// 17. Yeni Gider Ekle
+// 17. Yeni Gider Ekle (Anında Yerel Kalıcı + Arka Plan Backend)
 export const apiCreateExpense = async (payload) => {
+  const newItem = {
+    id: payload.id || Date.now(),
+    title: payload.title,
+    category: payload.category,
+    subType: payload.subType,
+    amount: Number(payload.amount) || 0,
+    period: payload.period || '2026-10',
+    expenseDate: payload.expenseDate || new Date().toISOString().split('T')[0],
+    dueDate: payload.dueDate || payload.expenseDate || new Date().toISOString().split('T')[0],
+    invoiceNumber: payload.invoiceNumber || '',
+    counterparty: payload.counterparty || '',
+    paymentStatus: payload.paymentStatus || (payload.paidByCashier ? 'PAID' : 'UNPAID'),
+    rejectionReason: payload.rejectionReason || '',
+    recordedBy: payload.recordedBy || 'Muhasebe / Kasa',
+    note: payload.note || '',
+    isOwnedProperty: Boolean(payload.isOwnedProperty),
+    paidByCashier: payload.paidByCashier !== false,
+    recordedInLedger: Boolean(payload.recordedInLedger),
+    sentToAdvisor: payload.sentToAdvisor !== false,
+    status: payload.status || (payload.recordedInLedger ? 'FINALIZED' : 'PENDING_APPROVAL'),
+  };
+
+  // 1. Önce yerel kalıcı depoya kaydeder (asla kaybolmaz)
+  const currentExpenses = getStoredExpenses();
+  const nextExpenses = [newItem, ...currentExpenses.filter((e) => e.id !== newItem.id)];
+  saveStoredExpenses(nextExpenses);
+
+  // 2. Arka planda backend'e de POST atar
   try {
     const res = await fetch(`${API_BASE_URL}/expenses`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: payload.title,
-        category: payload.category,
-        subType: payload.subType,
-        amount: Number(payload.amount) || 0,
-        period: payload.period || '2026-10',
-        expenseDate: payload.expenseDate || new Date().toISOString().split('T')[0],
-        dueDate: payload.dueDate || payload.expenseDate || new Date().toISOString().split('T')[0],
-        invoiceNumber: payload.invoiceNumber || '',
-        counterparty: payload.counterparty || '',
-        paymentStatus: payload.paymentStatus || (payload.paidByCashier ? 'PAID' : 'UNPAID'),
-        rejectionReason: payload.rejectionReason || '',
-        recordedBy: payload.recordedBy || 'Muhasebe',
-        note: payload.note || '',
-        isOwnedProperty: Boolean(payload.isOwnedProperty),
-        paidByCashier: payload.paidByCashier !== false,
-        recordedInLedger: Boolean(payload.recordedInLedger),
-        sentToAdvisor: payload.sentToAdvisor !== false,
-        status: payload.status || (payload.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR'),
-      }),
+      body: JSON.stringify(newItem),
     });
     if (res.ok) {
       const json = await res.json();
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    logDebug('[Mobile API] Gider ekleme hatası:', err.message);
+    logDebug('[Mobile API] Gider backend senkronizasyonu ertelendi:', err.message);
   }
-  return { success: false };
+  return { success: true, data: newItem };
 };
 
-// 18. Gider Güncelle (Kasadan Ödendi / Deftere İşlendi)
+// 18. Gider Güncelle (Borç Ödendi / Deftere İşlendi / Reddedildi)
 export const apiUpdateExpense = async (id, payload) => {
+  // 1. Önce yerel kalıcı depoda kaydı anında günceller
+  const currentExpenses = getStoredExpenses();
+  const nextExpenses = currentExpenses.map((e) =>
+    e.id === id ? { ...e, ...payload } : e
+  );
+  saveStoredExpenses(nextExpenses);
+
+  // 2. Arka planda backend'e PUT gönderir
   try {
     const res = await fetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'PUT',
@@ -537,13 +567,19 @@ export const apiUpdateExpense = async (id, payload) => {
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    logDebug('[Mobile API] Gider güncelleme hatası:', err.message);
+    logDebug('[Mobile API] Gider güncelleme backend senkronizasyonu ertelendi:', err.message);
   }
-  return { success: false };
+  return { success: true };
 };
 
 // 19. Gider Sil
 export const apiDeleteExpense = async (id) => {
+  // 1. Önce yerel kalıcı depodan anında siler
+  const currentExpenses = getStoredExpenses();
+  const nextExpenses = currentExpenses.filter((e) => e.id !== id);
+  saveStoredExpenses(nextExpenses);
+
+  // 2. Arka planda backend'e DELETE gönderir
   try {
     const res = await fetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'DELETE',
@@ -552,13 +588,13 @@ export const apiDeleteExpense = async (id) => {
       return { success: true };
     }
   } catch (err) {
-    logDebug('[Mobile API] Gider silme hatası:', err.message);
+    logDebug('[Mobile API] Gider silme backend senkronizasyonu ertelendi:', err.message);
   }
-  return { success: false };
+  return { success: true };
 };
 
 // ==========================================
-// 20. BİLDİRİM VE ROL İLETİŞİMİ API
+// 20. BİLDİRİM VE ROL İLETİŞİMİ API (Kalıcı ve Canlı)
 // ==========================================
 export const apiFetchNotifications = async (role) => {
   try {
@@ -568,44 +604,90 @@ export const apiFetchNotifications = async (role) => {
     const res = await fetch(url);
     if (res.ok) {
       const json = await res.json();
-      return json.data || json || [];
+      const raw = json.data || json || [];
+      if (Array.isArray(raw) && raw.length > 0) {
+        saveStoredNotifications(raw);
+        return raw;
+      }
     }
   } catch (err) {
-    logDebug('[Mobile API] Bildirimler çekilemedi:', err.message);
+    logDebug('[Mobile API] Bildirimler backendden çekilemedi, kalıcı depodan okunuyor:', err.message);
   }
-  return [];
+
+  // Yerel kalıcı depodan role göre filtreleyip döner
+  const allNotifs = getStoredNotifications();
+  if (!role) return allNotifs;
+  const roleUpper = String(role).toUpperCase();
+  return allNotifs.filter(
+    (n) =>
+      !n.targetRole ||
+      String(n.targetRole).toUpperCase() === roleUpper ||
+      String(n.targetRole).toUpperCase() === 'ALL'
+  );
 };
 
 export const apiCreateNotification = async (payload) => {
+  const newNotif = {
+    id: payload.id || Date.now(),
+    title: payload.title,
+    message: payload.message,
+    targetRole: payload.targetRole,
+    senderName: payload.senderName || 'Sistem',
+    type: payload.type || 'INFO',
+    relatedEntityId: payload.relatedEntityId || null,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  // 1. Önce yerel kalıcı depoya kaydeder
+  const existing = getStoredNotifications();
+  const nextList = [newNotif, ...existing.filter((n) => n.id !== newNotif.id)];
+  saveStoredNotifications(nextList);
+
+  // 2. Arka planda backend'e POST atar
   try {
     const res = await fetch(`${API_BASE_URL}/notifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(newNotif),
     });
     if (res.ok) {
       const json = await res.json();
       return { success: true, data: json.data || json };
     }
   } catch (err) {
-    logDebug('[Mobile API] Bildirim oluşturma hatası:', err.message);
+    logDebug('[Mobile API] Bildirim backend senkronizasyonu ertelendi:', err.message);
   }
-  return { success: false };
+  return { success: true, data: newNotif };
 };
 
 export const apiMarkNotificationRead = async (id) => {
+  const existing = getStoredNotifications();
+  const updated = existing.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+  saveStoredNotifications(updated);
+
   try {
     const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
       method: 'PUT',
     });
     if (res.ok) return { success: true };
   } catch (err) {
-    logDebug('[Mobile API] Bildirim okundu hatası:', err.message);
+    logDebug('[Mobile API] Bildirim okundu senkronizasyon:', err.message);
   }
-  return { success: false };
+  return { success: true };
 };
 
 export const apiMarkAllNotificationsRead = async (role) => {
+  const existing = getStoredNotifications();
+  const roleUpper = role ? String(role).toUpperCase() : null;
+  const updated = existing.map((n) => {
+    if (!roleUpper || String(n.targetRole).toUpperCase() === roleUpper) {
+      return { ...n, isRead: true };
+    }
+    return n;
+  });
+  saveStoredNotifications(updated);
+
   try {
     const res = await fetch(
       `${API_BASE_URL}/notifications/mark-all-read?role=${role || ''}`,
@@ -613,7 +695,7 @@ export const apiMarkAllNotificationsRead = async (role) => {
     );
     if (res.ok) return { success: true };
   } catch (err) {
-    logDebug('[Mobile API] Tümünü okundu yapma hatası:', err.message);
+    logDebug('[Mobile API] Tümünü okundu yapma senkronizasyon:', err.message);
   }
-  return { success: false };
+  return { success: true };
 };

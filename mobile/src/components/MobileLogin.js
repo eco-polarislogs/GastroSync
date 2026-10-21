@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME } from '../theme/tokens';
@@ -85,10 +86,22 @@ export default function MobileLogin({ onLoginSuccess }) {
             <Text style={styles.workspaceTagTxt}>GASTROSYNC KURUMSAL SİSTEMİ</Text>
           </View>
           <View style={styles.logoRow}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoText}>GS</Text>
+            <Image
+              source={require('../../assets/logo.jpg')}
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                borderWidth: 2,
+                borderColor: 'rgba(212, 175, 55, 0.85)',
+                marginRight: 10,
+              }}
+              resizeMode="cover"
+            />
+            <View>
+              <Text style={styles.brandTitle}>GastroSync</Text>
+              <Text style={{ fontSize: 11, color: '#a7f3d0', fontWeight: '600' }}>Restoran Yönetim Sistemi</Text>
             </View>
-            <Text style={styles.brandTitle}>GastroSync</Text>
           </View>
           <Text style={styles.brandTagline}>Akıllı Reçete, Maliyet Zekası & Mal Kabul</Text>
         </View>
@@ -96,7 +109,20 @@ export default function MobileLogin({ onLoginSuccess }) {
         {/* Web Login Kartı (tein-login-card) */}
         <View style={styles.card}>
           <View style={styles.cardHeaderBox}>
-            <Text style={styles.cardHeader}>Giriş Yapın</Text>
+            <View style={{ alignItems: 'center', marginBottom: 12 }}>
+              <Image
+                source={require('../../assets/logo.jpg')}
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  borderWidth: 2,
+                  borderColor: 'rgba(212, 175, 55, 0.85)',
+                }}
+                resizeMode="cover"
+              />
+            </View>
+            <Text style={styles.cardHeader}>Tekrar Hoş Geldiniz</Text>
             <Text style={styles.cardSub}>Restoran rolünüze göre kimliğinizi doğrulayın</Text>
           </View>
 
