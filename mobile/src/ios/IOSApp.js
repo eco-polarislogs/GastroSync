@@ -85,20 +85,20 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const [users, setUsers] = useState(DEMO_USERS);
   const [transactions, setTransactions] = useState([]);
   const [expenses, setExpenses] = useState([
-    { id: 1, title: 'Merkez Restoran Kirası', category: 'FIXED', subType: 'RENT', amount: 45000, period: '2026-10', expenseDate: '2026-10-01', dueDate: '2026-10-05', invoiceNumber: 'KRA-2026/10', counterparty: 'Ahmet Yılmaz (Mal Sahibi)', paymentStatus: 'PAID', note: 'Ana cadde dükkan kirası - Havale ile ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 2, title: 'Mutfak & Servis Personel Maaşları', category: 'FIXED', subType: 'LABOR', amount: 85000, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-05', invoiceNumber: 'BORDRO-10', counterparty: 'Personel (6 Kişi)', paymentStatus: 'PAID', note: '6 Personel net maaş', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 3, title: 'Mali Müşavirlik & Danışmanlık', category: 'FIXED', subType: 'ACCOUNTANT', amount: 8500, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-10', invoiceNumber: 'SMMM-089', counterparty: 'SMMM Selim Aydın', paymentStatus: 'PAID', note: 'Aylık defter tutma ve beyanname', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 4, title: 'Sanayi Tipi Elektrik Faturası', category: 'VARIABLE', subType: 'ELECTRICITY', amount: 14200, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-24', invoiceNumber: 'ELEK-8839', counterparty: 'Enerjisa A.Ş.', paymentStatus: 'UNPAID', note: 'Son ödeme 24 Ekim - Kasa nakit akışı bekleniyor, borca bırakıldı', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'SENT_TO_ADVISOR' },
-    { id: 5, title: 'Şebeke Su Faturası', category: 'VARIABLE', subType: 'WATER', amount: 3800, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-18', invoiceNumber: 'ISKI-443', counterparty: 'İSKİ', paymentStatus: 'PAID', note: 'Bulaşıkhane ve mutfak tüketimi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 6, title: 'Endüstriyel Mutfak Doğalgaz', category: 'VARIABLE', subType: 'GAS', amount: 9600, period: '2026-10', expenseDate: '2026-10-11', dueDate: '2026-10-28', invoiceNumber: 'IGDAS-992', counterparty: 'İGDAŞ', paymentStatus: 'UNPAID', note: 'Ocak ve fırın hattı - Gelecek hafta ödenecek (Borç/Vade)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'SENT_TO_ADVISOR' },
-    { id: 7, title: 'Restoran Rezervasyon Telefonları', category: 'VARIABLE', subType: 'PHONE', amount: 850, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'TEL-5542', counterparty: 'Türk Telekom', paymentStatus: 'PAID', note: 'İletişim hatları', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 8, title: 'Fiber İnternet & POS Hattı', category: 'VARIABLE', subType: 'INTERNET', amount: 1250, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'INT-9901', counterparty: 'Superonline', paymentStatus: 'PAID', note: 'POS ve Wi-Fi altyapısı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 9, title: 'KDV ve Geçici Vergi Beyanı', category: 'VARIABLE', subType: 'TAX', amount: 18500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-26', invoiceNumber: 'GIB-2026-9', counterparty: 'Vergi Dairesi', paymentStatus: 'UNPAID', note: 'Aylık vergi tahakkukları yapıldı, son ödeme 26 Ekim (Borçta)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 10, title: 'Personel SGK & Prim Ödemesi', category: 'VARIABLE', subType: 'SGK', amount: 27500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-31', invoiceNumber: 'SGK-10', counterparty: 'SGK', paymentStatus: 'UNPAID', note: 'Ekim SGK primi - Vadesi ay sonu', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 11, title: 'Peçete, Paket & Temizlik Sarf', category: 'VARIABLE', subType: 'CONSUMABLES', amount: 6400, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-13', invoiceNumber: 'SRF-88', counterparty: 'Paketçi Toptan', paymentStatus: 'PAID', note: 'Ambalaj ve hijyen malzemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'APPROVED_IN_LEDGER' },
-    { id: 12, title: 'Soğuk Hava Zinciri Sevkiyatı', category: 'VARIABLE', subType: 'LOGISTICS', amount: 4800, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-20', invoiceNumber: 'LOJ-33', counterparty: 'Örnek Lojistik', paymentStatus: 'PAID', note: 'Haftalık et ve sebze lojistiği', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'SENT_TO_ADVISOR' },
-    { id: 13, title: 'Instagram & Gurme Tanıtım', category: 'VARIABLE', subType: 'MARKETING', amount: 5500, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-14', invoiceNumber: 'REK-40', counterparty: 'Meta Ads', paymentStatus: 'PAID', note: 'Mali Müşavir Reddetmişti: Fatura e-arşiv PDF belgesi bekleniyor', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'REJECTED', rejectionReason: 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş' },
-    { id: 14, title: 'Mutfak Davlumbaz ve Izgara Bakımı', category: 'VARIABLE', subType: 'RENOVATION', amount: 3750, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-25', invoiceNumber: 'TDL-10', counterparty: 'Usta Havalandırma', paymentStatus: 'PARTIAL', note: 'Davlumbaz motor değişimi: avans verildi, kalan teslimatta ödenecek', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'SENT_TO_ADVISOR' },
+    { id: 1, title: 'Merkez Restoran Kirası', category: 'FIXED', subType: 'RENT', amount: 45000, period: '2026-10', expenseDate: '2026-10-01', dueDate: '2026-10-05', invoiceNumber: 'KRA-2026/10', counterparty: 'Ahmet Yılmaz (Mal Sahibi)', paymentStatus: 'PAID', note: 'Ana cadde dükkan kirası - Havale ile ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 2, title: 'Mutfak & Servis Personel Maaşları', category: 'FIXED', subType: 'LABOR', amount: 85000, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-05', invoiceNumber: 'BORDRO-2026-10', counterparty: 'Restoran Personeli (6 Kişi)', paymentStatus: 'PAID', note: '6 Personel net maaş banka ödemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 3, title: 'Mali Müşavirlik & Danışmanlık', category: 'FIXED', subType: 'ACCOUNTANT', amount: 8500, period: '2026-10', expenseDate: '2026-10-05', dueDate: '2026-10-10', invoiceNumber: 'SMMM-2026-089', counterparty: 'SMMM Selim Aydın', paymentStatus: 'PAID', note: 'Aylık defter tutma ve vergi beyanname danışmanlığı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 4, title: 'Sanayi Tipi Elektrik Faturası', category: 'VARIABLE', subType: 'ELECTRICITY', amount: 14200, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-24', invoiceNumber: 'ELEK-8839210', counterparty: 'Enerjisa Dağıtım A.Ş.', paymentStatus: 'UNPAID', note: 'Son ödeme tarihi 24 Ekim - Kasa nakit akışı bekleniyor, borca bırakıldı', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
+    { id: 5, title: 'Şebeke Su Faturası & Arıtma', category: 'VARIABLE', subType: 'WATER', amount: 3800, period: '2026-10', expenseDate: '2026-10-10', dueDate: '2026-10-18', invoiceNumber: 'ISKI-2026-443', counterparty: 'İSKİ Genel Müdürlüğü', paymentStatus: 'PAID', note: 'Bulaşıkhane ve mutfak tüketimi vezneden ödendi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 6, title: 'Endüstriyel Mutfak Doğalgaz', category: 'VARIABLE', subType: 'GAS', amount: 9600, period: '2026-10', expenseDate: '2026-10-11', dueDate: '2026-10-28', invoiceNumber: 'IGDAS-992', counterparty: 'İGDAŞ', paymentStatus: 'UNPAID', note: 'Ocak ve fırın hattı - Gelecek hafta ödenecek (Borç/Vade)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
+    { id: 7, title: 'Restoran Rezervasyon Telefonları', category: 'VARIABLE', subType: 'PHONE', amount: 850, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'TEL-5542', counterparty: 'Türk Telekom', paymentStatus: 'PAID', note: 'İletişim hatları', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 8, title: 'Fiber İnternet & POS Hattı', category: 'VARIABLE', subType: 'INTERNET', amount: 1250, period: '2026-10', expenseDate: '2026-10-08', dueDate: '2026-10-15', invoiceNumber: 'INT-9901', counterparty: 'Superonline', paymentStatus: 'PAID', note: 'POS ve Wi-Fi altyapısı', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 9, title: 'KDV ve Geçici Vergi Beyanı', category: 'VARIABLE', subType: 'TAX', amount: 18500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-26', invoiceNumber: 'GIB-2026-9', counterparty: 'Vergi Dairesi', paymentStatus: 'UNPAID', note: 'Aylık vergi tahakkukları yapıldı, son ödeme 26 Ekim (Borçta)', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 10, title: 'Personel SGK & Prim Ödemesi', category: 'VARIABLE', subType: 'SGK', amount: 27500, period: '2026-10', expenseDate: '2026-10-12', dueDate: '2026-10-31', invoiceNumber: 'SGK-10', counterparty: 'SGK', paymentStatus: 'UNPAID', note: 'Ekim SGK primi - Vadesi ay sonu', isOwnedProperty: false, paidByCashier: false, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 11, title: 'Peçete, Paket & Temizlik Sarf', category: 'VARIABLE', subType: 'CONSUMABLES', amount: 6400, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-13', invoiceNumber: 'SRF-88', counterparty: 'Paketçi Toptan', paymentStatus: 'PAID', note: 'Ambalaj ve hijyen malzemesi', isOwnedProperty: false, paidByCashier: true, recordedInLedger: true, sentToAdvisor: true, status: 'FINALIZED' },
+    { id: 12, title: 'Soğuk Hava Zinciri Sevkiyatı', category: 'VARIABLE', subType: 'LOGISTICS', amount: 4800, period: '2026-10', expenseDate: '2026-10-13', dueDate: '2026-10-20', invoiceNumber: 'LOJ-33', counterparty: 'Örnek Lojistik', paymentStatus: 'PAID', note: 'Haftalık et ve sebze lojistiği', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
+    { id: 13, title: 'Instagram & Gurme Tanıtım Reklamı', category: 'VARIABLE', subType: 'MARKETING', amount: 5000, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-14', invoiceNumber: 'REK-4001', counterparty: 'Meta Ads / Dijital Ajans', paymentStatus: 'PAID', note: 'Mali Müşavir Reddetmişti: Fatura e-arşiv PDF belgesi bekleniyor', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'NEEDS_CORRECTION', rejectionReason: 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli' },
+    { id: 14, title: 'Mutfak Davlumbaz ve Izgara Bakımı', category: 'VARIABLE', subType: 'RENOVATION', amount: 3750, period: '2026-10', expenseDate: '2026-10-14', dueDate: '2026-10-25', invoiceNumber: 'TDL-10', counterparty: 'Usta Havalandırma', paymentStatus: 'PARTIAL', note: 'Davlumbaz motor değişimi: avans verildi, kalan teslimatta ödenecek', isOwnedProperty: false, paidByCashier: true, recordedInLedger: false, sentToAdvisor: true, status: 'PENDING_APPROVAL' },
   ]);
   const [currentLang, setCurrentLang] = useState('tr');
   const [showLangModal, setShowLangModal] = useState(false);
@@ -356,11 +356,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const grandTotalCost = foodCostTotal + totalOperatingExpenses;
   const netOperatingProfit = totalRevenue - grandTotalCost;
 
-  // Toplam Borç ve Müşavir Ret Tutarları (Gerçekçi Muhasebe Takibi)
+  // Toplam Borç, Onay Bekleyen ve Müşavir Ret Tutarları (Gerçekçi Muhasebe & Denetim Takibi)
   const totalDebtAmount = expenses
     .filter((e) => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier)
     .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-  const totalRejectedCount = expenses.filter((e) => e.status === 'REJECTED').length;
+  const totalRejectedCount = expenses.filter((e) => e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED').length;
+  const totalPendingAdvisorCount = expenses.filter(
+    (e) => (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED'
+  ).length;
+  const totalApprovedLedgerCount = expenses.filter((e) => e.status === 'FINALIZED' || Boolean(e.recordedInLedger)).length;
 
   const filteredExpenses = expenses.filter((e) => {
     let matchTab = true;
@@ -368,9 +372,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
     else if (expenseTab === 'variable') matchTab = e.category === 'VARIABLE';
     else if (expenseTab === 'rent') matchTab = e.subType === 'RENT';
     else if (expenseTab === 'debt') matchTab = e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier;
-    else if (expenseTab === 'rejected') matchTab = e.status === 'REJECTED';
-    else if (expenseTab === 'pending_approval') matchTab = !e.recordedInLedger && (e.sentToAdvisor !== false);
-    else if (expenseTab === 'ledger') matchTab = Boolean(e.recordedInLedger);
+    else if (expenseTab === 'rejected') matchTab = e.status === 'NEEDS_CORRECTION' || e.status === 'REJECTED';
+    else if (expenseTab === 'awaiting_advisor' || expenseTab === 'pending_approval') {
+      matchTab = (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED';
+    } else if (expenseTab === 'ledger') matchTab = Boolean(e.recordedInLedger) || e.status === 'FINALIZED';
 
     const matchSearch =
       !expenseSearch ||
@@ -722,13 +727,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
     refreshAllData();
   };
 
-  // Muhasebecinin Mali Müşavire Onaya Göndermesi
+  // Muhasebecinin Mali Müşavire Onaya Göndermesi (Web ile birebir)
   const handleSendToAdvisor = async (exp) => {
     setExpenses((prev) =>
-      prev.map((e) => (e.id === exp.id ? { ...e, sentToAdvisor: true, status: 'PENDING_APPROVAL' } : e))
+      prev.map((e) => (e.id === exp.id ? { ...e, sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' } : e))
     );
-    showToast(`🚀 "${exp.title}" Mali Müşavir defter onayına gönderildi`);
-    await apiUpdateExpense(exp.id, { sentToAdvisor: true, status: 'PENDING_APPROVAL' });
+    showToast(`🚀 "${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) Mali Müşavir defter onayına gönderildi.`);
+    await apiUpdateExpense(exp.id, { sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' });
     await apiCreateNotification({
       title: '🚀 Gider Defter Onayı Bekliyor (Mobil)',
       message: `${currentUser.name || 'Kasa / Muhasebe'} mobilden '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' onaylanmak üzere Mali Müşavire iletildi.`,
@@ -737,7 +742,6 @@ export default function AndroidApp({ initialUser, onLogout }) {
       type: 'EXPENSE_APPROVAL',
       relatedEntityId: exp.id,
     });
-    refreshAllData();
   };
 
   // Kasa Dağıtımı (Örn: Kasaya Gelen 5000 TL'nin Giderlere Dağıtımı)
@@ -760,7 +764,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       paidByCashier: true,
       recordedInLedger: false,
       sentToAdvisor: true,
-      status: 'SENT_TO_ADVISOR'
+      status: 'PENDING_APPROVAL'
     };
     const item2 = {
       id: Date.now() + 1,
@@ -776,7 +780,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       paidByCashier: true,
       recordedInLedger: false,
       sentToAdvisor: true,
-      status: 'SENT_TO_ADVISOR'
+      status: 'PENDING_APPROVAL'
     };
     const item3 = {
       id: Date.now() + 2,
@@ -792,7 +796,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
       paidByCashier: true,
       recordedInLedger: false,
       sentToAdvisor: true,
-      status: 'SENT_TO_ADVISOR'
+      status: 'PENDING_APPROVAL'
     };
 
     setExpenses((prev) => [item1, item2, item3, ...prev]);
@@ -815,66 +819,61 @@ export default function AndroidApp({ initialUser, onLogout }) {
     refreshAllData();
   };
 
-  // Kasa / Muhasebe Ödeme Durumu Değiştirme (Peşin Ödendi vs Borca Bırakıldı)
-  const handleToggleExpensePaid = async (exp) => {
-    const isCurrentlyPaid = exp.paymentStatus === 'PAID' || exp.paidByCashier;
-    const nextStatus = isCurrentlyPaid ? 'UNPAID' : 'PAID';
-    const nextPaid = !isCurrentlyPaid;
+  // Kasa / Muhasebe Borç Ödeme (Kasadan fiilen öde ve borcu kapat - Web ile birebir)
+  const handlePayDebtNow = async (exp) => {
+    if (exp.paymentStatus === 'PAID') {
+      showToast('Bu gider kalemi kasadan zaten fiilen ödenmiştir.');
+      return;
+    }
+
+    const updatedNote = `${exp.note ? exp.note + ' | ' : ''}Kasa tarafından ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} itibarıyla ödendi.`;
 
     setExpenses((prev) =>
       prev.map((e) =>
         e.id === exp.id
-          ? { ...e, paymentStatus: nextStatus, paidByCashier: nextPaid }
+          ? { ...e, paymentStatus: 'PAID', paidByCashier: true, note: updatedNote }
           : e
       )
     );
-    showToast(
-      nextPaid
-        ? `💵 Kasadan Ödendi: "${exp.title}"`
-        : `⏳ Bekleyen Borca/Vadeye Bırakıldı: "${exp.title}"`
-    );
+    showToast(`✓ "${exp.title}" kasadan fiilen ödendi ve borç kapatıldı.`);
 
-    // Kasa fiilen ödediğinde ve bu kalem hammadde/tedarik alımı ise Depo ve Mutfak'ı bilgilendir
-    if (nextPaid) {
-      const isMaterialOrProcurement =
-        exp.subType === 'CONSUMABLES' ||
-        exp.subType === 'FOOD_SUPPLY' ||
-        exp.category === 'VARIABLE' ||
-        (exp.counterparty && (exp.counterparty.includes('Hal') || exp.counterparty.includes('Tedarik')));
+    // Eğer hammadde veya tedarik alımı ise Depo ve Ekip Telsizine otomatik bilgi
+    const isMaterialOrProcurement =
+      exp.subType === 'CONSUMABLES' ||
+      exp.subType === 'FOOD_SUPPLY' ||
+      exp.category === 'VARIABLE' ||
+      (exp.counterparty && (exp.counterparty.includes('Hal') || exp.counterparty.includes('Tedarik')));
 
-      if (isMaterialOrProcurement) {
-        // 1. Depo bildirim masasına mal kabul uyarısı düşür
-        await apiCreateNotification({
-          title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
-          message: `Kasa tarafından "${exp.title}" (${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺) toptancıya ödendi. Depo terminalinden mal kabul edebilirsiniz.`,
-          targetRole: 'WAREHOUSE',
-          type: 'INFO',
-          relatedEntityId: exp.id,
-        });
+    if (isMaterialOrProcurement) {
+      await apiCreateNotification({
+        title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
+        message: `Kasa tarafından "${exp.title}" (${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺) toptancıya ödendi. Depo terminalinden mal kabul edebilirsiniz.`,
+        targetRole: 'WAREHOUSE',
+        type: 'INFO',
+        relatedEntityId: exp.id,
+      });
 
-        // 2. Ekip içi canlı sohbete mutfak/depo kanalına otomatik bilgi düşür
-        const autoChatMsg = {
-          id: Date.now(),
-          channelId: 'kitchen',
-          sender: currentUser?.name || 'Canan Kasa',
-          role: 'accountant',
-          text: `"${exp.title}" için toptancıya ${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Sevkiyat depoya ulaştığında kabul edilebilir.`,
-          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          avatar: currentUser?.avatar || 'CK',
-          priority: 'normal',
-        };
-        setChatMessages((prev) => [...prev, autoChatMsg]);
-      }
+      const autoChatMsg = {
+        id: Date.now(),
+        channelId: 'kitchen',
+        sender: currentUser?.name || 'Canan Kasa',
+        role: 'accountant',
+        text: `"${exp.title}" için toptancıya ${exp.amount ? exp.amount.toLocaleString('tr-TR') : 0} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Sevkiyat depoya ulaştığında kabul edilebilir.`,
+        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        avatar: currentUser?.avatar || 'CK',
+        priority: 'normal',
+      };
+      setChatMessages((prev) => [...prev, autoChatMsg]);
     }
 
     await apiUpdateExpense(exp.id, {
-      paymentStatus: nextStatus,
-      paidByCashier: nextPaid,
+      paymentStatus: 'PAID',
+      paidByCashier: true,
+      note: updatedNote,
     });
-    refreshAllData();
   };
 
-  // Mali Müşavir Onaylama İşlemi (FINALIZED - Resmi Yevmiye Defterine İşleme)
+  // Mali Müşavir Onaylama İşlemi (Approve & Record -> FINALIZED - Web ile birebir)
   const handleApproveExpenseLedger = async (exp) => {
     setExpenses((prev) =>
       prev.map((e) =>
@@ -888,39 +887,39 @@ export default function AndroidApp({ initialUser, onLogout }) {
           : e
       )
     );
-    showToast(`✓ Deftere Kesinleşti & Onaylandı: "${exp.title}"`);
+    showToast(`✓ "${exp.title}" resmi yevmiye defterine ONAYLANDI (#YEV-${exp.id}).`);
     await apiUpdateExpense(exp.id, {
       recordedInLedger: true,
       status: 'FINALIZED',
       rejectionReason: '',
     });
     await apiCreateNotification({
-      title: '✓ Gider Deftere Kesinleşti & Onaylandı (Mobil)',
-      message: `${currentUser.name || 'Mali Müşavir'} mobilden '${exp.title} (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺)' kaydını resmi yevmiye defterine kesinleştirdi.`,
+      title: '✓ Gider Deftere İşlendi & Kesinleşti (Mobil)',
+      message: `${currentUser.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' kaydı resmi yevmiye defterine onaylandı.`,
       targetRole: 'ACCOUNTANT',
       senderName: currentUser.name || 'Mali Müşavir',
       type: 'EXPENSE_APPROVAL',
       relatedEntityId: exp.id,
     });
-    refreshAllData();
   };
 
   // Mali Müşavir Ret Modalı Açma
   const handleOpenRejectModal = (exp) => {
     setExpenseToRejectMobile(exp);
-    setMobileRejectReason('');
+    setMobileRejectReason(exp.rejectionReason || '');
   };
 
-  // Mali Müşavir Gerekçeli Ret İşlemini Kaydetme (NEEDS_CORRECTION - Muhasebeye İade)
+  // Mali Müşavir Gerekçeli Ret İşlemini Kaydetme (Reject -> NEEDS_CORRECTION - Web ile birebir)
   const handleConfirmRejectExpense = async () => {
     if (!expenseToRejectMobile) return;
     if (!mobileRejectReason.trim()) {
-      showToast('Lütfen bir düzeltme/ret gerekçesi girin (Örn: Vergi No veya Fatura eksik)');
+      showToast('Lütfen bir ret gerekçesi girin (Örn: Fatura/dekont eksik, vergi no hatalı)');
       return;
     }
 
     const expId = expenseToRejectMobile.id;
     const reason = mobileRejectReason.trim();
+    const title = expenseToRejectMobile.title;
 
     setExpenses((prev) =>
       prev.map((e) =>
@@ -934,7 +933,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
           : e
       )
     );
-    showToast(`⚠️ Düzeltme Talebi Gönderildi: "${expenseToRejectMobile.title}"`);
+    showToast(`⚠️ "${title}" için düzeltme talebi muhasebeye iletildi.`);
     setExpenseToRejectMobile(null);
     setMobileRejectReason('');
 
@@ -944,14 +943,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
       rejectionReason: reason,
     });
     await apiCreateNotification({
-      title: '⚠️ Gider İçin Düzeltme Talep Edildi (Mobil)',
-      message: `${currentUser.name || 'Mali Müşavir'} mobilden '${expenseToRejectMobile.title}' kaydı için düzeltme talep etti. Gerekçe: "${reason}"`,
+      title: '⚠️ Gider Düzeltme Bekliyor (Mobil)',
+      message: `${currentUser.name || 'Mali Müşavir'} mobilden '${title}' kaydını reddetti. Gerekçe: "${reason}"`,
       targetRole: 'ACCOUNTANT',
       senderName: currentUser.name || 'Mali Müşavir',
       type: 'EXPENSE_REJECTED',
       relatedEntityId: expId,
     });
-    refreshAllData();
   };
 
   // Mali Müşavir Resmi Deftere Kayıt Durumu Değiştirme (Eski toggle yedek)
@@ -1944,8 +1942,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
         {(currentScreen === 'cashier' || (currentScreen === 'accounting' && !isAdvisorUser)) && canViewCashier && (
           <View>
             <View style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 140 }}>
                   <Text
                     style={[styles.webPageTitle, { fontSize: 18 }]}
                     numberOfLines={1}
@@ -1955,17 +1953,27 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     💰 {t.cashierAccounting || 'Kasa & Muhasebe'}
                   </Text>
                   <Text style={[styles.webPageSub, { fontSize: 11, marginTop: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                    {t.heroDesc || 'Restoran nakit akışı ve fiili kasa ödemeleri'}
+                    {t.heroDesc || 'Restoran nakit akışı, kasa dağıtımı ve fiili ödemeler'}
                   </Text>
                 </View>
 
-                <TouchableOpacity
-                  style={[styles.webBtnPrimary, { backgroundColor: '#047857', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }]}
-                  onPress={() => setShowAddExpenseModal(true)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>+ {t.newExpense || 'Yeni Gider'}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  <TouchableOpacity
+                    style={[styles.webBtnSecondary, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 }]}
+                    onPress={() => setShowCashModal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#065f46' }}>💵 {t.allocateCash || 'Kasa Dağıt'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.webBtnPrimary, { backgroundColor: '#047857', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }]}
+                    onPress={() => setShowAddExpenseModal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>+ {t.newExpense || 'Yeni Gider'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -2142,14 +2150,19 @@ export default function AndroidApp({ initialUser, onLogout }) {
             </View>
 
             {/* Gider Kategori Dağılım & Borç Takip Kartları */}
-            <View style={styles.webMiniStatsRow}>
-              <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#ef4444' }]}>
-                <Text style={[styles.webMiniStatVal, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit>{totalDebtAmount.toLocaleString('tr-TR')} ₺</Text>
-                <Text style={styles.webMiniStatLbl} numberOfLines={1} ellipsizeMode="tail">⏳ {t.unpaidDebt || 'Bekleyen Borç / Vade'}</Text>
+            {/* Gider Kategori Dağılım, Borç & Müşavir Onay Takip Kartları */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <View style={[styles.webMiniStatCard, { flex: 1, borderLeftWidth: 4, borderLeftColor: '#ef4444', padding: 8 }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#dc2626', fontSize: 13 }]} numberOfLines={1} adjustsFontSizeToFit>{totalDebtAmount.toLocaleString('tr-TR')} ₺</Text>
+                <Text style={[styles.webMiniStatLbl, { fontSize: 10 }]} numberOfLines={1} ellipsizeMode="tail">⏳ {t.unpaidDebt || 'Bekleyen Borç'}</Text>
               </View>
-              <View style={[styles.webMiniStatCard, { borderLeftWidth: 4, borderLeftColor: '#b91c1c' }]}>
-                <Text style={[styles.webMiniStatVal, { color: '#b91c1c' }]} numberOfLines={1} adjustsFontSizeToFit>{totalRejectedCount} {t.portionCol || 'Adet'}</Text>
-                <Text style={styles.webMiniStatLbl} numberOfLines={1} ellipsizeMode="tail">❌ {t.rejectedBadge || 'Ret Bildirimi'}</Text>
+              <View style={[styles.webMiniStatCard, { flex: 1, borderLeftWidth: 4, borderLeftColor: '#d97706', padding: 8 }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#d97706', fontSize: 13 }]} numberOfLines={1} adjustsFontSizeToFit>{totalPendingAdvisorCount} {t.portionCol || 'Adet'}</Text>
+                <Text style={[styles.webMiniStatLbl, { fontSize: 10 }]} numberOfLines={1} ellipsizeMode="tail">✍️ {t.awaitingApprovalBadge || 'Müşavir Onayında'}</Text>
+              </View>
+              <View style={[styles.webMiniStatCard, { flex: 1, borderLeftWidth: 4, borderLeftColor: '#b91c1c', padding: 8 }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#b91c1c', fontSize: 13 }]} numberOfLines={1} adjustsFontSizeToFit>{totalRejectedCount} {t.portionCol || 'Adet'}</Text>
+                <Text style={[styles.webMiniStatLbl, { fontSize: 10 }]} numberOfLines={1} ellipsizeMode="tail">⚠️ {t.rejectedBadge || 'Düzeltme İstendi'}</Text>
               </View>
             </View>
 
@@ -2189,14 +2202,27 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <TouchableOpacity
                   style={[
                     styles.catFilterChip,
-                    expenseTab === 'rejected' && { backgroundColor: '#991b1b', borderColor: '#991b1b' }
+                    expenseTab === 'awaiting_advisor' && { backgroundColor: '#d97706', borderColor: '#d97706' }
                   ]}
-                  onPress={() => setExpenseTab('rejected')}
+                  onPress={() => setExpenseTab('awaiting_advisor')}
                 >
-                  <Text style={[styles.catFilterTxt, expenseTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ❌ {t.rejectedBadge || 'Retler'} ({expenses.filter(e => e.status === 'REJECTED').length})
+                  <Text style={[styles.catFilterTxt, expenseTab === 'awaiting_advisor' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ✍️ {t.awaitingApprovalBadge || 'Müşavir Onayında'} ({totalPendingAdvisorCount})
                   </Text>
                 </TouchableOpacity>
+                {totalRejectedCount > 0 && (
+                  <TouchableOpacity
+                    style={[
+                      styles.catFilterChip,
+                      expenseTab === 'rejected' && { backgroundColor: '#991b1b', borderColor: '#991b1b' }
+                    ]}
+                    onPress={() => setExpenseTab('rejected')}
+                  >
+                    <Text style={[styles.catFilterTxt, expenseTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
+                      ⚠️ {t.rejectedBadge || 'Düzeltme İstenenler'} ({totalRejectedCount})
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[
                     styles.catFilterChip,
@@ -2300,155 +2326,183 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
                 const isPaid = exp.paymentStatus === 'PAID' || (exp.paidByCashier && exp.paymentStatus !== 'UNPAID');
                 const isPartial = exp.paymentStatus === 'PARTIAL';
-                const isRejected = exp.status === 'REJECTED';
+                const isUnpaid = !isPaid && !isPartial;
+                const isNeedsCorrection = exp.status === 'NEEDS_CORRECTION' || exp.status === 'REJECTED';
+                const isFinalized = exp.status === 'FINALIZED' || Boolean(exp.recordedInLedger);
 
                 return (
-                  <View key={exp.id} style={[styles.webUserCard, isRejected && { borderColor: '#fca5a5', borderWidth: 1.5 }]}>
-                    <View style={{ marginBottom: 10 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                          <View
-                            style={[
-                              styles.webUserAvatar,
-                              { backgroundColor: isFixed ? '#3b82f6' : '#f59e0b', borderRadius: 10, width: 36, height: 36 }
-                            ]}
-                          >
-                            <Text style={{ fontSize: 16 }}>{isFixed ? '🏢' : '⚡'}</Text>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.webUserName, { fontSize: 14 }]} numberOfLines={2}>{exp.title}</Text>
-                            {(exp.counterparty || exp.invoiceNumber) && (
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155', marginTop: 2 }}>
-                                {exp.counterparty ? `🏢 ${exp.counterparty}` : ''}
-                                {exp.invoiceNumber ? ` • 📄 No: ${exp.invoiceNumber}` : ''}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                        <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'right', flexShrink: 0 }} numberOfLines={1} adjustsFontSizeToFit>
-                          {parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺
-                        </Text>
-                      </View>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                        <Text style={{ fontSize: 10, color: '#64748b' }}>
-                          📅 {exp.period || '2026-10'} • {exp.expenseDate}{exp.dueDate ? ` (${t.dueDateLabel || 'Vade'}: ${exp.dueDate})` : ''}
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                          <View
-                            style={[
-                              styles.webRolePill,
-                              {
-                                backgroundColor: isPaid ? '#dcfce7' : isPartial ? '#fef3c7' : '#fee2e2',
-                                borderColor: isPaid ? '#86efac' : isPartial ? '#fcd34d' : '#fca5a5',
-                                paddingVertical: 2,
-                                paddingHorizontal: 6,
-                              }
-                            ]}
-                          >
-                            <Text style={[styles.webRolePillTxt, { color: isPaid ? '#15803d' : isPartial ? '#b45309' : '#b91c1c', fontSize: 10 }]}>
-                              {isPaid ? `✓ ${t.paidFromCashier ? t.paidFromCashier.toUpperCase() : 'ÖDENDİ'}` : isPartial ? `⚡ ${t.partialPaid ? t.partialPaid.toUpperCase() : 'KISMİ AVANS'}` : `⏳ ${t.debtUnpaid ? t.debtUnpaid.toUpperCase() : 'BORÇTA'}`}
-                            </Text>
-                          </View>
-                          <View
-                            style={[
-                              styles.webRolePill,
-                              { backgroundColor: pillBg, borderColor: pillBorder, paddingVertical: 2, paddingHorizontal: 6 }
-                            ]}
-                          >
-                            <Text style={[styles.webRolePillTxt, { color: pillColor, fontSize: 10 }]}>
-                              {isFixed ? (t.fixedLabel ? t.fixedLabel.toUpperCase() : 'SABİT') : (t.variableLabel ? t.variableLabel.toUpperCase() : 'DEĞİŞKEN')}
-                            </Text>
-                          </View>
+                  <View
+                    key={exp.id}
+                    style={[
+                      styles.webExpenseCard,
+                      isNeedsCorrection && styles.webExpenseCardNeedsCorrection,
+                      isFinalized && styles.webExpenseCardFinalized,
+                    ]}
+                  >
+                    {/* Üst Satır: Başlık, Mülk/Kilit Rozeti ve Tutar */}
+                    <View style={styles.expCardHeaderRow}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                          <Text style={styles.expCardTitle}>{exp.title}</Text>
                           {exp.isOwnedProperty && (
-                            <View
-                              style={[
-                                styles.webRolePill,
-                                { backgroundColor: '#dcfce7', borderColor: '#86efac', paddingVertical: 2, paddingHorizontal: 6 }
-                              ]}
-                            >
-                              <Text style={[styles.webRolePillTxt, { color: '#15803d', fontSize: 10 }]}>
-                                🏠 {t.ownedPropertyBadge ? t.ownedPropertyBadge.toUpperCase() : 'ÖZ MÜLK'}
-                              </Text>
+                            <View style={styles.expOwnedPropertyBadge}>
+                              <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
+                            </View>
+                          )}
+                          {isFinalized && (
+                            <View style={styles.expFinalizedLockBadge}>
+                              <Text style={styles.expFinalizedLockTxt}>🔒 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
                             </View>
                           )}
                         </View>
-                      </View>
-
-                      {exp.note ? (
-                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontStyle: 'italic' }}>
-                          📝 {exp.note}
+                        <Text style={styles.expCardMetaTxt}>
+                          🗓️ {t.transactionLabel || 'İşlem'}: {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
                         </Text>
-                      ) : null}
+                        {exp.note ? (
+                          <Text style={styles.expCardNoteTxt}>📝 {exp.note}</Text>
+                        ) : null}
+                      </View>
+                      <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                        <Text style={styles.expCardAmountTxt}>
+                          {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺ (Kirasız)') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
+                        </Text>
+                      </View>
                     </View>
 
+                    {/* Müşavir Ret / Düzeltme Gerekçesi Kırmızı Kutu (Web ile Birebir) */}
                     {isNeedsCorrection && (
-                      <View style={{ marginHorizontal: 4, marginTop: 4, marginBottom: 8, padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#991b1b' }}>
-                          ❌ {t.rejectionReasonPrefix || 'Mali Müşavir Ret / Düzeltme Gerekçesi'}:
-                        </Text>
-                        <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
-                          {exp.rejectionReason || 'Fatura veya tevkifat bilgisi eksik olduğu için düzeltme talep edildi.'}
+                      <View style={styles.expRejectionAlertBox}>
+                        <Text style={styles.expRejectionAlertTitle}>
+                          ⚠️ {t.rejectionReasonPrefix || 'Müşavir Ret Gerekçesi'}: {exp.rejectionReason || 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli'}
                         </Text>
                       </View>
                     )}
 
-                    {/* Kasa ve Muhasebe Aksiyonları */}
-                    <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3', flexWrap: 'wrap' }}>
-                      <TouchableOpacity
-                        style={[
-                          { flex: 1, minWidth: 120, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-                          isPaid
-                            ? { backgroundColor: '#dcfce7', borderColor: '#86efac' }
-                            : { backgroundColor: '#fef2f2', borderColor: '#fecaca' }
-                        ]}
-                        onPress={() => handleToggleExpensePaid(exp)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: '800', color: isPaid ? '#15803d' : '#b91c1c' }}>
-                          {isPaid ? `💵 ${t.paidFromCashier || 'Ödendi'} ↷` : `⚡ ${t.colCashPayment ? t.colCashPayment.split(' ')[0] : 'Kasa'} ${t.confirm || 'Öde'} ✓`}
+                    {/* Detay Bilgileri: Kurum/Fatura & Kategori (Web Sütunları Birebir) */}
+                    <View style={styles.expDetailsGrid}>
+                      <View style={styles.expDetailCol}>
+                        <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA NO'}</Text>
+                        <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
+                          {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
                         </Text>
-                      </TouchableOpacity>
-
-                      {(!isFinalized && (!exp.sentToAdvisor || isNeedsCorrection)) && (
-                        <TouchableOpacity
-                          style={[
-                            { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }
-                          ]}
-                          onPress={() => handleSendToAdvisor(exp)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#1d4ed8' }}>
-                            🚀 {isNeedsCorrection ? (t.resubmitToAdvisor || 'Düzeltildi, Tekrar Gönder') : (t.sendToAdvisorBtn || 'Müşavire Gönder')}
+                        <Text style={styles.expDetailInvoiceTxt} numberOfLines={1}>
+                          {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : (t.noInvoice || 'Faturasız')}
+                        </Text>
+                        {exp.dueDate && (
+                          <Text style={[styles.expDetailDueTxt, { color: isUnpaid ? '#b91c1c' : '#047857' }]}>
+                            ⏰ {t.dueDateLabel || 'Vade'}: {exp.dueDate}
                           </Text>
-                        </TouchableOpacity>
-                      )}
+                        )}
+                      </View>
 
-                      <View
-                        style={[
-                          { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-                          isFinalized
-                            ? { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }
-                            : isNeedsCorrection
-                              ? { backgroundColor: '#fef2f2', borderColor: '#fca5a5' }
-                              : { backgroundColor: '#fffbeb', borderColor: '#fde68a' }
-                        ]}
-                      >
-                        <Text style={{ fontSize: 10, fontWeight: '800', color: isFinalized ? '#047857' : isNeedsCorrection ? '#991b1b' : '#b45309' }}>
-                          {isFinalized ? `✓ ${t.statusFinalized || 'Deftere İşlendi (Onaylı)'}` : isNeedsCorrection ? `❌ ${t.statusNeedsCorrection || 'Düzeltme Gerekli'}` : `⏳ ${t.statusPendingApproval || 'Müşavir Onayı Bekliyor'}`}
+                      <View style={styles.expDetailCol}>
+                        <Text style={styles.expDetailHeaderLbl}>{t.colCategory || 'KATEGORİ'}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                          <View
+                            style={[
+                              styles.expCatPill,
+                              { backgroundColor: isFixed ? '#e0e7ff' : '#e0f2fe', borderColor: isFixed ? '#c7d2fe' : '#bae6fd' }
+                            ]}
+                          >
+                            <Text style={[styles.expCatPillTxt, { color: isFixed ? '#4338ca' : '#0369a1' }]}>
+                              {isFixed ? `🏢 ${t.fixedLabel || 'Sabit'}` : `⚡ ${t.variableLabel || 'Değişken'}`}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.expSubtypeTxt} numberOfLines={1}>
+                          {getExpenseTypeLabel(exp.subType, currentLang) || (isFixed ? (t.fixedLabel || 'Sabit Kalem') : (t.variableLabel || 'Değişken Kalem'))}
                         </Text>
                       </View>
                     </View>
 
-                    <View style={styles.webUserCardFooter}>
-                      <Text style={[styles.webUserStatusTxt, { flexShrink: 1 }]} numberOfLines={1}>
-                        {t.colCategory || 'Tür'}: <Text style={{ fontWeight: '700' }}>{getExpenseTypeLabel(exp.subType, currentLang) || (isFixed ? (t.fixedLabel || 'Sabit Kalem') : (t.variableLabel || 'Değişken Kalem'))}</Text>
-                        {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
-                      </Text>
-                      {/* Accountant cannot delete or alter finalized/approved records */}
-                      {(currentUser.role === ROLES.ADMIN || (currentUser.role === ROLES.ACCOUNTANT && !isFinalized)) && (
+                    {/* Durum Rozetleri: Kasa (Ödeme/Borç) & Mali Müşavir Onayı (Web Sütunları Birebir) */}
+                    <View style={styles.expStatusBadgesRow}>
+                      {/* Kasa Durumu */}
+                      <View style={{ flex: 1, paddingRight: 4 }}>
+                        <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA (ÖDEME / BORÇ)'}</Text>
+                        {isUnpaid ? (
+                          <View style={{ marginTop: 3 }}>
+                            <View style={styles.badgeUnpaidBox}>
+                              <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
+                            </View>
+                            <Text style={styles.badgeUnpaidSubTxt}>{t.onCreditRemaining || 'Borç / Vadeye Kaldı'}</Text>
+                          </View>
+                        ) : isPartial ? (
+                          <View style={{ marginTop: 3 }}>
+                            <View style={styles.badgePartialBox}>
+                              <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <View style={[styles.badgePaidBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgePaidTxt}>✓ {t.paidFromCashier || 'Kasadan Ödendi'}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Mali Müşavir Onay Durumu */}
+                      <View style={{ flex: 1, paddingLeft: 4 }}>
+                        <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MALİ MÜŞAVİR ONAYI'}</Text>
+                        {isFinalized ? (
+                          <View style={[styles.badgeFinalizedBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgeFinalizedTxt}>📖 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
+                          </View>
+                        ) : isNeedsCorrection ? (
+                          <View style={{ marginTop: 3 }}>
+                            <View style={styles.badgeNeedsCorrectionBox}>
+                              <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor ⚠️'}</Text>
+                            </View>
+                            {exp.rejectionReason ? (
+                              <Text style={styles.badgeRejectionSubTxt} numberOfLines={2}>
+                                Not: {exp.rejectionReason}
+                              </Text>
+                            ) : null}
+                          </View>
+                        ) : (
+                          <View style={[styles.badgePendingBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgePendingTxt}>⏳ {t.statusPendingApproval || 'Onay Bekliyor (Taslak)'}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* İŞLEM BUTONLARI (Web ile Birebir) */}
+                    <View style={styles.expActionRow}>
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+                        {/* Borç Ödeme Butonu */}
+                        {isUnpaid && (
+                          <TouchableOpacity
+                            style={styles.webBtnPayDebt}
+                            onPress={() => handlePayDebtNow(exp)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.webBtnPayDebtTxt}>💳 Kasadan Öde</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Müşavire Gönder Butonu (Ret almışsa veya henüz gönderilmemişse) */}
+                        {!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor) && (
+                          <TouchableOpacity
+                            style={styles.webBtnSendAdvisor}
+                            onPress={() => handleSendToAdvisor(exp)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.webBtnSendAdvisorTxt}>🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Kesinleşmiş Kayıt Rozeti */}
+                        {isFinalized && (
+                          <View style={styles.webBtnFinalizedBadge}>
+                            <Text style={styles.webBtnFinalizedBadgeTxt}>✓ Defter Kesinleşti</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Silme Butonu: Kilitli değilse veya Admin ise */}
+                      {(currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
                         <TouchableOpacity
-                          style={styles.webUserDismissBtn}
+                          style={styles.webBtnTrashSquare}
                           onPress={() => {
                             setItemToDelete({
                               type: 'expense',
@@ -2457,13 +2511,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
                               details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
                             });
                           }}
+                          activeOpacity={0.7}
                         >
-                          <Text style={styles.webUserDismissTxt}>🗑️ {t.delete || 'Gideri Sil'}</Text>
+                          <Text style={styles.webBtnTrashSquareTxt}>🗑️</Text>
                         </TouchableOpacity>
                       )}
-                      {currentUser.role === ROLES.ACCOUNTANT && isFinalized && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.7 }}>
-                          <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700' }}>🔒 {t.recordLocked || 'Müşavir Onaylı (Kilitli)'}</Text>
+                      {isAccountantUser && isFinalized && (
+                        <View style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
+                          <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '800' }}>🔒 Kilitli</Text>
                         </View>
                       )}
                     </View>
@@ -2493,63 +2548,92 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                 <TouchableOpacity
-                  style={[styles.webBtnPrimary, { flex: 1, backgroundColor: '#0d9488', paddingVertical: 9, alignItems: 'center', justifyContent: 'center' }]}
+                  style={[styles.webBtnPrimary, { flex: 1, minWidth: 140, backgroundColor: '#0d9488', paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 }]}
                   onPress={() => showToast('📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.webBtnPrimaryTxt}>📥 Luca/Zirve Aktar</Text>
+                  <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>📥 Luca/Zirve Aktar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.webBtnSecondary, { flex: 1, minWidth: 140, backgroundColor: '#f0fdf4', borderColor: '#86efac', paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 }]}
+                  onPress={() => setAdvisorTab('tax_reports')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>📋 Vergi & Beyanname</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* SMMM Özet Rozet Kartları - 2 Kolonlu Dengeli Düzen */}
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+            {/* SMMM Özet Rozet Kartları - 3 Kolonlu Dengeli Düzen */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
               <View style={{
                 flex: 1,
                 backgroundColor: '#ffffff',
-                borderRadius: 14,
-                padding: 12,
+                borderRadius: 12,
+                padding: 10,
                 borderWidth: 1.5,
                 borderColor: '#10b981',
                 borderLeftWidth: 4,
                 borderLeftColor: '#059669',
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                  📑 {t.recordedLedgerBadge || 'ONAYLANAN DEFTER'}
+                <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#065f46', textTransform: 'uppercase' }} numberOfLines={1}>
+                  📑 {t.recordedLedgerBadge || 'ONAYLI DEFTER'}
                 </Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#047857', marginTop: 4 }}>
-                  {expenses.filter(e => e.recordedInLedger).length} {t.recordsListed || 'Kalem'}
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#047857', marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit>
+                  {totalApprovedLedgerCount} {t.recordsListed || 'Kalem'}
                 </Text>
-                <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }} numberOfLines={1}>
-                  Yevmiyeye kesinleşen kayıtlar
+                <Text style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }} numberOfLines={1} ellipsizeMode="tail">
+                  Yevmiyeye kesinleşti
                 </Text>
               </View>
 
               <View style={{
                 flex: 1,
                 backgroundColor: '#ffffff',
-                borderRadius: 14,
-                padding: 12,
+                borderRadius: 12,
+                padding: 10,
                 borderWidth: 1.5,
                 borderColor: '#f59e0b',
                 borderLeftWidth: 4,
                 borderLeftColor: '#d97706',
               }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                  ✍️ {t.awaitingApprovalBadge || 'ONAY BEKLEYEN'}
+                <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#b45309', textTransform: 'uppercase' }} numberOfLines={1}>
+                  ✍️ {t.awaitingApprovalBadge || 'ONAY MASASI'}
                 </Text>
-                <Text style={{ fontSize: 18, fontWeight: '900', color: '#92400e', marginTop: 4 }}>
-                  {expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false)).length} {t.recordsListed || 'Kalem'}
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#92400e', marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit>
+                  {totalPendingAdvisorCount} {t.recordsListed || 'Kalem'}
                 </Text>
-                <Text style={{ fontSize: 10, color: '#b91c1c', marginTop: 2 }} numberOfLines={1}>
-                  {totalRejectedCount} {t.rejectedBadge || 'Reddedildi'}
+                <Text style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }} numberOfLines={1} ellipsizeMode="tail">
+                  Denetim bekliyor
+                </Text>
+              </View>
+
+              <View style={{
+                flex: 1,
+                backgroundColor: '#ffffff',
+                borderRadius: 12,
+                padding: 10,
+                borderWidth: 1.5,
+                borderColor: '#fca5a5',
+                borderLeftWidth: 4,
+                borderLeftColor: '#dc2626',
+              }}>
+                <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#991b1b', textTransform: 'uppercase' }} numberOfLines={1}>
+                  ⚠️ {t.rejectedBadge || 'DÜZELTME'}
+                </Text>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#b91c1c', marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit>
+                  {totalRejectedCount} {t.recordsListed || 'Kalem'}
+                </Text>
+                <Text style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }} numberOfLines={1} ellipsizeMode="tail">
+                  Muhasebeye iletildi
                 </Text>
               </View>
             </View>
 
-            {/* SMMM 5'li Sekme Sistemi (Web ile Birebir) */}
+            {/* SMMM Çoklu Sekme Sistemi (Web ile Birebir) */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', gap: 6 }}>
                 <TouchableOpacity
@@ -2560,7 +2644,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setAdvisorTab('pending_approval')}
                 >
                   <Text style={[styles.catFilterTxt, advisorTab === 'pending_approval' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ✍️ {t.awaitingApprovalBadge || 'Onay Masası'} ({expenses.filter(e => !e.recordedInLedger && e.status !== 'REJECTED' && (e.sentToAdvisor !== false)).length})
+                    ✍️ {t.awaitingApprovalBadge || 'Onay Masası'} ({totalPendingAdvisorCount})
                   </Text>
                 </TouchableOpacity>
 
@@ -2572,7 +2656,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setAdvisorTab('ledger')}
                 >
                   <Text style={[styles.catFilterTxt, advisorTab === 'ledger' && styles.catFilterTxtActive]}>
-                    📖 {t.advisorDefter || 'Resmi Defter'} ({expenses.filter(e => e.recordedInLedger).length})
+                    📖 {t.advisorDefter || 'Resmi Defter'} ({totalApprovedLedgerCount})
                   </Text>
                 </TouchableOpacity>
 
@@ -2585,6 +2669,18 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 >
                   <Text style={[styles.catFilterTxt, advisorTab === 'tdhp' && { color: '#ffffff', fontWeight: '800' }]}>
                     🏛️ {t.tdhpTab || 'TDHP Hesap Planı'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.catFilterChip,
+                    advisorTab === 'tax_reports' && { backgroundColor: '#059669', borderColor: '#059669' }
+                  ]}
+                  onPress={() => setAdvisorTab('tax_reports')}
+                >
+                  <Text style={[styles.catFilterTxt, advisorTab === 'tax_reports' && { color: '#ffffff', fontWeight: '800' }]}>
+                    📋 {t.taxReportsTab || 'Vergi & Beyanname'}
                   </Text>
                 </TouchableOpacity>
 
@@ -2608,7 +2704,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setAdvisorTab('rejected')}
                 >
                   <Text style={[styles.catFilterTxt, advisorTab === 'rejected' && { color: '#ffffff', fontWeight: '800' }]}>
-                    ❌ {t.rejectedBadge || 'Reddedilenler'} ({totalRejectedCount})
+                    ❌ {t.rejectedBadge || 'Düzeltme İstenenler'} ({totalRejectedCount})
                   </Text>
                 </TouchableOpacity>
 
@@ -2702,6 +2798,92 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   </View>
                 </View>
               </View>
+            ) : advisorTab === 'tax_reports' ? (
+              /* VERGİ VE BEYANNAMELER MASASI (GENERATE_TAX_REPORTS) */
+              <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#059669', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#065f46' }}>
+                      📋 Resmi Vergi & Beyanname Masası
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
+                      KDV-1, Muhtasar Stopaj & Geçici Vergi Dökümü
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
+                    onPress={() => showToast('📄 GİB E-Beyanname paketi (.BDP/XML) dışa aktarıldı!')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>XML Paketi</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 1. KDV-1 Beyannamesi Kartı */}
+                <View style={{ backgroundColor: '#f0fdf4', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#166534', marginBottom: 4 }}>
+                    1. KDV-1 Beyannamesi (Aylık)
+                  </Text>
+                  <View style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>• Hesaplanan KDV (%10 Restoran Satış):</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>{Math.round(totalRevenue - (totalRevenue / 1.1)).toLocaleString('tr-TR')} ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>• İndirilecek KDV (Gider Faturaları):</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>{Math.round(variableExpensesTotal * 0.15).toLocaleString('tr-TR')} ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#bbf7d0', paddingTop: 4, marginTop: 2 }}>
+                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#064e3b' }}>ÖDENECEK NET KDV:</Text>
+                      <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#047857' }}>
+                        {Math.max(0, Math.round((totalRevenue - (totalRevenue / 1.1)) - (variableExpensesTotal * 0.15))).toLocaleString('tr-TR')} ₺
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 2. Muhtasar ve Prim Hizmet Beyannamesi (MPHB) */}
+                <View style={{ backgroundColor: '#f8fafc', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#1e293b', marginBottom: 4 }}>
+                    2. Muhtasar & Prim Hizmet Beyannamesi (MPHB)
+                  </Text>
+                  <View style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Personel SGK Prim Karşılığı (6 Kişi):</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>27.500 ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Personel Gelir Vergisi Stopajı:</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>4.800 ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Dükkan Kira Stopajı (%20 Tevkifat):</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>9.000 ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• SMMM Serbest Meslek Stopajı (%20):</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>1.700 ₺</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 4, marginTop: 2 }}>
+                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#0f172a' }}>TOPLAM STOPAJ & SGK TAHAKKUK:</Text>
+                      <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#b45309' }}>43.000 ₺</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 3. Geçici Kurumlar Vergisi Özeti */}
+                <View style={{ backgroundColor: '#fffbeb', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#fde68a' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#92400e', marginBottom: 4 }}>
+                    3. Üç Aylık Geçici Vergi / Faaliyet Kârı Karşılığı
+                  </Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 10.5, color: '#78350f' }}>Tahmini Net Kâr Karşılığı (%25):</Text>
+                    <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#b45309' }}>
+                      {netOperatingProfit > 0 ? Math.round(netOperatingProfit * 0.25).toLocaleString('tr-TR') : 0} ₺
+                    </Text>
+                  </View>
+                </View>
+              </View>
             ) : (
               /* GİDER LİSTESİ (Onay Masası, Resmi Defter, Reddedilenler veya Tümü) */
               <>
@@ -2733,6 +2915,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 ) : (
                   filteredAdvisorExpenses.map((exp) => {
                     const isFixed = exp.category === 'FIXED';
+                    const isPaid = exp.paymentStatus === 'PAID' || (exp.paidByCashier && exp.paymentStatus !== 'UNPAID');
+                    const isPartial = exp.paymentStatus === 'PARTIAL';
+                    const isUnpaid = !isPaid && !isPartial;
                     const isNeedsCorrection = exp.status === 'NEEDS_CORRECTION' || exp.status === 'REJECTED';
                     const isFinalized = exp.status === 'FINALIZED' || Boolean(exp.recordedInLedger);
 
@@ -2740,134 +2925,197 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <View
                         key={exp.id}
                         style={[
-                          styles.webUserCard,
-                          isFinalized && { borderLeftWidth: 4, borderLeftColor: '#7e22ce' },
-                          isNeedsCorrection && { borderColor: '#fca5a5', borderWidth: 1.5, borderLeftWidth: 4, borderLeftColor: '#dc2626' }
+                          styles.webExpenseCard,
+                          isNeedsCorrection && styles.webExpenseCardNeedsCorrection,
+                          isFinalized && styles.webExpenseCardFinalized,
                         ]}
                       >
-                        <View style={{ marginBottom: 10 }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                              <View
-                                style={[
-                                  styles.webUserAvatar,
-                                  { backgroundColor: isFinalized ? '#7e22ce' : isNeedsCorrection ? '#dc2626' : '#d97706', borderRadius: 10, width: 36, height: 36 }
-                                ]}
-                              >
-                                <Text style={{ fontSize: 16 }}>{isFinalized ? '✓' : isNeedsCorrection ? '⚠️' : '⏳'}</Text>
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={[styles.webUserName, { fontSize: 14 }]} numberOfLines={2}>{exp.title}</Text>
-                                {(exp.counterparty || exp.invoiceNumber) && (
-                                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155', marginTop: 2 }}>
-                                    {exp.counterparty ? `🏢 ${exp.counterparty}` : ''}
-                                    {exp.invoiceNumber ? ` • 📄 No: ${exp.invoiceNumber}` : ''}
-                                  </Text>
-                                )}
-                              </View>
+                        {/* Üst Satır: Başlık, Mülk/Kilit Rozeti ve Tutar */}
+                        <View style={styles.expCardHeaderRow}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                              <Text style={styles.expCardTitle}>{exp.title}</Text>
+                              {exp.isOwnedProperty && (
+                                <View style={styles.expOwnedPropertyBadge}>
+                                  <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
+                                </View>
+                              )}
+                              {isFinalized && (
+                                <View style={styles.expFinalizedLockBadge}>
+                                  <Text style={styles.expFinalizedLockTxt}>🔒 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
+                                </View>
+                              )}
                             </View>
-                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'right', flexShrink: 0 }} numberOfLines={1} adjustsFontSizeToFit>
-                              {parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺
+                            <Text style={styles.expCardMetaTxt}>
+                              🗓️ {t.transactionLabel || 'İşlem'}: {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
+                            </Text>
+                            {exp.note ? (
+                              <Text style={styles.expCardNoteTxt}>📝 {exp.note}</Text>
+                            ) : null}
+                          </View>
+                          <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                            <Text style={styles.expCardAmountTxt}>
+                              {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺ (Kirasız)') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
                             </Text>
                           </View>
-
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                            <Text style={{ fontSize: 10, color: '#64748b' }}>
-                              📅 {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} • {exp.expenseDate}
-                            </Text>
-                            <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                              <View
-                                style={[
-                                  styles.webRolePill,
-                                  {
-                                    backgroundColor: isFinalized ? '#f3e8ff' : isNeedsCorrection ? '#fee2e2' : '#fffbeb',
-                                    borderColor: isFinalized ? '#d8b4fe' : isNeedsCorrection ? '#fca5a5' : '#fde68a',
-                                    paddingVertical: 2,
-                                    paddingHorizontal: 6,
-                                  }
-                                ]}
-                              >
-                                <Text style={[styles.webRolePillTxt, { color: isFinalized ? '#7e22ce' : isNeedsCorrection ? '#b91c1c' : '#b45309', fontSize: 10 }]}>
-                                  {isFinalized ? `✓ ${t.statusFinalized ? t.statusFinalized.toUpperCase() : 'DEFTERE KESİNLEŞTİ'}` : isNeedsCorrection ? `⚠️ ${t.statusNeedsCorrection ? t.statusNeedsCorrection.toUpperCase() : 'DÜZELTME BEKLİYOR'}` : `⏳ ${t.statusPendingApproval ? t.statusPendingApproval.toUpperCase() : 'ONAY BEKLİYOR'}`}
-                                </Text>
-                              </View>
-                              <View
-                                style={[
-                                  styles.webRolePill,
-                                  { backgroundColor: isFixed ? '#eff6ff' : '#fffbeb', borderColor: isFixed ? '#bfdbfe' : '#fde68a', paddingVertical: 2, paddingHorizontal: 6 }
-                                ]}
-                              >
-                                <Text style={[styles.webRolePillTxt, { color: isFixed ? '#2563eb' : '#d97706', fontSize: 10 }]}>
-                                  {isFixed ? `770.01 ${t.fixedLabel ? t.fixedLabel.toUpperCase() : 'SABİT'}` : `770.02 ${t.variableLabel ? t.variableLabel.toUpperCase() : 'DEĞİŞKEN'}`}
-                                </Text>
-                              </View>
-                            </View>
-                          </View>
-
-                          {exp.note ? (
-                            <Text style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontStyle: 'italic' }}>
-                              📝 {exp.note}
-                            </Text>
-                          ) : null}
                         </View>
 
+                        {/* Müşavir Ret / Düzeltme Gerekçesi Kırmızı Kutu */}
                         {isNeedsCorrection && (
-                          <View style={{ marginHorizontal: 4, marginTop: 4, marginBottom: 8, padding: 8, backgroundColor: '#fef2f2', borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#991b1b' }}>
-                              ⚠️ {t.rejectionReasonPrefix || 'Düzeltme Talebi (Muhasebeye İletildi)'}:
-                            </Text>
-                            <Text style={{ fontSize: 11, color: '#b91c1c', marginTop: 2 }}>
-                              {exp.rejectionReason || 'Fatura veya vergi bilgisi eksik olduğu için düzeltme istendi.'}
+                          <View style={styles.expRejectionAlertBox}>
+                            <Text style={styles.expRejectionAlertTitle}>
+                              ⚠️ {t.rejectionReasonPrefix || 'Müşavir Ret Gerekçesi'}: {exp.rejectionReason || 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli'}
                             </Text>
                           </View>
                         )}
 
-                        {/* MALİ MÜŞAVİR ONAY VE GEREKÇELİ RET BUTONLARI (ASLA KASAYA DOKUNMAZ) */}
-                        <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f5f3', flexWrap: 'wrap' }}>
-                          {isFinalized ? (
-                            <View
-                              style={[
-                                { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' }
-                              ]}
-                            >
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: '#6d28d9' }}>
-                                ✓ Resmi Yevmiye Defterine Kesinleşti
+                        {/* Detay Bilgileri: Kurum/Fatura & Kategori (Web Sütunları Birebir) */}
+                        <View style={styles.expDetailsGrid}>
+                          <View style={styles.expDetailCol}>
+                            <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA NO'}</Text>
+                            <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
+                              {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
+                            </Text>
+                            <Text style={styles.expDetailInvoiceTxt} numberOfLines={1}>
+                              {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : (t.noInvoice || 'Faturasız')}
+                            </Text>
+                            {exp.dueDate && (
+                              <Text style={[styles.expDetailDueTxt, { color: isUnpaid ? '#b91c1c' : '#047857' }]}>
+                                ⏰ {t.dueDateLabel || 'Vade'}: {exp.dueDate}
                               </Text>
-                            </View>
-                          ) : (
-                            <View style={{ flex: 1, flexDirection: 'row', gap: 6 }}>
-                              <TouchableOpacity
+                            )}
+                          </View>
+
+                          <View style={styles.expDetailCol}>
+                            <Text style={styles.expDetailHeaderLbl}>{t.colCategory || 'KATEGORİ'}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                              <View
                                 style={[
-                                  { flex: 1.2, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }
+                                  styles.expCatPill,
+                                  { backgroundColor: isFixed ? '#e0e7ff' : '#e0f2fe', borderColor: isFixed ? '#c7d2fe' : '#bae6fd' }
                                 ]}
-                                onPress={() => handleApproveExpenseLedger(exp)}
-                                activeOpacity={0.7}
                               >
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>
-                                  ✓ {t.approveBtn || 'Onayla & Deftere İşle'}
+                                <Text style={[styles.expCatPillTxt, { color: isFixed ? '#4338ca' : '#0369a1' }]}>
+                                  {isFixed ? `🏢 ${t.fixedLabel || 'Sabit'}` : `⚡ ${t.variableLabel || 'Değişken'}`}
                                 </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[
-                                  { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff1f2', borderColor: '#fca5a5' }
-                                ]}
-                                onPress={() => handleOpenRejectModal(exp)}
-                                activeOpacity={0.7}
-                              >
-                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#be123c' }}>
-                                  ✕ {t.rejectBtn || 'Gerekçeli Ret'}
-                                </Text>
-                              </TouchableOpacity>
+                              </View>
                             </View>
-                          )}
+                            <Text style={styles.expSubtypeTxt} numberOfLines={1}>
+                              {getExpenseTypeLabel(exp.subType, currentLang) || (isFixed ? (t.fixedLabel || 'Sabit Kalem') : (t.variableLabel || 'Değişken Kalem'))}
+                            </Text>
+                          </View>
                         </View>
 
-                        <View style={styles.webUserCardFooter}>
-                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1 }]} numberOfLines={1}>
+                        {/* Durum Rozetleri: Kasa & Mali Müşavir Onayı (Web Sütunları Birebir) */}
+                        <View style={styles.expStatusBadgesRow}>
+                          {/* Kasa Durumu */}
+                          <View style={{ flex: 1, paddingRight: 4 }}>
+                            <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA (ÖDEME / BORÇ)'}</Text>
+                            {isUnpaid ? (
+                              <View style={{ marginTop: 3 }}>
+                                <View style={styles.badgeUnpaidBox}>
+                                  <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
+                                </View>
+                                <Text style={styles.badgeUnpaidSubTxt}>{t.onCreditRemaining || 'Borç / Vadeye Kaldı'}</Text>
+                              </View>
+                            ) : isPartial ? (
+                              <View style={{ marginTop: 3 }}>
+                                <View style={styles.badgePartialBox}>
+                                  <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
+                                </View>
+                              </View>
+                            ) : (
+                              <View style={[styles.badgePaidBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgePaidTxt}>✓ {t.paidFromCashier || 'Kasadan Ödendi'}</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Mali Müşavir Onay Durumu */}
+                          <View style={{ flex: 1, paddingLeft: 4 }}>
+                            <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MALİ MÜŞAVİR ONAYI'}</Text>
+                            {isFinalized ? (
+                              <View style={[styles.badgeFinalizedBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgeFinalizedTxt}>📖 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
+                              </View>
+                            ) : isNeedsCorrection ? (
+                              <View style={{ marginTop: 3 }}>
+                                <View style={styles.badgeNeedsCorrectionBox}>
+                                  <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor ⚠️'}</Text>
+                                </View>
+                                {exp.rejectionReason ? (
+                                  <Text style={styles.badgeRejectionSubTxt} numberOfLines={2}>
+                                    Not: {exp.rejectionReason}
+                                  </Text>
+                                ) : null}
+                              </View>
+                            ) : (
+                              <View style={[styles.badgePendingBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgePendingTxt}>⏳ {t.statusPendingApproval || 'Onay Bekliyor (Taslak)'}</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* MALİ MÜŞAVİR İŞLEM BUTONLARI (Web ile Birebir) */}
+                        <View style={styles.expActionRow}>
+                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+                            {isFinalized ? (
+                              <>
+                                <View style={styles.webBtnFinalizedBadge}>
+                                  <Text style={styles.webBtnFinalizedBadgeTxt}>✓ Defter Kesinleşti</Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={styles.webBtnReject}
+                                  onPress={() => handleOpenRejectModal(exp)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.webBtnRejectTxt}>↺ Düzeltme İste</Text>
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              <>
+                                <TouchableOpacity
+                                  style={styles.webBtnApprove}
+                                  onPress={() => handleApproveExpenseLedger(exp)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.webBtnApproveTxt}>✓ {t.approveBtn || 'Onayla & Deftere İşle'}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.webBtnReject}
+                                  onPress={() => handleOpenRejectModal(exp)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.webBtnRejectTxt}>✕ {t.rejectBtn || 'Gerekçeli Ret'}</Text>
+                                </TouchableOpacity>
+                              </>
+                            )}
+                          </View>
+
+                          {/* Silme Butonu (Müşavir veya Admin) */}
+                          <TouchableOpacity
+                            style={styles.webBtnTrashSquare}
+                            onPress={() => {
+                              setItemToDelete({
+                                type: 'expense',
+                                id: exp.id,
+                                name: exp.title,
+                                details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.webBtnTrashSquareTxt}>🗑️</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.webUserCardFooter, { marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f8fafc' }]}>
+                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1, fontSize: 10 }]} numberOfLines={1}>
                             TDHP: <Text style={{ fontWeight: '700' }}>{isFixed ? '770.01 Genel Yönetim' : '770.02 Operasyonel'}</Text>
                             {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
                           </Text>
-                          <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700' }}>
+                          <Text style={{ fontSize: 9.5, color: '#64748b', fontWeight: '700' }}>
                             {exp.paidByCashier ? `💵 ${t.paidFromCashier || 'Kasadan Ödendi'}` : `⏳ ${t.onCreditRemaining || 'Vadeli / Borç'}`}
                           </Text>
                         </View>
@@ -5952,5 +6200,359 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#ffffff',
+  },
+  // WEB İLE BİREBİR GİDER VE MALİ MÜŞAVİR KARTLARI
+  webExpenseCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  webExpenseCardNeedsCorrection: {
+    borderColor: '#fca5a5',
+    borderWidth: 1.5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#dc2626',
+    backgroundColor: '#fffdfd',
+  },
+  webExpenseCardFinalized: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#db2777',
+  },
+  expCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  expCardTitle: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    color: '#0f172a',
+    lineHeight: 20,
+  },
+  expOwnedPropertyBadge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  expOwnedPropertyTxt: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1d4ed8',
+  },
+  expFinalizedLockBadge: {
+    backgroundColor: '#fdf2f8',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fbcfe8',
+  },
+  expFinalizedLockTxt: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#be185d',
+  },
+  expCardMetaTxt: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  expCardNoteTxt: {
+    fontSize: 11,
+    color: '#475569',
+    fontStyle: 'italic',
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  expCardAmountTxt: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#0f172a',
+  },
+  expRejectionAlertBox: {
+    backgroundColor: '#fff1f2',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+  },
+  expRejectionAlertTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#be123c',
+    lineHeight: 16,
+  },
+  expDetailsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 8,
+  },
+  expDetailCol: {
+    flex: 1,
+  },
+  expDetailHeaderLbl: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  expDetailVendorTxt: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1e293b',
+    lineHeight: 16,
+  },
+  expDetailInvoiceTxt: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  expDetailDueTxt: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  expCatPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  expCatPillTxt: {
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  expSubtypeTxt: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 3,
+  },
+  expStatusBadgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  expBadgeHeaderLbl: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  badgePaidBox: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgePaidTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  badgeUnpaidBox: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgeUnpaidTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#b91c1c',
+  },
+  badgeUnpaidSubTxt: {
+    fontSize: 9.5,
+    color: '#dc2626',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  badgePartialBox: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgePartialTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#b45309',
+  },
+  badgeFinalizedBox: {
+    backgroundColor: '#fdf2f8',
+    borderWidth: 1,
+    borderColor: '#fbcfe8',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgeFinalizedTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#be185d',
+  },
+  badgeNeedsCorrectionBox: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgeNeedsCorrectionTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#991b1b',
+  },
+  badgeRejectionSubTxt: {
+    fontSize: 9.5,
+    color: '#b91c1c',
+    marginTop: 2,
+    lineHeight: 13,
+  },
+  badgePendingBox: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    alignSelf: 'flex-start',
+  },
+  badgePendingTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#b45309',
+  },
+  expActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f8fafc',
+  },
+  webBtnPayDebt: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#6ee7b7',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnPayDebtTxt: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#065f46',
+  },
+  webBtnSendAdvisor: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnSendAdvisorTxt: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#1d4ed8',
+  },
+  webBtnFinalizedBadge: {
+    backgroundColor: '#fdf2f8',
+    borderWidth: 1,
+    borderColor: '#fbcfe8',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnFinalizedBadgeTxt: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#be185d',
+  },
+  webBtnApprove: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnApproveTxt: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#065f46',
+  },
+  webBtnReject: {
+    backgroundColor: '#fff1f2',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnRejectTxt: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#be123c',
+  },
+  webBtnTrashSquare: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webBtnTrashSquareTxt: {
+    fontSize: 14,
   },
 });
