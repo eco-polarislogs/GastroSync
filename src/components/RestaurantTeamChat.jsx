@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { FiMessageSquare, FiSend, FiX, FiUsers, FiClock, FiAlertCircle, FiCheck, FiTag, FiSearch } from 'react-icons/fi'
-import { useAuthStore, ROLES } from '../store'
+import { useAuthStore, useNotificationStore, ROLES } from '../store'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
 
 // Kanal tanımları – her kanalın hangi rollere açık olduğunu belirler
@@ -62,6 +62,27 @@ export default function RestaurantTeamChat() {
   const [isUrgent, setIsUrgent] = useState(false)
   const [chatSearch, setChatSearch] = useState('')
 
+  // Backend'den mesajları çek ve senkronize et
+  const fetchBackendMessages = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/api/chat/messages')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setMessages(json.data)
+          localStorage.setItem('gastrosync_team_chat', JSON.stringify(json.data))
+        }
+      }
+    } catch (_) {}
+  }
+
+  // İlk açılışta ve periyodik (2.5 saniyede bir) canlı mesaj senkronizasyonu
+  useEffect(() => {
+    fetchBackendMessages()
+    const interval = setInterval(fetchBackendMessages, 2500)
+    return () => clearInterval(interval)
+  }, [])
+
   // LocalStorage persist ve sekmeler arası anlık senkronizasyon
   useEffect(() => {
     try {
@@ -78,22 +99,8 @@ export default function RestaurantTeamChat() {
       }
     }
     window.addEventListener('storage', handleStorageChange)
-    const interval = setInterval(() => {
-      try {
-        const saved = localStorage.getItem('gastrosync_team_chat')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (parsed.length !== messages.length) {
-            setMessages(parsed)
-          }
-        }
-      } catch (_) {}
-    }, 2500)
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      clearInterval(interval)
-    }
-  }, [messages.length])
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   // Kullanıcının rolüne göre erişebildiği kanalları filtrele
   const accessibleChannels = useMemo(() => {
@@ -108,12 +115,12 @@ export default function RestaurantTeamChat() {
     }
   }, [accessibleChannels, activeChannel])
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault()
     if (!inputMsg.trim()) return
 
+    const tempId = Date.now()
     const newMsg = {
-      id: Date.now(),
       channelId: activeChannel,
       sender: user?.name || 'Personel',
       role: user?.role || 'admin',
@@ -123,9 +130,39 @@ export default function RestaurantTeamChat() {
       priority: isUrgent ? 'urgent' : 'normal'
     }
 
-    setMessages(prev => [...prev, newMsg])
+    // Arayüzde anında görünmesi için optimistik güncelleme
+    setMessages(prev => [...prev, { ...newMsg, id: tempId }])
     setInputMsg('')
     setIsUrgent(false)
+
+    // Backend'e POST isteği gönder (Veritabanına yazar ve tüm cihazlara bildirim üretir)
+    try {
+      const res = await fetch('http://localhost:8080/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMsg)
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data) {
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== tempId)
+            const updated = [...filtered, json.data]
+            localStorage.setItem('gastrosync_team_chat', JSON.stringify(updated))
+            return updated
+          })
+        }
+      }
+    } catch (err) {
+      console.warn('Backend sohbet iletim uyarısı:', err)
+    }
+
+    // Bildirimleri web tarafında anında yenile
+    try {
+      if (useNotificationStore?.getState()?.fetchNotifications) {
+        useNotificationStore.getState().fetchNotifications(user?.role)
+      }
+    } catch (_) {}
   }
 
   const currentChannelMessages = useMemo(() => {

@@ -50,6 +50,8 @@ import {
   apiCreateNotification,
   apiMarkNotificationRead,
   apiMarkAllNotificationsRead,
+  apiFetchChatMessages,
+  apiSendChatMessage,
 } from '../services/api';
 import {
   getStoredExpenses,
@@ -161,13 +163,14 @@ export default function IOSApp({ initialUser, onLogout }) {
   // Canlı Backend Senkronizasyonu (Mount anında ve periyodik olarak verileri çeker)
   const refreshAllData = React.useCallback(async () => {
     try {
-      const [liveItems, liveUsers, liveRecipes, liveTx, liveExp, liveNotifs] = await Promise.all([
+      const [liveItems, liveUsers, liveRecipes, liveTx, liveExp, liveNotifs, liveChat] = await Promise.all([
         apiFetchInventory(),
         apiFetchUsers(),
         apiFetchRecipes(),
         apiFetchTransactions(),
         apiFetchExpenses(),
         apiFetchNotifications(currentUser.role),
+        apiFetchChatMessages(),
       ]);
       if (liveItems && liveItems.length > 0) setItems(liveItems);
       if (liveUsers && liveUsers.length > 0) setUsers(liveUsers);
@@ -178,7 +181,9 @@ export default function IOSApp({ initialUser, onLogout }) {
         setMobileNotifications(liveNotifs);
         setUnreadNotifCount(liveNotifs.filter((n) => !n.isRead).length);
       }
-      setChatMessages(getStoredChatMessages());
+      if (liveChat && Array.isArray(liveChat) && liveChat.length > 0) {
+        setChatMessages(liveChat);
+      }
     } catch (err) {
       // Offline fallback: Yerel demo verisi ile kesintisiz devam eder
     }
@@ -244,10 +249,10 @@ export default function IOSApp({ initialUser, onLogout }) {
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [chatMessages, setChatMessages] = useState(getStoredChatMessages);
 
-  const handleSendChatMessage = () => {
+  const handleSendChatMessage = async () => {
     if (!chatInputMsg.trim()) return;
+    const tempId = Date.now();
     const newMsg = {
-      id: Date.now(),
       channelId: activeChatChannel,
       sender: currentUser.name || 'Yetkili',
       role: currentUser.role || 'admin',
@@ -257,13 +262,18 @@ export default function IOSApp({ initialUser, onLogout }) {
       priority: chatIsUrgent ? 'urgent' : 'normal',
     };
     setChatMessages((prev) => {
-      const updated = [...prev, newMsg];
+      const updated = [...prev, { ...newMsg, id: tempId }];
       saveStoredChatMessages(updated);
       return updated;
     });
     setChatInputMsg('');
     setChatIsUrgent(false);
     showToast('Mesaj ilgili kanala gönderildi');
+
+    try {
+      await apiSendChatMessage(newMsg);
+      refreshAllData();
+    } catch (_) {}
   };
 
   const handleCreateOrderRequest = async () => {

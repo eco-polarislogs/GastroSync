@@ -12,6 +12,8 @@ import {
   saveStoredExpenses,
   getStoredNotifications,
   saveStoredNotifications,
+  getStoredChatMessages,
+  saveStoredChatMessages,
 } from './storage';
 
 // Dinamik Host Belirleme (Expo Host, Wi-Fi LAN IP veya USB 127.0.0.1)
@@ -698,4 +700,62 @@ export const apiMarkAllNotificationsRead = async (role) => {
     logDebug('[Mobile API] Tümünü okundu yapma senkronizasyon:', err.message);
   }
   return { success: true };
+};
+
+// ==========================================
+// 8. EKİP İÇİ SOHBET (CHAT) API ENTEGRASYONU
+// ==========================================
+export const apiFetchChatMessages = async (channelId) => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const url = channelId
+      ? `${API_BASE_URL}/chat/messages?channelId=${encodeURIComponent(channelId)}`
+      : `${API_BASE_URL}/chat/messages`;
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const json = await res.json();
+      const list = json.data || json;
+      if (Array.isArray(list) && list.length > 0) {
+        saveStoredChatMessages(list);
+        return list;
+      }
+    }
+  } catch (err) {
+    logDebug('[Mobile API] Sohbet mesajları backend bağlantı hatası:', err.message);
+  }
+  return getStoredChatMessages();
+};
+
+export const apiSendChatMessage = async (msgData) => {
+  const existing = getStoredChatMessages();
+  const tempId = Date.now();
+  const newMsg = {
+    ...msgData,
+    id: tempId,
+    createdAt: new Date().toISOString(),
+  };
+  saveStoredChatMessages([...existing, newMsg]);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/chat/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msgData),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const saved = json.data || json;
+      const updated = existing.filter((m) => m.id !== tempId);
+      saveStoredChatMessages([...updated, saved]);
+      return { success: true, data: saved };
+    }
+  } catch (err) {
+    logDebug('[Mobile API] Mesaj backend gönderim hatası:', err.message);
+  }
+  return { success: true, data: newMsg };
 };
