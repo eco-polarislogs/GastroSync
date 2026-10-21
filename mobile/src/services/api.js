@@ -1,19 +1,24 @@
 // GastroSync Mobil API Entegrasyon Katmanı
 // Hem yerel cihaz (localhost / 10.0.2.2 Android Emulator), hem fiziksel cihaz (LAN IP / Wi-Fi IP), hem de Expo Tunnel ile uyumlu çalışır.
 
-import Constants from 'expo-constants';
+let Constants = null;
+try {
+  Constants = require('expo-constants')?.default || require('expo-constants');
+} catch (_) {}
+
 import { INITIAL_INVENTORY, DEMO_USERS, INITIAL_RECIPES } from '../data/inventoryData';
 
 // Dinamik Host Belirleme (Expo Host, Wi-Fi LAN IP veya USB 127.0.0.1)
 const getApiBaseUrl = () => {
-  // Expo Constants hostUri (otomatik telefonun bağlandığı bilgisayar Wi-Fi IP'sini alır)
-  const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || '';
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:8080/api`;
+  try {
+    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || '';
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return `http://${ip}:8080/api`;
+      }
     }
-  }
+  } catch (_) {}
   // Wi-Fi ağı üzerindeki doğrudan IP adresi
   return 'http://192.168.1.53:8080/api';
 };

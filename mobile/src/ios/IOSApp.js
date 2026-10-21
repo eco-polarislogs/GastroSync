@@ -61,7 +61,7 @@ const ROLE_ALLOWED_SCREENS = {
   [ROLES.WAREHOUSE]: ['warehouse'],
 };
 
-export default function AndroidApp({ initialUser, onLogout }) {
+export default function IOSApp({ initialUser, onLogout }) {
   const insets = useSafeAreaInsets();
   const currentUser = initialUser || DEMO_USERS[0];
 
@@ -2339,7 +2339,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       isFinalized && styles.webExpenseCardFinalized,
                     ]}
                   >
-                    {/* Üst Satır: Başlık, Mülk/Kilit Rozeti ve Tutar */}
+                    {/* Üst Satır: Başlık, Mülk Rozeti ve Tutar */}
                     <View style={styles.expCardHeaderRow}>
                       <View style={{ flex: 1, paddingRight: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
@@ -2349,14 +2349,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
                               <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
                             </View>
                           )}
-                          {isFinalized && (
-                            <View style={styles.expFinalizedLockBadge}>
-                              <Text style={styles.expFinalizedLockTxt}>🔒 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
-                            </View>
-                          )}
                         </View>
                         <Text style={styles.expCardMetaTxt}>
-                          🗓️ {t.transactionLabel || 'İşlem'}: {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
+                          🗓️ {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${exp.recordedBy}` : ''}
                         </Text>
                         {exp.note ? (
                           <Text style={styles.expCardNoteTxt}>📝 {exp.note}</Text>
@@ -2364,24 +2359,24 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       </View>
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                         <Text style={styles.expCardAmountTxt}>
-                          {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺ (Kirasız)') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
+                          {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
                         </Text>
                       </View>
                     </View>
 
-                    {/* Müşavir Ret / Düzeltme Gerekçesi Kırmızı Kutu (Web ile Birebir) */}
+                    {/* Müşavir Ret / Düzeltme Gerekçesi Kırmızı Kutu */}
                     {isNeedsCorrection && (
                       <View style={styles.expRejectionAlertBox}>
                         <Text style={styles.expRejectionAlertTitle}>
-                          ⚠️ {t.rejectionReasonPrefix || 'Müşavir Ret Gerekçesi'}: {exp.rejectionReason || 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli'}
+                          ⚠️ {t.rejectionReasonPrefix || 'Müşavir Düzeltme Notu'}: {exp.rejectionReason || 'Resmi fatura PDF belgesi kontrol edilmeli'}
                         </Text>
                       </View>
                     )}
 
-                    {/* Detay Bilgileri: Kurum/Fatura & Kategori (Web Sütunları Birebir) */}
+                    {/* Detay Bilgileri: Kurum/Fatura & Kategori (Sade ve Net) */}
                     <View style={styles.expDetailsGrid}>
                       <View style={styles.expDetailCol}>
-                        <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA NO'}</Text>
+                        <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA'}</Text>
                         <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
                           {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
                         </Text>
@@ -2415,23 +2410,18 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       </View>
                     </View>
 
-                    {/* Durum Rozetleri: Kasa (Ödeme/Borç) & Mali Müşavir Onayı (Web Sütunları Birebir) */}
+                    {/* Durum Rozetleri: Kasa & Mali Müşavir (Tek ve Net Tanım) */}
                     <View style={styles.expStatusBadgesRow}>
                       {/* Kasa Durumu */}
                       <View style={{ flex: 1, paddingRight: 4 }}>
-                        <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA (ÖDEME / BORÇ)'}</Text>
+                        <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA ÖDEME'}</Text>
                         {isUnpaid ? (
-                          <View style={{ marginTop: 3 }}>
-                            <View style={styles.badgeUnpaidBox}>
-                              <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
-                            </View>
-                            <Text style={styles.badgeUnpaidSubTxt}>{t.onCreditRemaining || 'Borç / Vadeye Kaldı'}</Text>
+                          <View style={[styles.badgeUnpaidBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
                           </View>
                         ) : isPartial ? (
-                          <View style={{ marginTop: 3 }}>
-                            <View style={styles.badgePartialBox}>
-                              <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
-                            </View>
+                          <View style={[styles.badgePartialBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
                           </View>
                         ) : (
                           <View style={[styles.badgePaidBox, { marginTop: 3 }]}>
@@ -2440,23 +2430,16 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         )}
                       </View>
 
-                      {/* Mali Müşavir Onay Durumu */}
+                      {/* Mali Müşavir Onay Durumu (Yegane onay rozeti) */}
                       <View style={{ flex: 1, paddingLeft: 4 }}>
-                        <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MALİ MÜŞAVİR ONAYI'}</Text>
+                        <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MÜŞAVİR ONAYI'}</Text>
                         {isFinalized ? (
                           <View style={[styles.badgeFinalizedBox, { marginTop: 3 }]}>
                             <Text style={styles.badgeFinalizedTxt}>📖 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
                           </View>
                         ) : isNeedsCorrection ? (
-                          <View style={{ marginTop: 3 }}>
-                            <View style={styles.badgeNeedsCorrectionBox}>
-                              <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor ⚠️'}</Text>
-                            </View>
-                            {exp.rejectionReason ? (
-                              <Text style={styles.badgeRejectionSubTxt} numberOfLines={2}>
-                                Not: {exp.rejectionReason}
-                              </Text>
-                            ) : null}
+                          <View style={[styles.badgeNeedsCorrectionBox, { marginTop: 3 }]}>
+                            <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor'}</Text>
                           </View>
                         ) : (
                           <View style={[styles.badgePendingBox, { marginTop: 3 }]}>
@@ -2466,62 +2449,52 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       </View>
                     </View>
 
-                    {/* İŞLEM BUTONLARI (Web ile Birebir) */}
-                    <View style={styles.expActionRow}>
-                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
-                        {/* Borç Ödeme Butonu */}
-                        {isUnpaid && (
-                          <TouchableOpacity
-                            style={styles.webBtnPayDebt}
-                            onPress={() => handlePayDebtNow(exp)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.webBtnPayDebtTxt}>💳 Kasadan Öde</Text>
-                          </TouchableOpacity>
-                        )}
+                    {/* Sadece Aksiyon Gereken Durumlarda Buton Satırı */}
+                    {(isUnpaid || (!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor)) || currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
+                      <View style={styles.expActionRow}>
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+                          {/* Borç Ödeme Butonu */}
+                          {isUnpaid && (
+                            <TouchableOpacity
+                              style={styles.webBtnPayDebt}
+                              onPress={() => handlePayDebtNow(exp)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.webBtnPayDebtTxt}>💳 Kasadan Öde</Text>
+                            </TouchableOpacity>
+                          )}
 
-                        {/* Müşavire Gönder Butonu (Ret almışsa veya henüz gönderilmemişse) */}
-                        {!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor) && (
-                          <TouchableOpacity
-                            style={styles.webBtnSendAdvisor}
-                            onPress={() => handleSendToAdvisor(exp)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={styles.webBtnSendAdvisorTxt}>🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}</Text>
-                          </TouchableOpacity>
-                        )}
+                          {/* Müşavire Gönder Butonu (Ret almışsa veya henüz gönderilmemişse) */}
+                          {!isFinalized && (isNeedsCorrection || !exp.sentToAdvisor) && (
+                            <TouchableOpacity
+                              style={styles.webBtnSendAdvisor}
+                              onPress={() => handleSendToAdvisor(exp)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.webBtnSendAdvisorTxt}>🚀 {t.sendToAdvisorBtn || 'Müşavire Gönder'}</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
 
-                        {/* Kesinleşmiş Kayıt Rozeti */}
-                        {isFinalized && (
-                          <View style={styles.webBtnFinalizedBadge}>
-                            <Text style={styles.webBtnFinalizedBadgeTxt}>✓ Defter Kesinleşti</Text>
-                          </View>
+                        {/* Silme Butonu: Kesinleşmemişse veya Admin ise */}
+                        {(currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
+                          <TouchableOpacity
+                            style={styles.webBtnTrashSquare}
+                            onPress={() => {
+                              setItemToDelete({
+                                type: 'expense',
+                                id: exp.id,
+                                name: exp.title,
+                                details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
+                              });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.webBtnTrashSquareTxt}>🗑️</Text>
+                          </TouchableOpacity>
                         )}
                       </View>
-
-                      {/* Silme Butonu: Kilitli değilse veya Admin ise */}
-                      {(currentUser.role === ROLES.ADMIN || (!isFinalized && isAccountantUser)) && (
-                        <TouchableOpacity
-                          style={styles.webBtnTrashSquare}
-                          onPress={() => {
-                            setItemToDelete({
-                              type: 'expense',
-                              id: exp.id,
-                              name: exp.title,
-                              details: `"${exp.title}" (${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺) gider kaydı silinecektir. Onaylıyor musunuz?`,
-                            });
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.webBtnTrashSquareTxt}>🗑️</Text>
-                        </TouchableOpacity>
-                      )}
-                      {isAccountantUser && isFinalized && (
-                        <View style={{ paddingHorizontal: 6, paddingVertical: 4 }}>
-                          <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '800' }}>🔒 Kilitli</Text>
-                        </View>
-                      )}
-                    </View>
+                    )}
                   </View>
                 );
               })
@@ -2940,14 +2913,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                   <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
                                 </View>
                               )}
-                              {isFinalized && (
-                                <View style={styles.expFinalizedLockBadge}>
-                                  <Text style={styles.expFinalizedLockTxt}>🔒 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
-                                </View>
-                              )}
                             </View>
                             <Text style={styles.expCardMetaTxt}>
-                              🗓️ {t.transactionLabel || 'İşlem'}: {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
+                              🗓️ {exp.expenseDate} • {t.periodLabel || 'Dönem'}: {exp.period || '2026-10'} {exp.recordedBy ? `• ${exp.recordedBy}` : ''}
                             </Text>
                             {exp.note ? (
                               <Text style={styles.expCardNoteTxt}>📝 {exp.note}</Text>
@@ -2955,7 +2923,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           </View>
                           <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                             <Text style={styles.expCardAmountTxt}>
-                              {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺ (Kirasız)') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
+                              {exp.isOwnedProperty ? (t.ownedPropertyFree || '0 ₺') : `${parseFloat(exp.amount || 0).toLocaleString('tr-TR')} ₺`}
                             </Text>
                           </View>
                         </View>
@@ -2964,15 +2932,15 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         {isNeedsCorrection && (
                           <View style={styles.expRejectionAlertBox}>
                             <Text style={styles.expRejectionAlertTitle}>
-                              ⚠️ {t.rejectionReasonPrefix || 'Müşavir Ret Gerekçesi'}: {exp.rejectionReason || 'Resmi e-Arşiv fatura PDF çıktısı eklenmemiş, stopaj tevkifatı kontrol edilmeli'}
+                              ⚠️ {t.rejectionReasonPrefix || 'Müşavir Düzeltme Notu'}: {exp.rejectionReason || 'Resmi fatura PDF belgesi kontrol edilmeli'}
                             </Text>
                           </View>
                         )}
 
-                        {/* Detay Bilgileri: Kurum/Fatura & Kategori (Web Sütunları Birebir) */}
+                        {/* Detay Bilgileri: Kurum/Fatura & Kategori (Sade ve Net) */}
                         <View style={styles.expDetailsGrid}>
                           <View style={styles.expDetailCol}>
-                            <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA NO'}</Text>
+                            <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA'}</Text>
                             <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
                               {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
                             </Text>
@@ -3006,23 +2974,18 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           </View>
                         </View>
 
-                        {/* Durum Rozetleri: Kasa & Mali Müşavir Onayı (Web Sütunları Birebir) */}
+                        {/* Durum Rozetleri: Kasa & Mali Müşavir Onayı (Tek ve Net Tanım) */}
                         <View style={styles.expStatusBadgesRow}>
                           {/* Kasa Durumu */}
                           <View style={{ flex: 1, paddingRight: 4 }}>
-                            <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA (ÖDEME / BORÇ)'}</Text>
+                            <Text style={styles.expBadgeHeaderLbl}>{t.cashierCol || 'KASA ÖDEME'}</Text>
                             {isUnpaid ? (
-                              <View style={{ marginTop: 3 }}>
-                                <View style={styles.badgeUnpaidBox}>
-                                  <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
-                                </View>
-                                <Text style={styles.badgeUnpaidSubTxt}>{t.onCreditRemaining || 'Borç / Vadeye Kaldı'}</Text>
+                              <View style={[styles.badgeUnpaidBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgeUnpaidTxt}>⏳ {t.debtUnpaid || 'Borçta (Ödenmedi)'}</Text>
                               </View>
                             ) : isPartial ? (
-                              <View style={{ marginTop: 3 }}>
-                                <View style={styles.badgePartialBox}>
-                                  <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
-                                </View>
+                              <View style={[styles.badgePartialBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgePartialTxt}>⚡ {t.partialPaid || 'Kısmi Avans'}</Text>
                               </View>
                             ) : (
                               <View style={[styles.badgePaidBox, { marginTop: 3 }]}>
@@ -3031,23 +2994,16 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             )}
                           </View>
 
-                          {/* Mali Müşavir Onay Durumu */}
+                          {/* Mali Müşavir Onay Durumu (Yegane onay rozeti) */}
                           <View style={{ flex: 1, paddingLeft: 4 }}>
-                            <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MALİ MÜŞAVİR ONAYI'}</Text>
+                            <Text style={styles.expBadgeHeaderLbl}>{t.advisorCol || 'MÜŞAVİR ONAYI'}</Text>
                             {isFinalized ? (
                               <View style={[styles.badgeFinalizedBox, { marginTop: 3 }]}>
                                 <Text style={styles.badgeFinalizedTxt}>📖 {t.statusFinalized || 'Deftere Kesinleşti ✓'}</Text>
                               </View>
                             ) : isNeedsCorrection ? (
-                              <View style={{ marginTop: 3 }}>
-                                <View style={styles.badgeNeedsCorrectionBox}>
-                                  <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor ⚠️'}</Text>
-                                </View>
-                                {exp.rejectionReason ? (
-                                  <Text style={styles.badgeRejectionSubTxt} numberOfLines={2}>
-                                    Not: {exp.rejectionReason}
-                                  </Text>
-                                ) : null}
+                              <View style={[styles.badgeNeedsCorrectionBox, { marginTop: 3 }]}>
+                                <Text style={styles.badgeNeedsCorrectionTxt}>⚠️ {t.statusNeedsCorrection || 'Düzeltme Bekliyor'}</Text>
                               </View>
                             ) : (
                               <View style={[styles.badgePendingBox, { marginTop: 3 }]}>
@@ -3057,22 +3013,17 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           </View>
                         </View>
 
-                        {/* MALİ MÜŞAVİR İŞLEM BUTONLARI (Web ile Birebir) */}
+                        {/* MALİ MÜŞAVİR İŞLEM BUTONLARI (Tekrarsız ve Sade) */}
                         <View style={styles.expActionRow}>
                           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
                             {isFinalized ? (
-                              <>
-                                <View style={styles.webBtnFinalizedBadge}>
-                                  <Text style={styles.webBtnFinalizedBadgeTxt}>✓ Defter Kesinleşti</Text>
-                                </View>
-                                <TouchableOpacity
-                                  style={styles.webBtnReject}
-                                  onPress={() => handleOpenRejectModal(exp)}
-                                  activeOpacity={0.8}
-                                >
-                                  <Text style={styles.webBtnRejectTxt}>↺ Düzeltme İste</Text>
-                                </TouchableOpacity>
-                              </>
+                              <TouchableOpacity
+                                style={styles.webBtnReject}
+                                onPress={() => handleOpenRejectModal(exp)}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={styles.webBtnRejectTxt}>↺ Düzeltme İste</Text>
+                              </TouchableOpacity>
                             ) : (
                               <>
                                 <TouchableOpacity
@@ -3108,16 +3059,6 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           >
                             <Text style={styles.webBtnTrashSquareTxt}>🗑️</Text>
                           </TouchableOpacity>
-                        </View>
-
-                        <View style={[styles.webUserCardFooter, { marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f8fafc' }]}>
-                          <Text style={[styles.webUserStatusTxt, { flexShrink: 1, fontSize: 10 }]} numberOfLines={1}>
-                            TDHP: <Text style={{ fontWeight: '700' }}>{isFixed ? '770.01 Genel Yönetim' : '770.02 Operasyonel'}</Text>
-                            {exp.recordedBy ? ` • ${t.recordLabel || 'Kayıt'}: ${exp.recordedBy}` : ''}
-                          </Text>
-                          <Text style={{ fontSize: 9.5, color: '#64748b', fontWeight: '700' }}>
-                            {exp.paidByCashier ? `💵 ${t.paidFromCashier || 'Kasadan Ödendi'}` : `⏳ ${t.onCreditRemaining || 'Vadeli / Borç'}`}
-                          </Text>
                         </View>
                       </View>
                     );
