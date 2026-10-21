@@ -602,12 +602,12 @@ export const INITIAL_RECIPES = [
 ];
 
 export const INITIAL_SALES_SUMMARY = {
-  totalRevenue: 76485,
-  totalCost: 18785.85,
-  foodCostPercent: 24.5,
+  totalRevenue: 4620,
+  totalCost: 1316.7,
+  foodCostPercent: 28.5,
   targetFoodCost: 26.0,
   wasteAmount: 380.0,
-  netProfit: 57699.15,
+  netProfit: 3303.3,
 };
 
 export const INITIAL_SALES_ITEMS = [

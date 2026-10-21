@@ -52,6 +52,8 @@ import {
   apiMarkAllNotificationsRead,
   apiFetchChatMessages,
   apiSendChatMessage,
+  apiFetchSales,
+  apiFetchSalesSummary,
 } from '../services/api';
 import {
   getStoredExpenses,
@@ -108,6 +110,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
   const [expenseTab, setExpenseTab] = useState('all');
   const [expenseSearch, setExpenseSearch] = useState('');
+  const [warehouseTab, setWarehouseTab] = useState('operations'); // 'operations' | 'stock'
   const [advisorTab, setAdvisorTab] = useState('pending_approval'); // 'pending_approval' | 'ledger' | 'tdhp' | 'z_report' | 'rejected'
   const [advisorSearch, setAdvisorSearch] = useState('');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -159,11 +162,13 @@ export default function AndroidApp({ initialUser, onLogout }) {
     return list.filter((n) => !n.isRead).length;
   });
   const [showNotifModal, setShowNotifModal] = useState(false);
+  const [salesSummary, setSalesSummary] = useState(INITIAL_SALES_SUMMARY);
+  const [todaySales, setTodaySales] = useState([]);
 
   // Canlı Backend Senkronizasyonu (Mount anında ve periyodik olarak verileri çeker)
   const refreshAllData = React.useCallback(async () => {
     try {
-      const [liveItems, liveUsers, liveRecipes, liveTx, liveExp, liveNotifs, liveChat] = await Promise.all([
+      const [liveItems, liveUsers, liveRecipes, liveTx, liveExp, liveNotifs, liveChat, liveSales, liveSalesSummary] = await Promise.all([
         apiFetchInventory(),
         apiFetchUsers(),
         apiFetchRecipes(),
@@ -171,6 +176,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
         apiFetchExpenses(),
         apiFetchNotifications(currentUser.role),
         apiFetchChatMessages(),
+        apiFetchSales(),
+        apiFetchSalesSummary(),
       ]);
       if (liveItems && liveItems.length > 0) setItems(liveItems);
       if (liveUsers && liveUsers.length > 0) setUsers(liveUsers);
@@ -183,6 +190,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
       }
       if (liveChat && Array.isArray(liveChat) && liveChat.length > 0) {
         setChatMessages(liveChat);
+      }
+      if (liveSales && Array.isArray(liveSales) && liveSales.length > 0) {
+        setTodaySales(liveSales);
+      }
+      if (liveSalesSummary && liveSalesSummary.totalRevenue) {
+        setSalesSummary(liveSalesSummary);
       }
     } catch (err) {
       // Offline fallback: Yerel demo verisi ile kesintisiz devam eder
@@ -337,6 +350,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
       type: 'INFO',
     });
 
+    try {
+      await apiCreateExpense(newExpenseObj);
+      refreshAllData();
+    } catch (_) {}
+
     showToast(`✓ "${orderModalItem.name}" talebi açıldı ve Kasa/Muhasebe/Depo ekranına iletildi.`);
     setOrderModalItem(null);
     setOrderQuantity('15');
@@ -349,6 +367,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const [inventoryCategory, setInventoryCategory] = useState('all');
   const [recipeSearch, setRecipeSearch] = useState('');
   const [usersSearch, setUsersSearch] = useState('');
+
+  // Web Birebir: Satış Analizi Sekme ve Filtreleri
+  const [salesActiveTab, setSalesActiveTab] = useState('product'); // 'product' veya 'timeline'
+  const [salesSearchQuery, setSalesSearchQuery] = useState('');
+  const [salesProfitFilter, setSalesProfitFilter] = useState('all'); // 'all', 'high_profit', 'high_cost'
 
   const inventoryCategories = ['all', ...new Set(items.map((i) => i.cat))];
 
@@ -376,11 +399,54 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const variableExpensesTotal = expenses
     .filter((e) => e.category === 'VARIABLE')
     .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-  const totalOperatingExpenses = fixedExpensesTotal + variableExpensesTotal;
-  const foodCostTotal = INITIAL_SALES_SUMMARY.totalCost || 18785.85;
-  const totalRevenue = INITIAL_SALES_SUMMARY.totalRevenue || 76485;
+  const totalOperatingExpenses = (fixedExpensesTotal + variableExpensesTotal) > 0 ? (fixedExpensesTotal + variableExpensesTotal) : 526005;
+  const foodCostTotal = salesSummary.totalCost || 1316.7;
+  const totalRevenue = salesSummary.totalRevenue || 4620;
   const grandTotalCost = foodCostTotal + totalOperatingExpenses;
   const netOperatingProfit = totalRevenue - grandTotalCost;
+
+  // Web Birebir: Satış Analizi Gruplama ve Filtreleme
+  const salesItemsToProcess = todaySales.length > 0 ? todaySales : INITIAL_SALES_ITEMS;
+
+  const salesByRecipe = salesItemsToProcess.reduce((acc, sale) => {
+    const name = sale.recipeName || sale.name || sale.productName || 'Diğer';
+    if (!acc[name]) {
+      acc[name] = { quantity: 0, revenue: 0, cost: 0 };
+    }
+    const qty = sale.quantity || sale.qty || 1;
+    const rev = parseFloat(sale.totalRevenue || sale.revenue || sale.totalPrice || 0);
+    const cost = parseFloat(sale.totalCost || sale.cost || (rev * 0.285) || 0);
+    acc[name].quantity += qty;
+    acc[name].revenue += rev;
+    acc[name].cost += cost;
+    return acc;
+  }, {});
+
+  const sortedSalesByRevenue = Object.entries(salesByRecipe)
+    .filter(([name, data]) => {
+      const matchSearch = name.toLowerCase().includes(salesSearchQuery.toLowerCase());
+      const foodCost = data.revenue > 0 ? (data.cost / data.revenue) * 100 : 0;
+      let matchFilter = true;
+      if (salesProfitFilter === 'high_profit') matchFilter = foodCost < 30;
+      if (salesProfitFilter === 'high_cost') matchFilter = foodCost >= 40;
+      return matchSearch && matchFilter;
+    })
+    .sort(([, a], [, b]) => b.revenue - a.revenue);
+
+  const filteredTimelineSales = salesItemsToProcess.filter((sale) => {
+    const name = sale.recipeName || sale.name || sale.productName || '';
+    const time = sale.time || '';
+    const matchSearch =
+      name.toLowerCase().includes(salesSearchQuery.toLowerCase()) ||
+      time.includes(salesSearchQuery);
+    const rev = parseFloat(sale.totalRevenue || sale.revenue || sale.totalPrice || 0);
+    const cost = parseFloat(sale.totalCost || sale.cost || (rev * 0.285) || 0);
+    const foodCost = rev > 0 ? (cost / rev) * 100 : 0;
+    let matchFilter = true;
+    if (salesProfitFilter === 'high_profit') matchFilter = foodCost < 30;
+    if (salesProfitFilter === 'high_cost') matchFilter = foodCost >= 40;
+    return matchSearch && matchFilter;
+  });
 
   // Toplam Borç, Onay Bekleyen ve Müşavir Ret Tutarları (Gerçekçi Muhasebe & Denetim Takibi)
   const totalDebtAmount = expenses
@@ -391,6 +457,52 @@ export default function AndroidApp({ initialUser, onLogout }) {
     (e) => (e.status === 'PENDING_APPROVAL' || !e.recordedInLedger) && e.status !== 'NEEDS_CORRECTION' && e.status !== 'REJECTED' && e.status !== 'FINALIZED'
   ).length;
   const totalApprovedLedgerCount = expenses.filter((e) => e.status === 'FINALIZED' || Boolean(e.recordedInLedger)).length;
+
+  // Web Birebir: Depoya Düşen Bekleyen Mutfak & Malzeme Sevkiyatları (Dinamik Hesaplanır)
+  const pendingDeliveries = expenses
+    .filter((e) => {
+      const nonWarehouseSubTypes = ['RENT', 'LABOR', 'ACCOUNTANT', 'ELECTRICITY', 'WATER', 'GAS', 'PHONE', 'INTERNET', 'TAX', 'SGK', 'MARKETING', 'RENOVATION'];
+      if (nonWarehouseSubTypes.includes(e.subType)) return false;
+
+      const isFoodOrMaterial =
+        e.subType === 'FOOD_SUPPLY' ||
+        e.subType === 'CONSUMABLES' ||
+        (e.title && (e.title.toLowerCase().includes('sipariş') || e.title.toLowerCase().includes('alım') || e.title.toLowerCase().includes('tedarik'))) ||
+        (e.counterparty && (e.counterparty.toLowerCase().includes('hal') || e.counterparty.toLowerCase().includes('tedarik') || e.counterparty.toLowerCase().includes('toptan'))) ||
+        items.some((i) => e.title && e.title.toLowerCase().includes(i.name.toLowerCase()));
+
+      const notDeliveredYet = !e.note || !e.note.includes('[Depo:');
+      return isFoodOrMaterial && notDeliveredYet;
+    })
+    .map((exp) => {
+      const match = (exp.title || '').match(/(.*?)(?:Malzeme Alımı|\(Sipariş\)|Alımı)?\s*(?:\((\d+(?:\.\d+)?)\s*([a-zA-ZğüşıöçĞÜŞİÖÇ]+)\))?/);
+      const rawName = match && match[1] ? match[1].replace('Malzeme Alımı', '').trim() : (exp.title || 'Mutfak Siparişi');
+      const parsedQty = match && match[2] ? parseFloat(match[2]) : 15;
+      const parsedUnit = match && match[3] ? match[3] : 'kg';
+
+      const matchedItem = items.find((i) =>
+        i.name.toLowerCase().includes(rawName.toLowerCase()) ||
+        rawName.toLowerCase().includes(i.name.toLowerCase())
+      );
+
+      return {
+        expenseId: exp.id,
+        inventoryItemId: matchedItem ? matchedItem.id : null,
+        itemName: matchedItem ? matchedItem.name : rawName,
+        barcode: matchedItem ? (matchedItem.barcode || '—') : '—',
+        quantity: parsedQty,
+        unit: matchedItem ? matchedItem.unit : parsedUnit,
+        unitCost: matchedItem ? matchedItem.price : (exp.amount / (parsedQty || 1)),
+        totalCost: exp.amount,
+        isPaid: exp.paymentStatus === 'PAID' || exp.paidByCashier,
+        supplier: exp.counterparty || 'Toptancı Hal Tedarik',
+        originalNote: exp.note || '',
+        orderDate: exp.expenseDate || 'Bugün',
+      };
+    });
+
+  const totalInventoryValue = items.reduce((sum, i) => sum + ((parseFloat(i.stock) || 0) * (parseFloat(i.price) || 0)), 0);
+  const criticalStockCount = items.filter((i) => (parseFloat(i.stock) || 0) <= (parseFloat(i.min) || 5)).length;
 
   const filteredExpenses = expenses.filter((e) => {
     let matchTab = true;
@@ -512,6 +624,44 @@ export default function AndroidApp({ initialUser, onLogout }) {
     } catch (e) {
       console.log('[Android Stock Action] Sync error:', e);
     }
+  };
+
+  // Web Birebir: Sevkiyat Masasındaki Onaylı Siparişi Tek Dokunuşla Depoya Al & Stoğa Ekle
+  const handleAutoReceiveDelivery = async (delivery) => {
+    const matchedItem = items.find((i) =>
+      (delivery.inventoryItemId && i.id === delivery.inventoryItemId) ||
+      i.name.toLowerCase().includes(delivery.itemName.toLowerCase()) ||
+      delivery.itemName.toLowerCase().includes(i.name.toLowerCase())
+    );
+
+    const qty = delivery.quantity;
+    const unit = delivery.unit || (matchedItem ? matchedItem.unit : 'kg');
+
+    if (matchedItem) {
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === matchedItem.id ? { ...i, stock: Math.round(((parseFloat(i.stock) || 0) + qty) * 100) / 100 } : i
+        )
+      );
+      try {
+        await apiReceiveStock(matchedItem.id, qty, `${currentUser.name || 'Depo Sorumlusu'} (Mobile)`);
+      } catch (_) {}
+    }
+
+    if (delivery.expenseId) {
+      const updatedExpense = {
+        note: `${delivery.originalNote || ''} | [Depo: ${qty} ${unit} fiilen teslim alındı ve stoğa işlendi ✓]`
+      };
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === delivery.expenseId ? { ...e, ...updatedExpense } : e))
+      );
+      try {
+        await apiUpdateExpense(delivery.expenseId, updatedExpense);
+      } catch (_) {}
+    }
+
+    showToast(`✓ ${qty} ${unit} "${delivery.itemName}" depoya teslim alındı ve stoğa işlendi!`);
+    refreshAllData();
   };
 
   const onCameraScanned = (scannedCode) => {
@@ -1338,40 +1488,40 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webMetricsGrid}>
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>{t.todaySalesRevenue || 'Bugünkü Ciro (POS)'}</Text>
+                  <Text style={styles.webMetricLabel}>{t.todaySalesRevenue || 'BUGÜNKÜ SATIŞ (CİRO)'}</Text>
                   <Text style={styles.webMetricIcon}>💰</Text>
                 </View>
-                <Text style={styles.webMetricValue}>{INITIAL_SALES_SUMMARY.totalRevenue.toLocaleString('tr-TR')} ₺</Text>
+                <Text style={styles.webMetricValue}>{(salesSummary.totalRevenue || 4620).toLocaleString('tr-TR')} ₺</Text>
                 <Text style={styles.webMetricChange}>▲ {t.moreThanYesterday || '%12.5 dünden fazla'}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>{t.actualFoodCost || 'Gıda Maliyeti'}</Text>
+                  <Text style={styles.webMetricLabel}>{t.actualFoodCost || 'GERÇEKLEŞEN GIDA MALİYETİ'}</Text>
                   <Text style={styles.webMetricIcon}>📦</Text>
                 </View>
-                <Text style={styles.webMetricValue}>{INITIAL_SALES_SUMMARY.totalCost.toLocaleString('tr-TR')} ₺</Text>
-                <Text style={styles.webMetricSubTxt}>{t.autoDeductedStock || 'Otomatik düşülen stok'}</Text>
+                <Text style={styles.webMetricValue}>{(salesSummary.totalCost || 1316.7).toLocaleString('tr-TR')} ₺</Text>
+                <Text style={styles.webMetricSubTxt}>{t.autoDeductedStock || 'POS sisteminden otomatik düşülen stok'}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>{t.averageFoodCost || 'Ortalama Food Cost'}</Text>
+                  <Text style={styles.webMetricLabel}>{t.averageFoodCost || 'ORTALAMA FOOD COST'}</Text>
                   <Text style={styles.webMetricIcon}>🎯</Text>
                 </View>
-                <Text style={[styles.webMetricValue, { color: '#047857' }]}>%{INITIAL_SALES_SUMMARY.foodCostPercent}</Text>
-                <Text style={styles.webMetricSubTxt}>{t.aboveTargetFoodCost ? t.aboveTargetFoodCost.replace('{target}', '28.0') : 'Hedef: %28.0 altında'}</Text>
+                <Text style={[styles.webMetricValue, { color: '#047857' }]}>% {parseFloat(salesSummary.foodCostPercent || 28.5).toFixed(1)}</Text>
+                <Text style={styles.webMetricSubTxt}>⚠️ {t.aboveTargetFoodCost ? t.aboveTargetFoodCost.replace('{target}', '26.0') : "Hedeflenen %26'un üzerinde!"}</Text>
               </View>
 
               <View style={styles.webMetricCard}>
                 <View style={styles.webMetricHeader}>
-                  <Text style={styles.webMetricLabel}>{t.criticalStockStat || 'Kritik Stok Uyarısı'}</Text>
-                  <Text style={styles.webMetricIcon}>⚠️</Text>
+                  <Text style={styles.webMetricLabel}>{t.generalOperatingExpenses || 'GENEL İŞLETME GİDERLERİ'}</Text>
+                  <Text style={styles.webMetricIcon}>📑</Text>
                 </View>
-                <Text style={[styles.webMetricValue, { color: '#f59e0b' }]}>
-                  {items.filter((i) => i.stock <= i.min).length} {t.productNameCol ? t.productNameCol.split(' ')[0] : 'Ürün'}
+                <Text style={[styles.webMetricValue, { color: '#4338ca' }]}>
+                  {totalOperatingExpenses.toLocaleString('tr-TR')} ₺
                 </Text>
-                <Text style={styles.webMetricSubTxt}>{t.statusCritical || 'Kritik Seviye'}</Text>
+                <Text style={styles.webMetricSubTxt}>{t.fixedPlusVariableCosts || 'Sabit + Değişken Genel Masraflar'}</Text>
               </View>
             </View>
 
@@ -1445,13 +1595,19 @@ export default function AndroidApp({ initialUser, onLogout }) {
               </View>
               <View style={[styles.webMiniStatCard, { borderColor: '#fed7aa' }]}>
                 <Text style={[styles.webMiniStatVal, { color: '#f59e0b' }]}>
-                  {items.filter((i) => i.stock <= i.min).length}
+                  {criticalStockCount}
                 </Text>
                 <Text style={styles.webMiniStatLbl}>{t.criticalStockStat || 'Kritik Stok'}</Text>
               </View>
-              <View style={styles.webMiniStatCard}>
+              <View style={[styles.webMiniStatCard, { borderColor: '#bbf7d0' }]}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
-                  {Math.round(items.reduce((s, i) => s + i.stock * i.price, 0) / 1000)}k ₺
+                  {pendingDeliveries.length}
+                </Text>
+                <Text style={styles.webMiniStatLbl}>Bekleyen Sevkiyat</Text>
+              </View>
+              <View style={styles.webMiniStatCard}>
+                <Text style={[styles.webMiniStatVal, { color: '#047857', fontSize: 12 }]}>
+                  {totalInventoryValue.toLocaleString('tr-TR')} ₺
                 </Text>
                 <Text style={styles.webMiniStatLbl}>{t.totalInventoryValueStat || 'Envanter Değeri'}</Text>
               </View>
@@ -1737,40 +1893,251 @@ export default function AndroidApp({ initialUser, onLogout }) {
             <View style={styles.webMiniStatsRow}>
               <View style={styles.webMiniStatCard}>
                 <Text style={[styles.webMiniStatVal, { color: THEME.colors.primary }]}>
-                  {INITIAL_SALES_SUMMARY.totalRevenue.toLocaleString('tr-TR')} ₺
+                  {(salesSummary.totalRevenue || 4620).toLocaleString('tr-TR')} ₺
                 </Text>
                 <Text style={styles.webMiniStatLbl}>{t.totalRevenueStat || 'Toplam Ciro'}</Text>
               </View>
               <View style={[styles.webMiniStatCard, { borderColor: '#bbf7d0' }]}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
-                  {INITIAL_SALES_SUMMARY.netProfit.toLocaleString('tr-TR')} ₺
+                  {(salesSummary.netProfit || 3303.3).toLocaleString('tr-TR')} ₺
                 </Text>
                 <Text style={styles.webMiniStatLbl}>{t.netProfitStat || 'Net Kâr'}</Text>
               </View>
               <View style={styles.webMiniStatCard}>
-                <Text style={styles.webMiniStatVal}>{INITIAL_SALES_ITEMS.length}</Text>
+                <Text style={styles.webMiniStatVal}>{salesItemsToProcess.length}</Text>
                 <Text style={styles.webMiniStatLbl}>{t.salesItemsStat || 'Satış Kalemi'}</Text>
               </View>
             </View>
 
-            <Text style={styles.subHeading}>{t.productProfitHeader ? t.productProfitHeader.toUpperCase() : 'GÜNLÜK ÜRÜN SATIŞLARI'}</Text>
-            {INITIAL_SALES_ITEMS.map((item) => {
-              const itemProfit = item.revenue - item.cost;
-              return (
-                <View key={item.id} style={styles.webSalesCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemTitle}>{item.name}</Text>
-                    <Text style={styles.itemMeta}>{item.qty} {t.portionCol || 'Porsiyon'} • Food Cost %{item.foodCost}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.salesRevBold}>{item.revenue.toLocaleString('tr-TR')} ₺</Text>
-                    <Text style={[styles.itemMeta, { color: '#047857', fontWeight: '700' }]}>
-                      +{t.profitCol || 'Kâr'}: {itemProfit.toLocaleString('tr-TR')} ₺
+            {/* Segmented View Switcher (Web ile Birebir) */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: '#eef6f0',
+              padding: 4,
+              borderRadius: 12,
+              marginBottom: 12,
+              gap: 6
+            }}>
+              <TouchableOpacity
+                onPress={() => setSalesActiveTab('product')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  paddingHorizontal: 8,
+                  borderRadius: 9,
+                  alignItems: 'center',
+                  backgroundColor: salesActiveTab === 'product' ? '#ffffff' : 'transparent',
+                  shadowColor: salesActiveTab === 'product' ? '#000' : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: salesActiveTab === 'product' ? 0.08 : 0,
+                  shadowRadius: 3,
+                  elevation: salesActiveTab === 'product' ? 2 : 0,
+                }}
+              >
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: salesActiveTab === 'product' ? '#0a1f11' : '#64748b'
+                }}>
+                  {t.productBasedSummaryTab || '📊 Ürün Bazlı Kârlılık Özeti'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setSalesActiveTab('timeline')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  paddingHorizontal: 8,
+                  borderRadius: 9,
+                  alignItems: 'center',
+                  backgroundColor: salesActiveTab === 'timeline' ? '#ffffff' : 'transparent',
+                  shadowColor: salesActiveTab === 'timeline' ? '#000' : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: salesActiveTab === 'timeline' ? 0.08 : 0,
+                  shadowRadius: 3,
+                  elevation: salesActiveTab === 'timeline' ? 2 : 0,
+                }}
+              >
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '800',
+                  color: salesActiveTab === 'timeline' ? '#0a1f11' : '#64748b'
+                }}>
+                  {t.detailedTimelineTab || '🕒 Detaylı Satış Günlüğü'} ({salesItemsToProcess.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Filters Bar (Web ile Birebir) */}
+            <View style={styles.webFilterBar}>
+              <TextInput
+                style={styles.webSearchInput}
+                placeholder={salesActiveTab === 'product' ? (t.searchDishPlaceholder || '🔍 Yemek adına göre ara...') : (t.searchTimelinePlaceholder || '🔍 Saat veya yemek adına göre filtrele...')}
+                placeholderTextColor={THEME.colors.textLight}
+                value={salesSearchQuery}
+                onChangeText={setSalesSearchQuery}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.webChipBtn, salesProfitFilter === 'all' && styles.webChipBtnActive]}
+                  onPress={() => setSalesProfitFilter('all')}
+                >
+                  <Text style={[styles.webChipTxt, salesProfitFilter === 'all' && styles.webChipTxtActive]}>
+                    {t.allSalesFilter || 'Tüm Satışlar'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.webChipBtn, salesProfitFilter === 'high_profit' && { backgroundColor: '#10b981', borderColor: '#059669' }]}
+                  onPress={() => setSalesProfitFilter('high_profit')}
+                >
+                  <Text style={[styles.webChipTxt, salesProfitFilter === 'high_profit' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ✨ {t.highProfitFilter || 'Yüksek Kârlı (<%30)'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.webChipBtn, salesProfitFilter === 'high_cost' && { backgroundColor: '#ef4444', borderColor: '#dc2626' }]}
+                  onPress={() => setSalesProfitFilter('high_cost')}
+                >
+                  <Text style={[styles.webChipTxt, salesProfitFilter === 'high_cost' && { color: '#ffffff', fontWeight: '800' }]}>
+                    ⚠️ {t.highCostFilter || 'Yüksek Maliyetli (>=%40)'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+              <View style={styles.webFilterCountRow}>
+                <Text style={styles.webFilterCountTxt}>
+                  {t.recordsListed || 'Kayıt Listelendi'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>
+                    {salesActiveTab === 'product' ? sortedSalesByRevenue.length : filteredTimelineSales.length}
+                  </Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* Tab 1: Ürün Bazlı Kârlılık Özeti */}
+            {salesActiveTab === 'product' && (
+              <View>
+                <Text style={styles.subHeading}>
+                  {t.productProfitHeader ? t.productProfitHeader.toUpperCase() : 'ÜRÜN BAZLI KÂRLILIK DAĞILIMI'}
+                </Text>
+                {sortedSalesByRevenue.length === 0 ? (
+                  <View style={[styles.webSalesCard, { justifyContent: 'center', padding: 24 }]}>
+                    <Text style={{ textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
+                      Kayıt bulunamadı.
                     </Text>
                   </View>
-                </View>
-              );
-            })}
+                ) : (
+                  sortedSalesByRevenue.map(([name, data]) => {
+                    const profit = data.revenue - data.cost;
+                    const foodCost = data.revenue > 0 ? (data.cost / data.revenue) * 100 : 0;
+                    const isHighCost = foodCost >= 40;
+                    const isMidCost = foodCost >= 30;
+                    const badgeBg = isHighCost ? '#fee2e2' : isMidCost ? '#fef3c7' : '#dcfce7';
+                    const badgeBorder = isHighCost ? '#fca5a5' : isMidCost ? '#fde047' : '#86efac';
+                    const badgeColor = isHighCost ? '#b91c1c' : isMidCost ? '#b45309' : '#15803d';
+
+                    return (
+                      <View key={name} style={[styles.webSalesCard, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Text style={[styles.itemTitle, { flex: 1, fontSize: 15 }]}>{name}</Text>
+                          <View style={{
+                            backgroundColor: badgeBg,
+                            borderColor: badgeBorder,
+                            borderWidth: 1,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 8
+                          }}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: badgeColor }}>
+                              %{foodCost.toFixed(1)} FC
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderTopWidth: 1,
+                          borderTopColor: '#f1f5f9',
+                          paddingTop: 8
+                        }}>
+                          <View>
+                            <Text style={styles.itemMeta}>
+                              {data.quantity} {t.portionCol || 'Porsiyon'}
+                            </Text>
+                            <Text style={[styles.itemMeta, { fontSize: 11 }]}>
+                              Maliyet: {data.cost.toLocaleString('tr-TR')} ₺
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.salesRevBold}>{data.revenue.toLocaleString('tr-TR')} ₺</Text>
+                            <Text style={[styles.itemMeta, { color: profit >= 0 ? '#047857' : '#dc2626', fontWeight: '800' }]}>
+                              +{t.profitCol || 'Net Kâr'}: {profit.toLocaleString('tr-TR')} ₺
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            )}
+
+            {/* Tab 2: Detaylı Satış Günlüğü (Bugün) */}
+            {salesActiveTab === 'timeline' && (
+              <View>
+                <Text style={styles.subHeading}>
+                  {t.timelineSalesHeader ? t.timelineSalesHeader.toUpperCase() : 'DETAYLI SATIŞ GÜNLÜĞÜ (BUGÜN)'}
+                </Text>
+                {filteredTimelineSales.length === 0 ? (
+                  <View style={[styles.webSalesCard, { justifyContent: 'center', padding: 24 }]}>
+                    <Text style={{ textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
+                      Kayıt bulunamadı.
+                    </Text>
+                  </View>
+                ) : (
+                  filteredTimelineSales.map((sale, idx) => {
+                    const itemName = sale.recipeName || sale.name || sale.productName || `Satış #${sale.id || idx + 1}`;
+                    const itemQty = sale.quantity || sale.qty || 1;
+                    const itemRev = parseFloat(sale.totalRevenue || sale.revenue || sale.totalPrice || 0);
+                    const itemCost = parseFloat(sale.totalCost || sale.cost || (itemRev * 0.285));
+                    const itemProfit = itemRev - itemCost;
+                    const itemTime = sale.time || '12:00';
+
+                    return (
+                      <View key={sale.id || idx} style={styles.webSalesCard}>
+                        <View style={{
+                          backgroundColor: '#f1f5f9',
+                          borderColor: '#cbd5e1',
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 6,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 10
+                        }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>
+                            🕒 {itemTime}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.itemTitle}>{itemName}</Text>
+                          <Text style={styles.itemMeta}>
+                            {itemQty} {t.portionCol || 'Porsiyon'} • Maliyet: {itemCost.toLocaleString('tr-TR')} ₺
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.salesRevBold}>{itemRev.toLocaleString('tr-TR')} ₺</Text>
+                          <Text style={[styles.itemMeta, { color: '#047857', fontWeight: '700' }]}>
+                            +{t.profitCol || 'Kâr'}: {itemProfit.toLocaleString('tr-TR')} ₺
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -1788,188 +2155,474 @@ export default function AndroidApp({ initialUser, onLogout }) {
               </View>
             </View>
 
-            {/* Web Tarzı 3'lü İşlem Butonları (wh-actions) */}
-            <View style={styles.webWhActionRow}>
+            {/* Segmented Tab Bar: [ 📦 İşlemler & Mal Kabul ] [ 📊 Depo Stok Durumu ] */}
+            <View style={{ flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 10, padding: 3, marginBottom: 14 }}>
               <TouchableOpacity
-                style={[styles.webWhActionBtnLarge, { backgroundColor: '#0284c7' }]}
-                onPress={() => {
-                  if (items.length > 0) setSelectedItem(items[0]);
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 8,
+                  backgroundColor: warehouseTab === 'operations' ? '#ffffff' : 'transparent',
+                  shadowColor: warehouseTab === 'operations' ? '#000000' : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: warehouseTab === 'operations' ? 0.1 : 0,
+                  shadowRadius: 2,
+                  elevation: warehouseTab === 'operations' ? 2 : 0,
                 }}
+                onPress={() => setWarehouseTab('operations')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.webWhActionIcon}>📦</Text>
-                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-                  {t.goodsReceipt || 'Mal Kabul'}
-                </Text>
-                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
-                  {t.manualEntry || 'Manuel Giriş'}
+                <Text style={{ fontSize: 12, fontWeight: '800', color: warehouseTab === 'operations' ? THEME.colors.primary : '#64748b' }}>
+                  📦 {t.tabStockOps || 'İşlemler & Mal Kabul'}
                 </Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.webWhActionBtnLarge, { backgroundColor: '#dc2626' }]}
-                onPress={() => {
-                  if (items.length > 0) setSelectedItem(items[0]);
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 8,
+                  backgroundColor: warehouseTab === 'stock' ? '#ffffff' : 'transparent',
+                  shadowColor: warehouseTab === 'stock' ? '#000000' : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: warehouseTab === 'stock' ? 0.1 : 0,
+                  shadowRadius: 2,
+                  elevation: warehouseTab === 'stock' ? 2 : 0,
                 }}
+                onPress={() => setWarehouseTab('stock')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.webWhActionIcon}>⚠️</Text>
-                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-                  {t.reportWaste || 'Zayiat Bildir'}
-                </Text>
-                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
-                  {t.wasteRecord || 'Fire Kaydı'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.webWhActionBtnLarge, { backgroundColor: '#059669' }]}
-                onPress={() => {
-                  setEditingStockItem(null);
-                  setNewStockItem({
-                    name: '',
-                    cat: 'Kuru Gıda',
-                    unit: 'kg',
-                    stock: '',
-                    min: '5',
-                    price: '',
-                    supplier: '',
-                    barcode: '',
-                  });
-                  setShowAddStockModal(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.webWhActionIcon}>➕</Text>
-                <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-                  {t.newItem || 'Yeni Ürün'}
-                </Text>
-                <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
-                  {t.warehouse || 'Depoya Ekle'}
+                <Text style={{ fontSize: 12, fontWeight: '800', color: warehouseTab === 'stock' ? THEME.colors.primary : '#64748b' }}>
+                  📊 {t.tabWarehouseStatus || 'Depo Stok Durumu'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Manuel Barkod Kartı (Kamerasız - Klavyeden Elle Giriş) */}
-            <View style={styles.webSearchCard}>
-              <Text style={styles.cardHeaderSmall}>{t.manualEntry || 'Manuel Ürün Arama'} ({t.barcodeCol || 'Barkod'}):</Text>
-              <TextInput
-                style={styles.inputBox}
-                placeholder={t.searchInventoryPlaceholder || 'Barkod numarası veya ürün adı girin...'}
-                placeholderTextColor={THEME.colors.textLight}
-                value={barcodeInput}
-                onChangeText={setBarcodeInput}
-              />
-              <TouchableOpacity
-                style={styles.btnManualSubmit}
-                onPress={() => {
-                  const clean = (barcodeInput || '').trim();
-                  if (!clean) return;
-                  const f = items.find(
-                    (i) =>
-                      i.barcode === clean ||
-                      (i.barcode && i.barcode.replace(/\s+/g, '') === clean.replace(/\s+/g, '')) ||
-                      i.name.toLowerCase().includes(clean.toLowerCase())
-                  );
-                  if (f) {
-                    setSelectedItem(f);
-                  } else {
-                    setNewStockItem((prev) => ({ ...prev, barcode: clean, name: '', stock: '' }));
-                    setShowAddStockModal(true);
-                    showToast(`Tanımsız Barkod (${clean}) — Yeni ürün ekleme ekranı açıldı`);
-                  }
-                }}
-              >
-                <Text style={styles.btnManualSubmitTxt}>{t.confirm || 'Ürünü Getir'}</Text>
-              </TouchableOpacity>
+            {/* Dinamik 4'lü Mini-Stats Barı */}
+            <View style={styles.webMiniStatsRow}>
+              <View style={styles.webMiniStatCard}>
+                <Text style={styles.webMiniStatVal}>{items.length}</Text>
+                <Text style={styles.webMiniStatLbl}>{t.totalProductsStat || 'Toplam Ürün'}</Text>
+              </View>
+              <View style={[styles.webMiniStatCard, { borderColor: '#fed7aa' }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#f59e0b' }]}>
+                  {criticalStockCount}
+                </Text>
+                <Text style={styles.webMiniStatLbl}>{t.criticalStockStat || 'Kritik Stok'}</Text>
+              </View>
+              <View style={[styles.webMiniStatCard, { borderColor: '#bbf7d0' }]}>
+                <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
+                  {pendingDeliveries.length}
+                </Text>
+                <Text style={styles.webMiniStatLbl}>Bekleyen Sevkiyat</Text>
+              </View>
+              <View style={styles.webMiniStatCard}>
+                <Text style={[styles.webMiniStatVal, { color: '#047857', fontSize: 12 }]}>
+                  {totalInventoryValue.toLocaleString('tr-TR')} ₺
+                </Text>
+                <Text style={styles.webMiniStatLbl}>{t.totalInventoryValueStat || 'Envanter Değeri'}</Text>
+              </View>
             </View>
 
-            {selectedItem && (
-              <View style={styles.selectedActionCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.itemTitle}>{selectedItem.name}</Text>
-                  <TouchableOpacity style={styles.inlineBackBtn} onPress={() => setSelectedItem(null)}>
-                    <Text style={styles.inlineBackBtnTxt}>✕ {t.cancel || 'Kapat'}</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.itemMeta}>{t.barcodeCol || 'Barkod'}: {selectedItem.barcode || 'Yok'}</Text>
-                <Text style={styles.stockStatusBig}>
-                  {t.stockCol || 'Mevcut Stok'}: {selectedItem.stock} {selectedItem.unit} ({t.minStockCol || 'Min'}: {selectedItem.min})
-                </Text>
-
-                <TextInput
-                  style={[styles.inputBox, { marginTop: 12 }]}
-                  placeholder={`${t.quantity || 'Miktar'} (${selectedItem.unit})`}
-                  placeholderTextColor={THEME.colors.textLight}
-                  value={quantity}
-                  onChangeText={setQuantity}
-                  keyboardType="numeric"
-                />
-
-                <View style={styles.actionBtnGrid}>
-                  <TouchableOpacity
-                    style={[styles.actionBtnItem, { backgroundColor: '#059669' }]}
-                    onPress={() => handleStockAction(true)}
-                  >
-                    <Text style={styles.actionBtnItemTxt}>+ {t.goodsReceipt || 'Mal Kabul Et'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionBtnItem, { backgroundColor: '#dc2626' }]}
-                    onPress={() => handleStockAction(false)}
-                  >
-                    <Text style={styles.actionBtnItemTxt}>⚠️ {t.reportWaste || 'Zayiat / Fire'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Web Birebir: Son İşlemler (Bugün) Kutusu */}
-            <View style={styles.webTxBox}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <Text style={[styles.webTxTitle, { flex: 1, marginRight: 8 }]} numberOfLines={1} ellipsizeMode="tail">
-                  📋 {t.timelineSalesHeader || 'Son İşlemler (Bugün)'}
-                </Text>
-                <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexShrink: 0 }}>
-                  <Text style={{ fontSize: 9, color: '#475569', fontWeight: '800' }}>
-                    {t.liveMonitoring || 'Canlı İzleme'}
-                  </Text>
-                </View>
-              </View>
-              {transactions && transactions.length > 0 ? (
-                transactions.slice(0, 5).map((tx) => (
-                  <View key={tx.id} style={styles.webTxItemRow}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                      <View
-                        style={[
-                          styles.webTxIconBadge,
-                          { backgroundColor: tx.type === 'receive' ? '#ecfdf5' : '#fef2f2' },
-                        ]}
-                      >
-                        <Text style={{ fontSize: 13 }}>{tx.type === 'receive' ? '📥' : '⚠️'}</Text>
-                      </View>
+            {warehouseTab === 'operations' ? (
+              <>
+                {/* Web Birebir: Sevkiyat & Bekleyen Mal Kabul Masası */}
+                <View style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: 14,
+                  padding: 14,
+                  borderWidth: 1.5,
+                  borderColor: '#a7f3d0',
+                  marginBottom: 14,
+                  shadowColor: '#10b981',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 6,
+                  elevation: 2,
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <Text style={{ fontSize: 20 }}>🚚</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.webTxName}>{tx.itemName}</Text>
-                        <Text style={styles.webTxMeta}>
-                          {tx.recordedBy} • {tx.note ? tx.note : (tx.type === 'receive' ? (t.goodsReceipt || 'Mal Kabul') : (t.reportWaste || 'Zayiat'))}
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#064e3b' }}>
+                          Sevkiyat & Bekleyen Mal Kabul Masası
+                        </Text>
+                        <Text style={{ fontSize: 10, color: '#64748b' }}>
+                          Mutfak / muhasebe onaylı sevkiyatlar
                         </Text>
                       </View>
                     </View>
-                    <Text
-                      style={[
-                        styles.webTxQty,
-                        { color: tx.type === 'receive' ? '#047857' : '#dc2626' },
-                      ]}
-                    >
-                      {tx.type === 'receive' ? '+' : '-'}{tx.quantity} {tx.unit}
+                    <View style={{
+                      backgroundColor: pendingDeliveries.length > 0 ? '#fef3c7' : '#f1f5f9',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: pendingDeliveries.length > 0 ? '#fde68a' : '#cbd5e1',
+                    }}>
+                      <Text style={{
+                        fontSize: 10,
+                        fontWeight: '800',
+                        color: pendingDeliveries.length > 0 ? '#92400e' : '#64748b',
+                      }}>
+                        {pendingDeliveries.length} Bekleyen
+                      </Text>
+                    </View>
+                  </View>
+
+                  {pendingDeliveries.length === 0 ? (
+                    <View style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', borderStyle: 'dashed', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
+                        ✓ Şu an bekleyen açık mal kabul sevkiyatı bulunmuyor. Tüm mutfak siparişleri depoya eksiksiz alınmıştır.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      {pendingDeliveries.map((del, idx) => (
+                        <View
+                          key={del.expenseId || idx}
+                          style={{
+                            padding: 12,
+                            backgroundColor: '#f8fbf9',
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: '#d1fae5',
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0f172a' }}>{del.itemName}</Text>
+                                <View style={{
+                                  backgroundColor: del.isPaid ? '#ecfdf5' : '#fffbeb',
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 1,
+                                  borderRadius: 8,
+                                  borderWidth: 1,
+                                  borderColor: del.isPaid ? '#a7f3d0' : '#fde68a',
+                                }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '800', color: del.isPaid ? '#047857' : '#b45309' }}>
+                                    {del.isPaid ? '✓ Kasa Ödedi' : '⏳ Kasa Onayında'}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                                Tedarikçi: <Text style={{ fontWeight: '700', color: '#334155' }}>{del.supplier}</Text>
+                              </Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857' }}>
+                                +{del.quantity} {del.unit}
+                              </Text>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>
+                                {del.totalCost ? `${del.totalCost.toLocaleString('tr-TR')} ₺` : ''}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: '#059669',
+                              borderRadius: 8,
+                              paddingVertical: 8,
+                              paddingHorizontal: 12,
+                              alignItems: 'center',
+                              flexDirection: 'row',
+                              justifyContent: 'center',
+                              gap: 6,
+                              marginTop: 4,
+                            }}
+                            onPress={() => handleAutoReceiveDelivery(del)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11 }}>
+                              ✓ Tek Dokunuşla Depoya Al (+{del.quantity} {del.unit})
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Web Tarzı 3'lü İşlem Butonları (wh-actions) */}
+                <View style={styles.webWhActionRow}>
+                  <TouchableOpacity
+                    style={[styles.webWhActionBtnLarge, { backgroundColor: '#0284c7' }]}
+                    onPress={() => {
+                      if (items.length > 0) setSelectedItem(items[0]);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.webWhActionIcon}>📦</Text>
+                    <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                      {t.goodsReceipt || 'Mal Kabul'}
+                    </Text>
+                    <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                      {t.manualEntry || 'Manuel Giriş'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.webWhActionBtnLarge, { backgroundColor: '#dc2626' }]}
+                    onPress={() => {
+                      if (items.length > 0) setSelectedItem(items[0]);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.webWhActionIcon}>⚠️</Text>
+                    <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                      {t.reportWaste || 'Zayiat Bildir'}
+                    </Text>
+                    <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                      {t.wasteRecord || 'Fire Kaydı'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.webWhActionBtnLarge, { backgroundColor: '#059669' }]}
+                    onPress={() => {
+                      setEditingStockItem(null);
+                      setNewStockItem({
+                        name: '',
+                        cat: 'Kuru Gıda',
+                        unit: 'kg',
+                        stock: '',
+                        min: '5',
+                        price: '',
+                        supplier: '',
+                        barcode: '',
+                      });
+                      setShowAddStockModal(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.webWhActionIcon}>➕</Text>
+                    <Text style={styles.webWhActionTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                      {t.newItem || 'Yeni Ürün'}
+                    </Text>
+                    <Text style={styles.webWhActionSub} numberOfLines={1} ellipsizeMode="tail">
+                      {t.warehouse || 'Depoya Ekle'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Manuel Barkod Kartı (Kamerasız - Klavyeden Elle Giriş) */}
+                <View style={styles.webSearchCard}>
+                  <Text style={styles.cardHeaderSmall}>{t.manualEntry || 'Manuel Ürün Arama'} ({t.barcodeCol || 'Barkod'}):</Text>
+                  <TextInput
+                    style={styles.inputBox}
+                    placeholder={t.searchInventoryPlaceholder || 'Barkod numarası veya ürün adı girin...'}
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={barcodeInput}
+                    onChangeText={setBarcodeInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.btnManualSubmit}
+                    onPress={() => {
+                      const clean = (barcodeInput || '').trim();
+                      if (!clean) return;
+                      const f = items.find(
+                        (i) =>
+                          i.barcode === clean ||
+                          (i.barcode && i.barcode.replace(/\s+/g, '') === clean.replace(/\s+/g, '')) ||
+                          i.name.toLowerCase().includes(clean.toLowerCase())
+                      );
+                      if (f) {
+                        setSelectedItem(f);
+                      } else {
+                        setNewStockItem((prev) => ({ ...prev, barcode: clean, name: '', stock: '' }));
+                        setShowAddStockModal(true);
+                        showToast(`Tanımsız Barkod (${clean}) — Yeni ürün ekleme ekranı açıldı`);
+                      }
+                    }}
+                  >
+                    <Text style={styles.btnManualSubmitTxt}>{t.confirm || 'Ürünü Getir'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {selectedItem && (
+                  <View style={styles.selectedActionCard}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.itemTitle}>{selectedItem.name}</Text>
+                      <TouchableOpacity style={styles.inlineBackBtn} onPress={() => setSelectedItem(null)}>
+                        <Text style={styles.inlineBackBtnTxt}>✕ {t.cancel || 'Kapat'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.itemMeta}>{t.barcodeCol || 'Barkod'}: {selectedItem.barcode || 'Yok'}</Text>
+                    <Text style={styles.stockStatusBig}>
+                      {t.stockCol || 'Mevcut Stok'}: {selectedItem.stock} {selectedItem.unit} ({t.minStockCol || 'Min'}: {selectedItem.min})
+                    </Text>
+
+                    <TextInput
+                      style={[styles.inputBox, { marginTop: 12 }]}
+                      placeholder={`${t.quantity || 'Miktar'} (${selectedItem.unit})`}
+                      placeholderTextColor={THEME.colors.textLight}
+                      value={quantity}
+                      onChangeText={setQuantity}
+                      keyboardType="numeric"
+                    />
+
+                    <View style={styles.actionBtnGrid}>
+                      <TouchableOpacity
+                        style={[styles.actionBtnItem, { backgroundColor: '#059669' }]}
+                        onPress={() => handleStockAction(true)}
+                      >
+                        <Text style={styles.actionBtnItemTxt}>+ {t.goodsReceipt || 'Mal Kabul Et'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtnItem, { backgroundColor: '#dc2626' }]}
+                        onPress={() => handleStockAction(false)}
+                      >
+                        <Text style={styles.actionBtnItemTxt}>⚠️ {t.reportWaste || 'Zayiat / Fire'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* Web Birebir: Son İşlemler (Bugün) Kutusu */}
+                <View style={styles.webTxBox}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={[styles.webTxTitle, { flex: 1, marginRight: 8 }]} numberOfLines={1} ellipsizeMode="tail">
+                      📋 {t.timelineSalesHeader || 'Son İşlemler (Bugün)'}
+                    </Text>
+                    <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexShrink: 0 }}>
+                      <Text style={{ fontSize: 9, color: '#475569', fontWeight: '800' }}>
+                        {t.liveMonitoring || 'Canlı İzleme'}
+                      </Text>
+                    </View>
+                  </View>
+                  {transactions && transactions.length > 0 ? (
+                    transactions.slice(0, 5).map((tx) => (
+                      <View key={tx.id} style={styles.webTxItemRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          <View
+                            style={[
+                              styles.webTxIconBadge,
+                              { backgroundColor: tx.type === 'receive' ? '#ecfdf5' : '#fef2f2' },
+                            ]}
+                          >
+                            <Text style={{ fontSize: 13 }}>{tx.type === 'receive' ? '📥' : '⚠️'}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.webTxName}>{tx.itemName}</Text>
+                            <Text style={styles.webTxMeta}>
+                              {tx.recordedBy} • {tx.note ? tx.note : (tx.type === 'receive' ? (t.goodsReceipt || 'Mal Kabul') : (t.reportWaste || 'Zayiat'))}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text
+                          style={[
+                            styles.webTxQty,
+                            { color: tx.type === 'receive' ? '#047857' : '#dc2626' },
+                          ]}
+                        >
+                          {tx.type === 'receive' ? '+' : '-'}{tx.quantity} {tx.unit}
+                        </Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', paddingVertical: 12 }}>
+                      {t.noNotifications || 'Bugün henüz depo hareketi kaydedilmedi.'}
+                    </Text>
+                  )}
+                </View>
+              </>
+            ) : (
+              /* warehouseTab === 'stock' (Web tabWarehouseStatus ile birebir Depo Stok Listesi) */
+              <View>
+                <View style={styles.webFilterBar}>
+                  <TextInput
+                    style={styles.webSearchInput}
+                    placeholder={t.searchInventoryPlaceholder || '🔍 Ürün adı veya barkod ile arayın...'}
+                    placeholderTextColor={THEME.colors.textLight}
+                    value={inventorySearch}
+                    onChangeText={setInventorySearch}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                    {inventoryCategories.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[styles.webChipBtn, inventoryCategory === c && styles.webChipBtnActive]}
+                        onPress={() => setInventoryCategory(c)}
+                      >
+                        <Text style={[styles.webChipTxt, inventoryCategory === c && styles.webChipTxtActive]}>
+                          {c === 'all' ? (t.allCategories || 'Tüm Kategoriler') : getCategoryLabel(c, currentLang)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <View style={styles.webFilterCountRow}>
+                    <Text style={styles.webFilterCountTxt}>
+                      {t.recordsListed || 'Listelenen'}: <Text style={{ fontWeight: '800', color: THEME.colors.primary }}>{filteredItems.length}</Text> / {items.length} {t.productNameCol ? t.productNameCol.split(' ')[0].toLowerCase() : 'ürün'}
                     </Text>
                   </View>
-                ))
-              ) : (
-                <Text style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', paddingVertical: 12 }}>
-                  {t.noNotifications || 'Bugün henüz depo hareketi kaydedilmedi.'}
-                </Text>
-              )}
-            </View>
+                </View>
+
+                {filteredItems.map((it) => {
+                  const isAlert = (parseFloat(it.stock) || 0) <= (parseFloat(it.min) || 5);
+                  const totalVal = (parseFloat(it.stock) || 0) * (parseFloat(it.price) || 0);
+                  return (
+                    <View key={it.id} style={[styles.webItemCard, isAlert && styles.webItemCardAlert]}>
+                      <TouchableOpacity style={{ flex: 1 }} onPress={() => { setSelectedItem(it); setWarehouseTab('operations'); }} activeOpacity={0.8}>
+                        <View style={styles.webItemTopRow}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.webItemName}>{it.name}</Text>
+                            <Text style={styles.webItemBarcode}>{t.barcodeCol || 'Barkod'}: {it.barcode || 'Belirtilmedi'}</Text>
+                          </View>
+                          <View style={styles.webCategoryBadge}>
+                            <Text style={styles.webCategoryBadgeTxt}>{getCategoryLabel(it.cat, currentLang) || 'Genel'}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.webItemMetricsRow}>
+                          <View style={styles.webItemMetricCol}>
+                            <Text style={styles.webItemMetricLbl}>{t.stockCol || 'Mevcut Stok'}</Text>
+                            <Text style={[styles.webItemMetricVal, isAlert && { color: '#dc2626' }]}>
+                              {it.stock} {it.unit}
+                            </Text>
+                          </View>
+                          <View style={styles.webItemMetricCol}>
+                            <Text style={styles.webItemMetricLbl}>{t.minStockCol || 'Min. Stok'}</Text>
+                            <Text style={styles.webItemMetricVal}>{it.min} {it.unit}</Text>
+                          </View>
+                          <View style={styles.webItemMetricCol}>
+                            <Text style={styles.webItemMetricLbl}>{t.unitPriceCol || 'Birim Fiyat'}</Text>
+                            <Text style={styles.webItemMetricVal}>{it.price.toFixed(2)} ₺</Text>
+                          </View>
+                          <View style={styles.webItemMetricCol}>
+                            <Text style={styles.webItemMetricLbl}>{t.totalValueCol || 'Toplam Değer'}</Text>
+                            <Text style={[styles.webItemMetricVal, { color: '#047857' }]}>
+                              {totalVal.toLocaleString('tr-TR')} ₺
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.webItemStatusRow}>
+                          <View>
+                            {isAlert ? (
+                              <View style={styles.webCriticalBadge}>
+                                <Text style={{ fontSize: 10 }}>⚠️</Text>
+                                <Text style={styles.webCriticalTxt}>{t.statusCritical || 'Kritik Stok'}</Text>
+                              </View>
+                            ) : (
+                              <View style={styles.webTierBadge}>
+                                <View style={styles.webTierDot} />
+                                <Text style={styles.webTierTxt}>{t.statusSufficient || 'Tier A • Yeterli'}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={{ fontSize: 11, color: '#64748b' }}>
+                            {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{it.supplier || 'Standart'}</Text>
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
@@ -2527,7 +3180,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setExpenseTab('daily_sales')}
                 >
                   <Text style={[styles.catFilterTxt, expenseTab === 'daily_sales' && { color: '#ffffff', fontWeight: '800' }]}>
-                    💵 {t.dailySalesTab || 'Günlük Satış'} ({INITIAL_SALES_ITEMS.length})
+                    💵 {t.dailySalesTab || 'Günlük Satış'} ({salesItemsToProcess.length})
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2627,31 +3280,39 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     Toplam Gelir: {totalRevenue.toLocaleString('tr-TR')} ₺ • Brüt Kâr: {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺
                   </Text>
                 </View>
-                {INITIAL_SALES_ITEMS.map((item) => (
-                  <View key={item.id} style={[styles.webUserCard, { borderLeftWidth: 4, borderLeftColor: '#059669' }]}>
-                    <View style={styles.webUserTopRow}>
-                      <View style={[styles.webUserAvatar, { backgroundColor: '#dcfce7', borderRadius: 8 }]}>
-                        <Text style={{ fontSize: 16 }}>🍽️</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.webUserName}>{item.name}</Text>
-                        <Text style={styles.webUserEmail}>
-                          Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{item.qty} porsiyon</Text> • Hammadde: {item.cost.toLocaleString('tr-TR')} ₺
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }}>
-                          +{item.revenue.toLocaleString('tr-TR')} ₺
-                        </Text>
-                        <View style={[styles.webRolePill, { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }]}>
-                          <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
-                            %{item.foodCost} Food Cost
+                {salesItemsToProcess.map((item, idx) => {
+                  const itemName = item.name || item.recipeName || `Ürün #${item.id || idx + 1}`;
+                  const itemQty = item.quantity || item.qty || 1;
+                  const itemRev = parseFloat(item.totalRevenue || item.revenue || item.totalPrice || 0);
+                  const itemCost = parseFloat(item.totalCost || item.cost || (itemRev * 0.285));
+                  const fcPercent = itemRev > 0 ? ((itemCost / itemRev) * 100).toFixed(1) : (item.foodCost || '28.5');
+
+                  return (
+                    <View key={item.id || idx} style={[styles.webUserCard, { borderLeftWidth: 4, borderLeftColor: '#059669' }]}>
+                      <View style={styles.webUserTopRow}>
+                        <View style={[styles.webUserAvatar, { backgroundColor: '#dcfce7', borderRadius: 8 }]}>
+                          <Text style={{ fontSize: 16 }}>🍽️</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.webUserName}>{itemName}</Text>
+                          <Text style={styles.webUserEmail}>
+                            Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{itemQty} porsiyon</Text> • Hammadde: {itemCost.toLocaleString('tr-TR')} ₺
                           </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 15, fontWeight: '900', color: '#166534' }}>
+                            +{itemRev.toLocaleString('tr-TR')} ₺
+                          </Text>
+                          <View style={[styles.webRolePill, { backgroundColor: '#dcfce7', borderColor: '#86efac', marginTop: 4 }]}>
+                            <Text style={[styles.webRolePillTxt, { color: '#15803d', fontWeight: '800' }]}>
+                              %{fcPercent} Food Cost
+                            </Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             ) : filteredExpenses.length === 0 ? (
               <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14 }}>
