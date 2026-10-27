@@ -99,7 +99,7 @@ export const apiFetchInventory = async () => {
     if (res.ok) {
       const json = await res.json();
       const rawList = json.data || json || [];
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         return rawList.map((item) => ({
           id: item.id,
           barcode: item.barcode || '',
@@ -113,9 +113,10 @@ export const apiFetchInventory = async () => {
       }
     }
   } catch (err) {
-    // Fallback if offline
+    // Sadece ag/baglanti hatasinda cevrimdisi fallback
+    return INITIAL_INVENTORY;
   }
-  return INITIAL_INVENTORY;
+  return [];
 };
 
 // 3. Mal Kabul (Stoğa Ekleme - PostgreSQL Mutation)
@@ -164,7 +165,7 @@ export const apiFetchUsers = async () => {
     if (res.ok) {
       const json = await res.json();
       const rawUsers = json.data || json || [];
-      if (Array.isArray(rawUsers) && rawUsers.length > 0) {
+      if (Array.isArray(rawUsers)) {
         return rawUsers.map((u) => ({
           id: u.id,
           name: u.name,
@@ -176,9 +177,10 @@ export const apiFetchUsers = async () => {
       }
     }
   } catch (err) {
-    // Mobil cihaz tünel/Wi-Fi erişemediğinde sorunsuz yerel kullanıcı hafızasına döner
+    // Sadece ag/baglanti hatasinda cevrimdisi fallback
+    return DEMO_USERS;
   }
-  return DEMO_USERS;
+  return [];
 };
 
 // 6. Kullanıcı Rolü Güncelleme

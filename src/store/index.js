@@ -224,7 +224,7 @@ export const useInventoryStore = create((set, get) => ({
     try {
       const json = await axiosClient.get('/inventory')
       const rawList = Array.isArray(json) ? json : (json?.data || [])
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         const mapped = rawList.map(item => ({
           id: item.id,
           name: item.name,
@@ -246,7 +246,7 @@ export const useInventoryStore = create((set, get) => ({
     try {
       const json = await axiosClient.get('/inventory/transactions/recent')
       const rawList = json?.data || (Array.isArray(json) ? json : [])
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         const mappedTx = rawList.map(tx => {
           const itemObj = tx.item || {}
           const dateObj = tx.timestamp ? new Date(tx.timestamp) : new Date()
@@ -474,7 +474,7 @@ export const useRecipeStore = create((set, get) => ({
     try {
       const json = await axiosClient.get('/recipes')
       const rawList = Array.isArray(json) ? json : (json?.data || [])
-      if (Array.isArray(rawList) && rawList.length > 0) {
+      if (Array.isArray(rawList)) {
         // En güncel hammadde fiyatlarını inventory store'dan al
         const inventoryItems = useInventoryStore.getState().items || []
 
@@ -602,9 +602,10 @@ export const useSalesStore = create((set, get) => ({
   fetchSales: async () => {
     try {
       const json = await axiosClient.get('/sales/today')
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      const rawSales = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : [])
+      if (Array.isArray(rawSales)) {
         const recipes = useRecipeStore.getState().recipes || []
-        const mapped = json.data.map(s => {
+        const mapped = rawSales.map(s => {
           const unitPrice = parseFloat(s.unitPrice) || 0
           const totalPrice = parseFloat(s.totalPrice) || (unitPrice * (s.quantity || 1))
           const matchedRecipe = recipes.find(r => r.name?.trim().toLowerCase() === s.productName?.trim().toLowerCase())
@@ -1120,8 +1121,9 @@ export const useExpenseStore = create((set, get) => ({
   fetchExpenses: async () => {
     try {
       const json = await axiosClient.get('/expenses')
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const mapped = json.data.map(e => ({
+      const rawExpenses = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : [])
+      if (Array.isArray(rawExpenses)) {
+        const mapped = rawExpenses.map(e => ({
           id: e.id,
           title: e.title,
           category: e.category,
@@ -1313,24 +1315,14 @@ export const useNotificationStore = create((set, get) => ({
     try {
       const url = role ? `/notifications?role=${role.toUpperCase()}` : '/notifications'
       const json = await axiosClient.get(url)
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        // Sunucudan gelen bildirimler ile yerel bildirimleri birleştir (id'ye göre tekil yap)
-        const currentLocal = get().notifications
-        const mergedMap = new Map()
-        
-        // Yerelde olanları koy
-        currentLocal.forEach(n => mergedMap.set(String(n.id), n))
-        // Sunucudan gelenleri üzerine yaz/ekle
-        json.data.forEach(n => mergedMap.set(String(n.id), n))
-        
-        const mergedList = Array.from(mergedMap.values()).sort(
+      if (json.success && Array.isArray(json.data)) {
+        const sortedList = json.data.sort(
           (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
         )
-        
-        saveNotificationsToStorage(mergedList)
+        saveNotificationsToStorage(sortedList)
         set({
-          notifications: mergedList,
-          unreadCount: mergedList.filter(n => !n.isRead).length
+          notifications: sortedList,
+          unreadCount: sortedList.filter(n => !n.isRead).length
         })
       }
     } catch (_) { }
