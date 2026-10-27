@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "mobile": "npm --prefix mobile start",
+    "mobile:tunnel": "npm --prefix mobile run tunnel",
     "mobile:web": "npm --prefix mobile run web",
     "mobile:android": "npm --prefix mobile run android"
   },
