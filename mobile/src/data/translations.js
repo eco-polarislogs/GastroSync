@@ -430,6 +430,114 @@ export const TRANSLATIONS = {
     attemptedPageLabel: 'Erişilmek İstenen Sayfa',
     attemptTimestampLabel: 'İşlem Saati',
     backToAuthorizedPanel: 'Yetkili Ana Panelime Dön',
+    
+    pendingShipments: 'Bekleyen Sevkiyat',
+    inboundShipmentsDesk: 'Sevkiyat & Bekleyen Mal Kabul Masası',
+    approvedShipmentsSub: 'Mutfak / muhasebe onaylı sevkiyatlar',
+    pendingCount: 'Bekleyen',
+    noPendingShipments: '✓ Şu an bekleyen açık mal kabul sevkiyatı bulunmuyor. Tüm mutfak siparişleri depoya eksiksiz alınmıştır.',
+    paidByCashierBadge: '✓ Kasa Ödedi',
+    pendingCashierBadge: '⏳ Kasa Onayında',
+    oneTouchStockIn: '✓ Tek Dokunuşla Depoya Al',
+    exportLucaZirve: '📥 Luca/Zirve Aktar',
+    taxAndDeclarations: '📋 Vergi & Beyanname',
+    finalizedToJournal: 'Yevmiyeye kesinleşti',
+    awaitingAudit: 'Denetim bekliyor',
+    forwardedToAccountant: 'Muhasebeye iletildi',
+    todaySalesSummaryTitle: '🍽️ Bugün Restoranda Ne Satıldı? (Kasa Dökümü)',
+    grossProfitLabel: 'Brüt Kâr',
+    totalRevenueLabel: 'Toplam Gelir',
+    quantityPcs: 'Adet',
+    rawMaterialCost: 'Hammadde',
+    noMatchingExpense: 'Eşleşen gider kaydı bulunamadı',
+    changeSearchFilterHint: 'Arama terimini veya filtre sekmesini değiştirebilirsiniz.',
+    noRecordsFound: 'Kayıt bulunamadı.',
+    exportReadyToast: '📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!',
+    stage1: '1. AŞAMA',
+    stage1Title: '📝 Gider Girişi',
+    stage1Sub: '✓ Başlangıç',
+    stage2: '2. AŞAMA',
+    stage2Title: '💵 Kasa Ödemesi',
+    stage3: '3. AŞAMA',
+    stage3Title: '📤 Müşavire Gönder',
+    stage3Sub: '✓ İletildi',
+    stage4: '4. AŞAMA',
+    stage4Title: '🏛️ Defter Onayı',
+    receiptCountSuffix: 'Fiş',
+    paidCountSuffix: 'Ödendi',
+    unpaidDebtSuffix: 'Borçta',
+    approvedSuffix: 'Onaylı',
+    rejectedSuffix: 'Ret',
+    lockedInLedger: '🔒 Kilitli (Deftere İşlendi)',
+    tdhpChartTitle: '🏛️ Tek Düzen Hesap Planı (TDHP)',
+    xmlDownloadBtn: 'XML İndir',
+    printPdfBtn: '🖨️ PDF Yazdır',
+    cashDrawerLabel: 'Nakit Tahsilat (Çekmece):',
+    posContactlessLabel: 'Banka POS & Temassız:',
+    mealCardsLabel: 'Yemek Kartları (Sodexo/Multi):',
+    totalZRevenueLabel: 'TOPLAM GÜNLÜK Z-HASILATI:',
+    taxReportsDeskTitle: '📋 Resmi Vergi & Beyanname Masası',
+    taxReportsDeskSub: 'KDV-1, Muhtasar Stopaj & Geçici Vergi Dökümü',
+    vat1Title: '1. KDV-1 Beyannamesi (Aylık)',
+    calculatedVatLabel: '• Hesaplanan KDV (%10 Restoran Satış):',
+    deductibleVatLabel: '• İndirilecek KDV (Gider Faturaları):',
+    netVatPayableLabel: 'ÖDENECEK NET KDV:',
+    withholdingTitle: '2. Muhtasar & Prim Hizmet Beyannamesi (MPHB)',
+    sgkProvisionLabel: '• Personel SGK Prim Karşılığı (6 Kişi):',
+    incomeTaxWithholdingLabel: '• Personel Gelir Vergisi Stopajı:',
+    rentWithholdingLabel: '• Dükkan Kira Stopajı (%20 Tevkifat):',
+    cpaWithholdingLabel: '• SMMM Serbest Meslek Stopajı (%20):',
+    totalWithholdingLabel: 'TOPLAM STOPAJ & SGK TAHAKKUK:',
+    corpTaxTitle: '3. Üç Aylık Geçici Vergi / Faaliyet Kârı Karşılığı',
+    corpTaxProvisionLabel: 'Tahmini Net Kâr Karşılığı (%25):',
+    requestCorrection: '↺ Düzeltme İste',
+    searchAdvisorPlaceholder: '🔍 Defterde gider, kurum veya fatura ara...',
+    switchRoleModalTitle: '👤 Profil & Rol Değiştir',
+    switchRoleModalSub: 'Canlı akış ve onay denetimi için rol seçin',
+    languageModalTitle: '🌐 Şirket Dili / Language',
+    languageModalSub: 'Tek dokunuşla dil değiştirin',
+    selectPendingExpense: '-- Listeden Bekleyen Gider / Fatura Seçin --',
+    expenseType: 'Gider Türü',
+    advisorApprovalDesk: 'Mali Müşavir Onay Masası',
+    coaCash: 'Merkez Kasa (Nakit)',
+    coaPos: 'POS / Kredi Kartı Bloke',
+    coaRawMaterials: 'İlk Madde & Malzeme (Stok)',
+    coaFixedAdmin: 'Genel Yönetim (Sabit)',
+    coaVariableOps: 'Operasyonel Gider (Değişken)',
+    newExpenseModalTitle: 'Muhasebe & Kasa Gider Girişi',
+    advisorLedgerEntry: 'Mali Müşavir Defter Girişi',
+    newExpenseModalSub: 'Sabit ve değişken maliyet kalemi kaydı',
+    expenseTitleLabel: 'Gider Başlığı',
+    expenseTitlePlaceholder: 'Elektrik Faturası, Şube Kirası, Sarf Malzeme Alımı...',
+    mainCategoryLabel: 'Ana Kategori',
+    fixedExpenseLabel: 'Sabit Gider',
+    variableExpenseLabel: 'Değişken Gider',
+    ownedPropertyTitle: 'Dükkan Restoranın Kendi Mülkü (Öz Mülk - Kira Ödenmiyor)',
+    ownedPropertyDesc: 'İşaretlenirse kira maliyeti 0 ₺ olarak kaydedilir ve mülkiyet resmi kayıtlara işlenir.',
+    counterpartyLabel: 'Kurum / Alacaklı / Tedarikçi',
+    counterpartyPlaceholder: 'Enerjisa, İGDAŞ, Mülk Sahibi vb.',
+    invoiceNoLabel: 'Resmi Fatura / Fiş Seri No',
+    invoiceNoPlaceholder: 'GİB-2026-000412',
+    amountOwnedProperty: 'Tutar (0 ₺ Öz Mülk)',
+    transactionDateLabel: 'İşlem Tarihi',
+    accountingPeriodLabel: 'Muhasebe Dönemi',
+    paymentStatusRadioLabel: 'Kasa Ödeme Durumu (Peşin / Borç / Kısmi)',
+    expenseNoteLabel: 'Açıklama / Detaylı Not',
+    expenseNotePlaceholder: 'Gider sebebi, fatura detayı veya vade açıklaması...',
+    cashAllocationModalSub: 'Kasa nakit girişi ve ilgili işletme gider kalemine ödeme aktarımı',
+    periodTypeLabel: 'Dönem Türü',
+    dailyCashTl: 'Günlük Kasa TL',
+    monthlyBudgetTl: 'Aylık Bütçe TL',
+    inflowSourceLabel: 'Para Giriş Kaynağı',
+    inflowPosCash: 'Nakit POS & Restoran Kasa Hasılatı',
+    inflowPartner: 'Ortak / Sermaye İlavesi',
+    inflowBankWithdraw: 'Banka Hesabından Nakit Çekim',
+    selectTargetExpenseLabel: 'Ödenecek Kayıtlı Fatura veya Kalemi Seçin:',
+    allocationAmountLabel: 'Ödenecek Tutar (₺):',
+    completeAllocationBtn: 'İşlemi Tamamla & Kasadan Düş',
+
+
+
     unauthorizedAttemptAlertTitle: '🚨 Yetkisiz Sayfa Erişim Girişimi!',
   },
 
@@ -859,6 +967,114 @@ export const TRANSLATIONS = {
     attemptedPageLabel: 'Attempted Page URL',
     attemptTimestampLabel: 'Timestamp',
     backToAuthorizedPanel: 'Return to Authorized Dashboard',
+    
+    pendingShipments: 'Pending Shipments',
+    inboundShipmentsDesk: 'Shipments & Inbound Receiving Desk',
+    approvedShipmentsSub: 'Kitchen & accounting approved shipments',
+    pendingCount: 'Pending',
+    noPendingShipments: '✓ No open inbound shipments pending. All kitchen orders have been fully received.',
+    paidByCashierBadge: '✓ Cashier Paid',
+    pendingCashierBadge: '⏳ Cashier Approval',
+    oneTouchStockIn: '✓ One-Touch Stock In',
+    exportLucaZirve: '📥 Export Luca/Zirve',
+    taxAndDeclarations: '📋 Tax & Declarations',
+    finalizedToJournal: 'Finalized to journal',
+    awaitingAudit: 'Awaiting audit',
+    forwardedToAccountant: 'Forwarded to accounting',
+    todaySalesSummaryTitle: '🍽️ Today\'s Restaurant Sales (Cash Breakdown)',
+    grossProfitLabel: 'Gross Profit',
+    totalRevenueLabel: 'Total Revenue',
+    quantityPcs: 'Qty',
+    rawMaterialCost: 'Ingredients',
+    noMatchingExpense: 'No matching expense records found',
+    changeSearchFilterHint: 'You can change the search term or filter tab.',
+    noRecordsFound: 'No records found.',
+    exportReadyToast: '📥 Voucher export (.XML/.XLS) prepared in Luca & Zirve format!',
+    stage1: 'STAGE 1',
+    stage1Title: '📝 Expense Entry',
+    stage1Sub: '✓ Initial',
+    stage2: 'STAGE 2',
+    stage2Title: '💵 Cash Payment',
+    stage3: 'STAGE 3',
+    stage3Title: '📤 Forward to CPA',
+    stage3Sub: '✓ Forwarded',
+    stage4: 'STAGE 4',
+    stage4Title: '🏛️ Ledger Approval',
+    receiptCountSuffix: 'Bills',
+    paidCountSuffix: 'Paid',
+    unpaidDebtSuffix: 'Debt',
+    approvedSuffix: 'Approved',
+    rejectedSuffix: 'Rejected',
+    lockedInLedger: '🔒 Locked (Recorded in Ledger)',
+    tdhpChartTitle: '🏛️ Uniform Chart of Accounts (COA)',
+    xmlDownloadBtn: 'Download XML',
+    printPdfBtn: '🖨️ Print PDF',
+    cashDrawerLabel: 'Cash Collections (Drawer):',
+    posContactlessLabel: 'Bank POS & Contactless:',
+    mealCardsLabel: 'Meal Cards (Sodexo/Multi):',
+    totalZRevenueLabel: 'TOTAL DAILY Z-REVENUE:',
+    taxReportsDeskTitle: '📋 Official Tax & Declarations Desk',
+    taxReportsDeskSub: 'VAT-1, Withholding & Provisional Tax Breakdown',
+    vat1Title: '1. VAT-1 Declaration (Monthly)',
+    calculatedVatLabel: '• Calculated VAT (10% Sales):',
+    deductibleVatLabel: '• Deductible Input VAT (Expenses):',
+    netVatPayableLabel: 'NET VAT PAYABLE:',
+    withholdingTitle: '2. Payroll & Withholding Tax Return',
+    sgkProvisionLabel: '• Staff Social Security (6 Staff):',
+    incomeTaxWithholdingLabel: '• Staff Income Tax Withholding:',
+    rentWithholdingLabel: '• Commercial Lease Withholding (20%):',
+    cpaWithholdingLabel: '• CPA Professional Withholding (20%):',
+    totalWithholdingLabel: 'TOTAL WITHHOLDING & ACCRUALS:',
+    corpTaxTitle: '3. Quarterly Provisional Corporate Tax',
+    corpTaxProvisionLabel: 'Estimated Net Profit Tax (25%):',
+    requestCorrection: '↺ Request Correction',
+    searchAdvisorPlaceholder: '🔍 Search expense, vendor or invoice in ledger...',
+    switchRoleModalTitle: '👤 Profile & Switch Role',
+    switchRoleModalSub: 'Select a role to inspect live workflows and permissions',
+    languageModalTitle: '🌐 Workspace Language',
+    languageModalSub: 'Change language with a single tap',
+    selectPendingExpense: '-- Select Pending Expense / Invoice from List --',
+    expenseType: 'Expense Type',
+    advisorApprovalDesk: 'CPA Approval Desk',
+    coaCash: 'Central Cash Drawer (Cash)',
+    coaPos: 'POS / Credit Card In Transit',
+    coaRawMaterials: 'Direct Raw Materials & Inventory',
+    coaFixedAdmin: 'General Administrative (Fixed)',
+    coaVariableOps: 'Operational Operating (Variable)',
+    newExpenseModalTitle: 'Accounting & Cash Expense Entry',
+    advisorLedgerEntry: 'CPA General Ledger Entry',
+    newExpenseModalSub: 'Record fixed and variable operating cost items',
+    expenseTitleLabel: 'Expense Title',
+    expenseTitlePlaceholder: 'Electricity Bill, Branch Rent, Supplies...',
+    mainCategoryLabel: 'Main Category',
+    fixedExpenseLabel: 'Fixed Expense',
+    variableExpenseLabel: 'Variable Expense',
+    ownedPropertyTitle: 'Restaurant Owned Property (Zero Rent)',
+    ownedPropertyDesc: 'When checked, rent cost is set to 0 and property title recorded.',
+    counterpartyLabel: 'Vendor / Creditor / Supplier',
+    counterpartyPlaceholder: 'Utility company, Landlord, Wholesale, etc.',
+    invoiceNoLabel: 'Official Invoice / Receipt Serial No',
+    invoiceNoPlaceholder: 'TAX-2026-000412',
+    amountOwnedProperty: 'Amount (0 ₺ Owned)',
+    transactionDateLabel: 'Transaction Date',
+    accountingPeriodLabel: 'Accounting Period',
+    paymentStatusRadioLabel: 'Cash Payment Status (Paid / Debt / Partial)',
+    expenseNoteLabel: 'Description / Detailed Note',
+    expenseNotePlaceholder: 'Expense purpose, invoice memo or maturity notes...',
+    cashAllocationModalSub: 'Cash drawer receipt and allocation to operating expenses',
+    periodTypeLabel: 'Period Type',
+    dailyCashTl: 'Daily Cash TL',
+    monthlyBudgetTl: 'Monthly Budget TL',
+    inflowSourceLabel: 'Cash Inflow Source',
+    inflowPosCash: 'Cash POS & Restaurant Daily Receipts',
+    inflowPartner: 'Partner / Capital Contribution',
+    inflowBankWithdraw: 'Commercial Bank Account Cash Withdrawal',
+    selectTargetExpenseLabel: 'Select Registered Bill or Expense to Pay:',
+    allocationAmountLabel: 'Payment Amount (₺):',
+    completeAllocationBtn: 'Complete Payment & Deduct from Cash',
+
+
+
     unauthorizedAttemptAlertTitle: '🚨 Unauthorized Page Access Attempt!',
   },
 
@@ -1288,6 +1504,114 @@ export const TRANSLATIONS = {
     attemptedPageLabel: 'Versuchte Zielseite',
     attemptTimestampLabel: 'Uhrzeit',
     backToAuthorizedPanel: 'Zurück zum autorisierten Hauptmenü',
+    
+    pendingShipments: 'Ausstehende Lieferungen',
+    inboundShipmentsDesk: 'Wareneingang & Lieferungen',
+    approvedShipmentsSub: 'Freigegebene Lieferungen von Küche/Kasse',
+    pendingCount: 'Ausstehend',
+    noPendingShipments: '✓ Derzeit keine offenen Lieferungen ausstehend. Alle Bestellungen wurden empfangen.',
+    paidByCashierBadge: '✓ Kasse bezahlt',
+    pendingCashierBadge: '⏳ Kassenfreigabe',
+    oneTouchStockIn: '✓ Mit 1 Klick einlagern',
+    exportLucaZirve: '📥 Luca/Zirve Export',
+    taxAndDeclarations: '📋 Steuer & Erklärung',
+    finalizedToJournal: 'Im Journal verbucht',
+    awaitingAudit: 'Wartet auf Prüfung',
+    forwardedToAccountant: 'An Buchhaltung gesendet',
+    todaySalesSummaryTitle: '🍽️ Heutige Restaurantverkäufe (Kassenbericht)',
+    grossProfitLabel: 'Bruttogewinn',
+    totalRevenueLabel: 'Gesamteinnahmen',
+    quantityPcs: 'Menge',
+    rawMaterialCost: 'Zutatenkosten',
+    noMatchingExpense: 'Keine passenden Ausgaben gefunden',
+    changeSearchFilterHint: 'Suchbegriff oder Filter anpassen.',
+    noRecordsFound: 'Keine Einträge gefunden.',
+    exportReadyToast: '📥 Buchungsbeleg (.XML/.XLS) im Luca- & Zirve-Format erstellt!',
+    stage1: 'STUFE 1',
+    stage1Title: '📝 Ausgabeerfassung',
+    stage1Sub: '✓ Beginn',
+    stage2: 'STUFE 2',
+    stage2Title: '💵 Kassenauszahlung',
+    stage3: 'STUFE 3',
+    stage3Title: '📤 An Berater senden',
+    stage3Sub: '✓ Gesendet',
+    stage4: 'STUFE 4',
+    stage4Title: '🏛️ Hauptbuchprüfung',
+    receiptCountSuffix: 'Belege',
+    paidCountSuffix: 'Bezahlt',
+    unpaidDebtSuffix: 'Offen',
+    approvedSuffix: 'Genehmigt',
+    rejectedSuffix: 'Abgelehnt',
+    lockedInLedger: '🔒 Gesperrt (Verbucht)',
+    tdhpChartTitle: '🏛️ Einheitskontenrahmen (SKR)',
+    xmlDownloadBtn: 'XML Herunterladen',
+    printPdfBtn: '🖨️ PDF Drucken',
+    cashDrawerLabel: 'Bargeldeinnahmen (Schublade):',
+    posContactlessLabel: 'Bank-POS & Kontaktlos:',
+    mealCardsLabel: 'Essenskarten (Sodexo/Multi):',
+    totalZRevenueLabel: 'TÄGLICHER GESAMT-Z-UMSATZ:',
+    taxReportsDeskTitle: '📋 Steuer- & Meldeübersicht',
+    taxReportsDeskSub: 'MwSt-1, Einbehalte & Gewerbesteuer',
+    vat1Title: '1. USt-Voranmeldung (Monatlich)',
+    calculatedVatLabel: '• Berechnete USt (10% Umsatz):',
+    deductibleVatLabel: '• Vorsteuer (Eingangsrechnungen):',
+    netVatPayableLabel: 'ZAHLLAST USt:',
+    withholdingTitle: '2. Lohnsteuer- & Abgabenmeldung',
+    sgkProvisionLabel: '• Sozialversicherungsbeiträge (6 Pers.):',
+    incomeTaxWithholdingLabel: '• Lohnsteuer-Einbehalt:',
+    rentWithholdingLabel: '• Mietsteuer-Einbehalt (20%):',
+    cpaWithholdingLabel: '• Steuerberater-Einbehalt (20%):',
+    totalWithholdingLabel: 'GESAMT EINBEHALTE & SOZIALABGABEN:',
+    corpTaxTitle: '3. Gewerbeertragsteuer-Vorauszahlung',
+    corpTaxProvisionLabel: 'Geschätzte Steuerlast (25%):',
+    requestCorrection: '↺ Korrektur anfordern',
+    searchAdvisorPlaceholder: '🔍 Im Hauptbuch nach Ausgabe, Kreditor suchen...',
+    switchRoleModalTitle: '👤 Profil & Rolle wechseln',
+    switchRoleModalSub: 'Rolle für Workflows und Berechtigungen wählen',
+    languageModalTitle: '🌐 Systemsprache / Language',
+    languageModalSub: 'Sprache mit einem Fingertipp ändern',
+    selectPendingExpense: '-- Offene Ausgabe / Rechnung auswählen --',
+    expenseType: 'Ausgabenart',
+    advisorApprovalDesk: 'Prüf- & Freigabetisch Steuerberater',
+    coaCash: 'Zentralkasse (Bargeld)',
+    coaPos: 'POS / Kartenzahlungen in Abrechnung',
+    coaRawMaterials: 'Roh-, Hilfs- & Betriebsstoffe (Lager)',
+    coaFixedAdmin: 'Allgemeine Verwaltungskosten (Fix)',
+    coaVariableOps: 'Betriebs- & Betriebskosten (Variabel)',
+    newExpenseModalTitle: 'Buchhaltung & Kassenausgabe',
+    advisorLedgerEntry: 'Hauptbucheintrag Steuerberater',
+    newExpenseModalSub: 'Erfassung fixer und variabler Betriebskosten',
+    expenseTitleLabel: 'Bezeichnung der Ausgabe',
+    expenseTitlePlaceholder: 'Stromrechnung, Filialmiete, Verbrauchsmaterial...',
+    mainCategoryLabel: 'Hauptkategorie',
+    fixedExpenseLabel: 'Fixe Ausgabe',
+    variableExpenseLabel: 'Variable Ausgabe',
+    ownedPropertyTitle: 'Eigentum des Restaurants (Mietfrei)',
+    ownedPropertyDesc: 'Mietkosten werden mit 0 erfasst und im Eigentumsnachweis geführt.',
+    counterpartyLabel: 'Kreditor / Lieferant / Empfänger',
+    counterpartyPlaceholder: 'Stadtwerke, Vermieter, Großhandel etc.',
+    invoiceNoLabel: 'Rechnungs- / Belegnummer',
+    invoiceNoPlaceholder: 'BELEG-2026-000412',
+    amountOwnedProperty: 'Betrag (0 ₺ Eigentum)',
+    transactionDateLabel: 'Buchungsdatum',
+    accountingPeriodLabel: 'Buchungsperiode',
+    paymentStatusRadioLabel: 'Kassen-Zahlungsstatus (Bar / Offen / Teilzahlung)',
+    expenseNoteLabel: 'Beschreibung / Notiz',
+    expenseNotePlaceholder: 'Verwendungszweck, Rechnungsdetails oder Fristvermerk...',
+    cashAllocationModalSub: 'Kasseneingang und Verteilung auf betriebliche Ausgaben',
+    periodTypeLabel: 'Periodenart',
+    dailyCashTl: 'Tageskasse TL',
+    monthlyBudgetTl: 'Monatsbudget TL',
+    inflowSourceLabel: 'Mittelherkunft',
+    inflowPosCash: 'Bar- & Karteneinnahmen Restaurant',
+    inflowPartner: 'Gesellschaftereinlage / Eigenkapital',
+    inflowBankWithdraw: 'Barabhebung vom Geschäftskonto',
+    selectTargetExpenseLabel: 'Zu bezahlende Ausgabe / Rechnung wählen:',
+    allocationAmountLabel: 'Zahlungsbetrag (₺):',
+    completeAllocationBtn: 'Abschließen & Aus Kasse buchen',
+
+
+
     unauthorizedAttemptAlertTitle: '🚨 Unbefugter Seitenzugriffsversuch!',
   },
 
@@ -1717,6 +2041,114 @@ export const TRANSLATIONS = {
     attemptedPageLabel: 'الصفحة المطلوبة',
     attemptTimestampLabel: 'وقت المحاولة',
     backToAuthorizedPanel: 'العودة إلى لوحتي المصرح بها',
+    
+    pendingShipments: 'شحنات قيد الانتظار',
+    inboundShipmentsDesk: 'مكتب الشحنات واستلام البضائع',
+    approvedShipmentsSub: 'شحنات معتمدة من المطبخ والمحاسبة',
+    pendingCount: 'قيد الانتظار',
+    noPendingShipments: '✓ لا توجد شحنات توريد معلقة حالياً. تم استلام جميع طلبات المطبخ بالكامل.',
+    paidByCashierBadge: '✓ تم الصرف من الصندوق',
+    pendingCashierBadge: '⏳ قيد موافقة الصندوق',
+    oneTouchStockIn: '✓ إدخال فوري للمستودع',
+    exportLucaZirve: '📥 تصدير لوكا/زيرفه',
+    taxAndDeclarations: '📋 الضرائب والإقرارات',
+    finalizedToJournal: 'تم التقييد في اليومية',
+    awaitingAudit: 'بانتظار التدقيق',
+    forwardedToAccountant: 'تمت الإحالة للمحاسبة',
+    todaySalesSummaryTitle: '🍽️ مبيعات المطعم اليوم (تقرير الصندوق)',
+    grossProfitLabel: 'الربح الإجمالي',
+    totalRevenueLabel: 'إجمالي الإيرادات',
+    quantityPcs: 'العدد',
+    rawMaterialCost: 'تكلفة المواد',
+    noMatchingExpense: 'لم يتم العثور على سجلات نفقات مطابقة',
+    changeSearchFilterHint: 'يمكنك تغيير مصطلح البحث أو علامة التبويب.',
+    noRecordsFound: 'لم يتم العثور على سجلات.',
+    exportReadyToast: '📥 تم تجهيز سند القيد بصيغة (.XML/.XLS) للأنظمة المالية!',
+    stage1: 'المرحلة 1',
+    stage1Title: '📝 تسجيل النفقة',
+    stage1Sub: '✓ بداية',
+    stage2: 'المرحلة 2',
+    stage2Title: '💵 صرف الصندوق',
+    stage3: 'المرحلة 3',
+    stage3Title: '📤 إحالة للمستشار',
+    stage3Sub: '✓ تم الإرسال',
+    stage4: 'المرحلة 4',
+    stage4Title: '🏛️ اعتماد الدفتر',
+    receiptCountSuffix: 'إيصال',
+    paidCountSuffix: 'مسدد',
+    unpaidDebtSuffix: 'دين',
+    approvedSuffix: 'معتمد',
+    rejectedSuffix: 'مرفوض',
+    lockedInLedger: '🔒 مقفل (مقيد في الدفتر)',
+    tdhpChartTitle: '🏛️ دليل الحسابات الموحد',
+    xmlDownloadBtn: 'تحميل XML',
+    printPdfBtn: '🖨️ طباعة PDF',
+    cashDrawerLabel: 'التحصيل النقدي (الدرج):',
+    posContactlessLabel: 'نقاط البيع والبطاقات:',
+    mealCardsLabel: 'بطاقات وجبات الطعام:',
+    totalZRevenueLabel: 'إجمالي إيراد تقرير Z اليومي:',
+    taxReportsDeskTitle: '📋 مكتب الضرائب والإقرارات الرسمية',
+    taxReportsDeskSub: 'كشف ضريبة القيمة المضافة والاستقطاع الضريبي',
+    vat1Title: '1. إقرار ضريبة القيمة المضافة (شهري)',
+    calculatedVatLabel: '• ض.ق.م المحتسبة (10% مبيعات):',
+    deductibleVatLabel: '• ض.ق.م القابلة للخصم (فواتير):',
+    netVatPayableLabel: 'صافي ض.ق.م المستحقة للسداد:',
+    withholdingTitle: '2. إقرار الرواتب والاستقطاعات الضريبية',
+    sgkProvisionLabel: '• مساهمات التأمينات الاجتماعية (6 موظفين):',
+    incomeTaxWithholdingLabel: '• استقطاع ضريبة دخل الموظفين:',
+    rentWithholdingLabel: '• استقطاع إيجار المحل (20%):',
+    cpaWithholdingLabel: '• استقطاع أتعاب المحاسب القانوني (20%):',
+    totalWithholdingLabel: 'إجمالي مستحقات الاستقطاع والتأمينات:',
+    corpTaxTitle: '3. الضريبة الربع سنوية التقديرية',
+    corpTaxProvisionLabel: 'المخصص التقديري لصافي الأرباح (25%):',
+    requestCorrection: '↺ طلب تصحيح',
+    searchAdvisorPlaceholder: '🔍 بحث عن نفقة أو مورد أو فاتورة في الدفتر...',
+    switchRoleModalTitle: '👤 الملف الشخصي وتغيير الدور',
+    switchRoleModalSub: 'اختر دوراً لمعاينة سير العمل والصلاحيات الحية',
+    languageModalTitle: '🌐 لغة النظام / Language',
+    languageModalSub: 'تغيير اللغة بلمسة واحدة',
+    selectPendingExpense: '-- اختر النفقة أو الفاتورة المعلقة من القائمة --',
+    expenseType: 'نوع النفقة',
+    advisorApprovalDesk: 'مكتب اعتماد المستشار المالي',
+    coaCash: 'الصندوق الرئيسي (نقداً)',
+    coaPos: 'أجهزة نقاط البيع والبطاقات المعلقة',
+    coaRawMaterials: 'المواد الأولية والمخزون',
+    coaFixedAdmin: 'المصاريف الإدارية العامة (ثابتة)',
+    coaVariableOps: 'المصاريف التشغيلية (متغيرة)',
+    newExpenseModalTitle: 'تسجيل نفقات الصندوق والمحاسبة',
+    advisorLedgerEntry: 'قيد دفتر المستشار المالي',
+    newExpenseModalSub: 'تسجيل بنود التكاليف الثابتة والمتغيرة للمطعم',
+    expenseTitleLabel: 'عنوان النفقة',
+    expenseTitlePlaceholder: 'فاتورة الكهرباء، إيجار الفرع، مستلزمات...',
+    mainCategoryLabel: 'التصنيف الرئيسي',
+    fixedExpenseLabel: 'نفقة ثابتة',
+    variableExpenseLabel: 'نفقة متغيرة',
+    ownedPropertyTitle: 'المكان ملكية خاصة للمطعم (بدون إيجار)',
+    ownedPropertyDesc: 'يتم قيد تكلفة الإيجار بـ 0 وتثبيت الملكية في السجلات.',
+    counterpartyLabel: 'الجهة / الدائن / المورد',
+    counterpartyPlaceholder: 'شركة الكهرباء، المؤجر، تجار الجملة...',
+    invoiceNoLabel: 'الرقم التسلسلي للفاتورة / الإيصال',
+    invoiceNoPlaceholder: 'فاتورة-2026-000412',
+    amountOwnedProperty: 'المبلغ (0 ₺ ملكية خاصة)',
+    transactionDateLabel: 'تاريخ العملية',
+    accountingPeriodLabel: 'الفترة المحاسبية',
+    paymentStatusRadioLabel: 'حالة سداد الصندوق (نقدي / آجل / جزئي)',
+    expenseNoteLabel: 'ملاحظات وتفاصيل',
+    expenseNotePlaceholder: 'سبب النفقة، تفاصيل الفاتورة أو شروط الاستحقاق...',
+    cashAllocationModalSub: 'توريد رصيد الصندوق وسداد بنود النفقات التشغيلية',
+    periodTypeLabel: 'نوع الفترة',
+    dailyCashTl: 'الصندوق اليومي',
+    monthlyBudgetTl: 'الميزانية الشهرية',
+    inflowSourceLabel: 'مصدر الدفعة النقدية',
+    inflowPosCash: 'متحصلات المبيعات النقدية ونقاط البيع',
+    inflowPartner: 'زيادة رأس المال / تمويل الشركاء',
+    inflowBankWithdraw: 'سحب نقدي من الحساب البنكي التجاري',
+    selectTargetExpenseLabel: 'اختر الفاتورة أو النفقة المسجلة للسداد:',
+    allocationAmountLabel: 'المبلغ المسدد (₺):',
+    completeAllocationBtn: 'إتمام العملية والصرف من الصندوق',
+
+
+
     unauthorizedAttemptAlertTitle: '🚨 محاولة وصول غير مصرح بها!',
   }
 };
@@ -1900,3 +2332,456 @@ export const getLocalizedNotification = (notif, lang = 'tr') => {
 }
 
 
+
+// ==========================================
+// Kapsamlı Mobil Veri ve Sistem Çeviri Haritaları
+// ==========================================
+
+export const ITEM_MAP = {
+  'Dana Kıyma (Özel Karışım)': {
+    tr: 'Dana Kıyma (Özel Karışım)',
+    en: 'Ground Beef (Special Blend)',
+    de: 'Rinderhackfleisch (Spezial)',
+    ar: 'لحم بقري مفروم (خلطة خاصة)'
+  },
+  'Dana Antrikot (Dinlendirilmiş)': {
+    tr: 'Dana Antrikot (Dinlendirilmiş)',
+    en: 'Aged Beef Ribeye',
+    de: 'Gereiftes Rinder-Entrecôte',
+    ar: 'ستيك أنتريكوت بقري معتق'
+  },
+  'Norveç Somon Fileto': {
+    tr: 'Norveç Somon Fileto',
+    en: 'Norwegian Salmon Fillet',
+    de: 'Norwegisches Lachsfilet',
+    ar: 'فيليه سلمون نرويجي'
+  },
+  'Organik Tavuk Göğsü': {
+    tr: 'Organik Tavuk Göğsü',
+    en: 'Organic Chicken Breast',
+    de: 'Bio-Hähnchenbrust',
+    ar: 'صدر دجاج عضوي'
+  },
+  'Salkım Çeri Domates': {
+    tr: 'Salkım Çeri Domates',
+    en: 'Vine Cherry Tomatoes',
+    de: 'Rispentomaten',
+    ar: 'طماطم كرزية عنقودية'
+  },
+  'Hass Avokado': {
+    tr: 'Hass Avokado',
+    en: 'Hass Avocado',
+    de: 'Hass-Avocado',
+    ar: 'أفوكادو هاس'
+  },
+  'Yedikule Marul & Akdeniz Yeşilliği': {
+    tr: 'Yedikule Marul & Akdeniz Yeşilliği',
+    en: 'Romaine & Mediterranean Greens',
+    de: 'Römersalat & Mediterrane Kräuter',
+    ar: 'خس روماني وخضار متوسطية'
+  },
+  'Kestane Mantarı (Cremini)': {
+    tr: 'Kestane Mantarı (Cremini)',
+    en: 'Cremini Mushrooms',
+    de: 'Braune Champignons (Cremini)',
+    ar: 'فطر كريميني كستنائي'
+  },
+  'Kuru Soğan': {
+    tr: 'Kuru Soğan',
+    en: 'Yellow Onions',
+    de: 'Zwiebeln',
+    ar: 'بصل جاف'
+  },
+  'İtalyan Arborio Pirinci': {
+    tr: 'İtalyan Arborio Pirinci',
+    en: 'Italian Arborio Rice',
+    de: 'Italienischer Arborio-Reis',
+    ar: 'أرز أربوريو إيطالي'
+  },
+  'Beyaz Kinoa': {
+    tr: 'Beyaz Kinoa',
+    en: 'White Quinoa',
+    de: 'Weißes Quinoa',
+    ar: 'كينوا بيضاء'
+  },
+  'Penne Rigate (Bronz Kalıp)': {
+    tr: 'Penne Rigate (Bronz Kalıp)',
+    en: 'Bronze-Cut Penne Rigate',
+    de: 'Penne Rigate (Bronzeform)',
+    ar: 'بيني ريغاتي قالب برونزي'
+  },
+  'Un (Tip 55 Özel Ekmeklik)': {
+    tr: 'Un (Tip 55 Özel Ekmeklik)',
+    en: 'Flour (Type 55 Bread Craft)',
+    de: 'Mehl (Type 55 Spezial)',
+    ar: 'دقيق فاخر للخبز نوع 55'
+  },
+  'Erken Hasat Soğuk Sıkım Zeytinyağı': {
+    tr: 'Erken Hasat Soğuk Sıkım Zeytinyağı',
+    en: 'Cold-Pressed Early Harvest Olive Oil',
+    de: 'Natives Olivenöl Extra Frühernte',
+    ar: 'زيت زيتون بكر قطفة أولى عصر بارد'
+  },
+  'Siyah Trüf Yağı (İtalyan)': {
+    tr: 'Siyah Trüf Yağı (İtalyan)',
+    en: 'Italian Black Truffle Oil',
+    de: 'Schwarzes Trüffelöl (Italienisch)',
+    ar: 'زيت الكمأة السوداء الإيطالي'
+  },
+  'Parmigiano Reggiano (24 Ay)': {
+    tr: 'Parmigiano Reggiano (24 Ay)',
+    en: 'Parmigiano Reggiano (24 Mos)',
+    de: 'Parmigiano Reggiano (24 Monate)',
+    ar: 'جبن بارميجيانو ريجيانو 24 شهر'
+  },
+  'İtalyan Mascarpone Peyniri': {
+    tr: 'İtalyan Mascarpone Peyniri',
+    en: 'Italian Mascarpone Cheese',
+    de: 'Italienischer Mascarpone',
+    ar: 'جبنة ماسكاربوني إيطالية'
+  },
+  'Mutfak Kreması (%35 Yağlı)': {
+    tr: 'Mutfak Kreması (%35 Yağlı)',
+    en: 'Heavy Cooking Cream (35%)',
+    de: 'Kochsahne (35% Fett)',
+    ar: 'كريمة طهي دسمة 35%'
+  },
+  'Köy Yumurtası (Serbest Gezen)': {
+    tr: 'Köy Yumurtası (Serbest Gezen)',
+    en: 'Free-Range Farm Eggs',
+    de: 'Freilandeier',
+    ar: 'بيض بلدي حر'
+  },
+  'Kedi Dili Bisküvi (Savoiardi)': {
+    tr: 'Kedi Dili Bisküvi (Savoiardi)',
+    en: 'Ladyfingers (Savoiardi)',
+    de: 'Löffelbiskuits (Savoiardi)',
+    ar: 'بسكويت أصابع الست (سافوياردي)'
+  },
+  'Espresso Çekirdek Kahve (Arabica)': {
+    tr: 'Espresso Çekirdek Kahve (Arabica)',
+    en: 'Arabica Espresso Coffee Beans',
+    de: 'Arabica Espressobohnen',
+    ar: 'حبوب قهوة إسبريسو أرابيكا'
+  },
+  'Kırmızı Pancar (Taze Tarla)': {
+    tr: 'Kırmızı Pancar (Taze Tarla)',
+    en: 'Fresh Farm Red Beets',
+    de: 'Frische Rote Bete',
+    ar: 'شمندر أحمر طازج'
+  }
+};
+
+export const RECIPE_MAP = {
+  'Odun Ateşinde Izgara Köfte': {
+    tr: 'Odun Ateşinde Izgara Köfte',
+    en: 'Wood-Fired Grilled Meatballs',
+    de: 'Gegrillte Fleischbällchen (Holzfeuer)',
+    ar: 'كفتة مشوية على الحطب'
+  },
+  'Dry-Aged Izgara Antrikot (300g)': {
+    tr: 'Dry-Aged Izgara Antrikot (300g)',
+    en: 'Dry-Aged Grilled Ribeye (300g)',
+    de: 'Dry-Aged Gegrilltes Entrecôte (300g)',
+    ar: 'ستيك أنتريكوت مشوي معتق (300 جم)'
+  },
+  'Somon & Avokado Poke Bowl': {
+    tr: 'Somon & Avokado Poke Bowl',
+    en: 'Salmon & Avocado Poke Bowl',
+    de: 'Lachs & Avocado Poke Bowl',
+    ar: 'وعاء بوكي السلمون والأفوكادو'
+  },
+  'Trüflü Yabani Mantarlı Risotto': {
+    tr: 'Trüflü Yabani Mantarlı Risotto',
+    en: 'Truffle & Wild Mushroom Risotto',
+    de: 'Trüffel & Waldpilz-Risotto',
+    ar: 'ريزوتو الفطر البري والكمأة'
+  },
+  'Kremalı Trüflü Penne Rigate': {
+    tr: 'Kremalı Trüflü Penne Rigate',
+    en: 'Creamy Truffle Penne Rigate',
+    de: 'Cremige Trüffel-Penne Rigate',
+    ar: 'بيني ريغاتي بالكريمة والكمأة'
+  },
+  'Izgara Tavuklu Klasik Sezar Salata': {
+    tr: 'Izgara Tavuklu Klasik Sezar Salata',
+    en: 'Classic Grilled Chicken Caesar Salad',
+    de: 'Klassischer Caesar Salad mit Grillhähnchen',
+    ar: 'سلطة سيزر كلاسيكية بالدجاج المشوي'
+  },
+  'Otantik İtalyan Tiramisu': {
+    tr: 'Otantik İtalyan Tiramisu',
+    en: 'Authentic Italian Tiramisu',
+    de: 'Authentisches Italienisches Tiramisu',
+    ar: 'تيراميسو إيطالي أصيل'
+  },
+  'Taş Fırın Pizza Margherita': {
+    tr: 'Taş Fırın Pizza Margherita',
+    en: 'Stone-Oven Pizza Margherita',
+    de: 'Steinofen-Pizza Margherita',
+    ar: 'بيتزا مارغريتا فرن حجري'
+  },
+  'Kuşkonmaz Yatağında Fırın Somon': {
+    tr: 'Kuşkonmaz Yatağında Fırın Somon',
+    en: 'Baked Salmon on Asparagus Bed',
+    de: 'Ofenlachs auf Spargelbett',
+    ar: 'سلمون مخبوز على فراش الهليون'
+  },
+  'Tavuklu Fettuccine Alfredo': {
+    tr: 'Tavuklu Fettuccine Alfredo',
+    en: 'Chicken Fettuccine Alfredo',
+    de: 'Hähnchen-Fettuccine Alfredo',
+    ar: 'فيتوتشيني ألفريدو بالدجاج'
+  }
+};
+
+export const EXPENSE_TITLE_MAP = {
+  'Merkez Restoran Kirası': {
+    tr: 'Merkez Restoran Kirası',
+    en: 'Main Restaurant Lease',
+    de: 'Miete Hauptrestaurant',
+    ar: 'إيجار المطعم الرئيسي'
+  },
+  'Mutfak & Servis Personel Maaşları': {
+    tr: 'Mutfak & Servis Personel Maaşları',
+    en: 'Kitchen & Service Staff Salaries',
+    de: 'Löhne Küchen- & Servicepersonal',
+    ar: 'رواتب موظفي المطبخ والخدمة'
+  },
+  'Mali Müşavirlik & Danışmanlık': {
+    tr: 'Mali Müşavirlik & Danışmanlık',
+    en: 'CPA & Tax Advisory Fee',
+    de: 'Steuerberatung & Wirtschaftsprüfung',
+    ar: 'أتعاب المحاسبة القانونية والاستشارات'
+  },
+  'Sanayi Tipi Elektrik Faturası': {
+    tr: 'Sanayi Tipi Elektrik Faturası',
+    en: 'Industrial Electric Utility Bill',
+    de: 'Gewerbestrom-Rechnung',
+    ar: 'فاتورة الكهرباء الصناعية'
+  },
+  'Şebeke Su Faturası & Arıtma': {
+    tr: 'Şebeke Su Faturası & Arıtma',
+    en: 'Municipal Water & Filtration Bill',
+    de: 'Wasser- & Klärrechnung',
+    ar: 'فاتورة مياه البلدية والفلترة'
+  },
+  'Endüstriyel Mutfak Doğalgaz Tüketimi': {
+    tr: 'Endüstriyel Mutfak Doğalgaz Tüketimi',
+    en: 'Industrial Kitchen Gas Consumption',
+    de: 'Gasverbrauch Großküche',
+    ar: 'استهلاك غاز المطبخ الصناعي'
+  },
+  'Restoran Rezervasyon Telefonları': {
+    tr: 'Restoran Rezervasyon Telefonları',
+    en: 'Restaurant Reservation Phone Line',
+    de: 'Telefonanschluss Restaurant-Reservierung',
+    ar: 'خط هاتف حجوزات المطعم'
+  },
+  'Fiber İnternet & POS Hattı': {
+    tr: 'Fiber İnternet & POS Hattı',
+    en: 'Fiber Broadband & POS Terminal Line',
+    de: 'Glasfaser-Internet & POS-Leitung',
+    ar: 'ألياف ضوئية وخط نقاط البيع'
+  },
+  'KDV ve Geçici Vergi Beyanı': {
+    tr: 'KDV ve Geçici Vergi Beyanı',
+    en: 'VAT & Provisional Tax Declaration',
+    de: 'Umsatzsteuer- & Vorsteuererklärung',
+    ar: 'إقرار ضريبة القيمة المضافة والضريبة المؤقتة'
+  },
+  'Personel SGK & Prim Ödemesi': {
+    tr: 'Personel SGK & Prim Ödemesi',
+    en: 'Social Security (SSI) & Premiums',
+    de: 'Sozialversicherungs- & Rentenbeiträge',
+    ar: 'التأمينات الاجتماعية ومساهمات التقاعد'
+  },
+  'Peçete, Paket & Temizlik Sarf': {
+    tr: 'Peçete, Paket & Temizlik Sarf',
+    en: 'Napkins, Packaging & Cleaning Supplies',
+    de: 'Servietten, Verpackung & Reinigungsmittel',
+    ar: 'مناديل ومواد تعبئة ونظافة'
+  },
+  'Soğuk Zincir Et & Sebze Lojistik Nakliyesi': {
+    tr: 'Soğuk Zincir Et & Sebze Lojistik Nakliyesi',
+    en: 'Cold Chain Meat & Produce Freight',
+    de: 'Kühlketten-Logistik Fleisch & Gemüse',
+    ar: 'شحن ونقل مبرد للحوم والخضار'
+  },
+  'Instagram & Gurme Tanıtım Reklamı': {
+    tr: 'Instagram & Gurme Tanıtım Reklamı',
+    en: 'Instagram & Gourmet Influencer Ads',
+    de: 'Instagram & Gourmet-Marketing',
+    ar: 'إعلانات انستغرام وترويج الذواقة'
+  },
+  'Mutfak Havalandırma & Davlumbaz Tadilatı': {
+    tr: 'Mutfak Havalandırma & Davlumbaz Tadilatı',
+    en: 'Kitchen Hood & Ventilation Repair',
+    de: 'Wartung Dunstabzug & Küchenlüftung',
+    ar: 'صيانة مداخن وشفاطات المطبخ'
+  },
+  'Taze Sebze & Meyve Hal Alımı (Haftalık)': {
+    tr: 'Taze Sebze & Meyve Hal Alımı (Haftalık)',
+    en: 'Weekly Fresh Produce Market Purchase',
+    de: 'Wöchentlicher Einkauf Großmarkt (Gemüse)',
+    ar: 'شراء خضار وفواكه طازجة أسبوعية'
+  },
+  'Belediye Çevre Temizlik & İlan Reklam Vergisi': {
+    tr: 'Belediye Çevre Temizlik & İlan Reklam Vergisi',
+    en: 'Municipal Sanitation & Advertising Tax',
+    de: 'Kommunale Abfall- & Werbesteuer',
+    ar: 'رسوم النظافة والبلدية وضريبة الإعلانات'
+  },
+  'Banka POS Cihazı Komisyon & Ekstre Bedeli': {
+    tr: 'Banka POS Cihazı Komisyon & Ekstre Bedeli',
+    en: 'Bank POS Merchant Fee & Statement Cost',
+    de: 'Bank-POS-Gebühren & Abrechnungskosten',
+    ar: 'عمولات أجهزة نقاط البيع المصرفية'
+  },
+  'Restoran Haşere İlaçlama & Biyosidal Hizmeti': {
+    tr: 'Restoran Haşere İlaçlama & Biyosidal Hizmeti',
+    en: 'Restaurant Pest Control & Biocidal Service',
+    de: 'Schädlingsbekämpfung & Biozid-Service',
+    ar: 'خدمات مكافحة الحشرات والتعقيم البيولوجي'
+  },
+  'Paket Servis Kurye & Motosiklet Yakıt Masrafı': {
+    tr: 'Paket Servis Kurye & Motosiklet Yakıt Masrafı',
+    en: 'Delivery Courier Fleet Fuel Expense',
+    de: 'Kraftstoffkosten Kurier & Lieferflotte',
+    ar: 'تكاليف وقود دراجات التوصيل السريع'
+  },
+  'Derin Dondurucu Kompresör Gaz Dolumu': {
+    tr: 'Derin Dondurucu Kompresör Gaz Dolumu',
+    en: 'Deep Freezer Refrigerant Gas Refill',
+    de: 'Kältemittel-Nachfüllung Tiefkühlanlage',
+    ar: 'تعبئة غاز تبريد لكمبروسر المجمدات'
+  },
+  'Mutfak & Bar Personeli OSGB Sağlık Raporu': {
+    tr: 'Mutfak & Bar Personeli OSGB Sağlık Raporu',
+    en: 'Kitchen & Bar Staff Occupational Health Check',
+    de: 'Betriebsärztliche Untersuchung Personal',
+    ar: 'الفحص الطبي الدوري المهني لموظفي المطبخ والبار'
+  }
+};
+
+export const UNIT_MAP = {
+  kg: { tr: 'kg', en: 'kg', de: 'kg', ar: 'كغ' },
+  lt: { tr: 'lt', en: 'L', de: 'L', ar: 'لتر' },
+  adet: { tr: 'adet', en: 'pcs', de: 'Stk', ar: 'قطعة' },
+  porsiyon: { tr: 'porsiyon', en: 'portion', de: 'Portion', ar: 'وجبة' },
+  paket: { tr: 'paket', en: 'pack', de: 'Pck', ar: 'عبوة' },
+  koli: { tr: 'koli', en: 'box', de: 'Karton', ar: 'صندوق' },
+};
+
+export const SUPPLIER_MAP = {
+  'Et Dünyası': { tr: 'Et Dünyası', en: 'Prime Meat World', de: 'Fleisch-Welt', ar: 'عالم اللحوم' },
+  'Merkez Depo': { tr: 'Merkez Depo', en: 'Central Warehouse', de: 'Zentrallager', ar: 'المستودع الرئيسي' },
+  'Hal Tedarik': { tr: 'Hal Tedarik', en: 'Produce Market Supply', de: 'Großmarkt-Lieferung', ar: 'توريدات سوق الخضار' },
+  'Toptancı Hal Tedarik': { tr: 'Toptancı Hal Tedarik', en: 'Wholesale Produce Supply', de: 'Großhandelslieferung', ar: 'توريدات الجملة والأسواق' },
+  'Standart': { tr: 'Standart', en: 'Standard', de: 'Standard', ar: 'افتراضي' },
+  'Belirtilmedi': { tr: 'Belirtilmedi', en: 'Not Specified', de: 'Nicht angegeben', ar: 'غير محدد' },
+};
+
+export const CHAT_MAP = {
+  1: {
+    tr: 'Depoda pancar son 2 kg kaldı! Akşamki kış menüsü ve pancarlı meze servisi için acil 15 kg takviye gerekiyor.',
+    en: 'Only 2 kg of beets left in stock! Need an urgent 15 kg replenishment for the evening winter menu and beet mezze.',
+    de: 'Nur noch 2 kg Rote Bete im Lager! Dringend 15 kg Nachschub für das Abendmenü benötigt.',
+    ar: 'تبقى 2 كغ فقط من الشمندر في المستودع! نحتاج 15 كغ بشكل عاجل لقائمة الشتاء المسائية.'
+  },
+  2: {
+    tr: 'Şefin pancar talebi üzerine toptancıya 1.500 TL nakit kasa çıkışı yapıldı ve fiilen ödendi. Onay masasına iletildi.',
+    en: '1,500 TL cash was paid to the wholesaler for the chef\'s beet order. Forwarded to the approval desk.',
+    de: 'Auf Anfrage des Küchenchefs wurden 1.500 TL bar an den Großhändler gezahlt. Zur Freigabe weitergeleitet.',
+    ar: 'بناءً على طلب الشيف، تم صرف 1,500 ليرة نقداً للمورد. تمت الإحالة لمكتب الاعتماد.'
+  },
+  3: {
+    tr: 'Halden 15 kg taze pancar geldi, tartıp mal kabul terminalinden barkodla stoğa işledim şefim.',
+    en: '15 kg fresh beets arrived from the market, weighed and checked into stock via barcode terminal, chef.',
+    de: '15 kg frische Rote Bete vom Großmarkt eingetroffen, gewogen und per Barcode-Terminal eingebucht, Chef.',
+    ar: 'وصل 15 كغ من الشمندر الطازج، قمت بالوزن والإدخال إلى المخزون عبر ماسح الباركود يا شيف.'
+  },
+  4: {
+    tr: 'Pancar alım faturası ile elektrik faturası dekontunu inceledim ve resmi yevmiye defterine onayladım.',
+    en: 'I reviewed the beet invoice and electricity receipt and officially approved them in the general ledger.',
+    de: 'Einkaufsrechnung und Strombeleg geprüft und ordnungsgemäß im Hauptbuch verbucht.',
+    ar: 'راجعت فاتورة شراء الشمندر وإيصال الكهرباء وقمت باعتمادهما رسمياً في دفتر اليومية العام.'
+  },
+  5: {
+    tr: 'Akşam 20:00 için 8 kişilik VIP rezervasyon var (Masa 4-5 birleştirilecek). Tatlı porsiyonları kontrol edilsin.',
+    en: 'VIP reservation for 8 guests at 20:00 tonight (Tables 4-5 joined). Please check dessert portion availability.',
+    de: 'VIP-Reservierung für 8 Personen um 20:00 Uhr (Tische 4-5 zusammenlegen). Bitte Dessert-Bestände prüfen.',
+    ar: 'يوجد حجز VIP لـ 8 أشخاص الليلة الساعة 20:00 (دمج الطاولتين 4 و5). يرجى التأكد من جاهزية أطباق الحلويات.'
+  }
+};
+
+export const getItemName = (itemOrName, lang = 'tr') => {
+  if (!itemOrName) return '';
+  const raw = typeof itemOrName === 'object' ? (itemOrName.name || '') : String(itemOrName);
+  const match = ITEM_MAP[raw];
+  if (match && match[lang]) return match[lang];
+  return raw;
+};
+
+export const getRecipeName = (recipeOrName, lang = 'tr') => {
+  if (!recipeOrName) return '';
+  const raw = typeof recipeOrName === 'object' ? (recipeOrName.name || recipeOrName.recipeName || '') : String(recipeOrName);
+  const match = RECIPE_MAP[raw];
+  if (match && match[lang]) return match[lang];
+  return raw;
+};
+
+export const getUnitLabel = (unit, lang = 'tr') => {
+  if (!unit) return '';
+  const key = String(unit).toLowerCase().trim();
+  const match = UNIT_MAP[key];
+  if (match && match[lang]) return match[lang];
+  return unit;
+};
+
+export const formatIngredientAmount = (amountStr, lang = 'tr') => {
+  if (!amountStr || typeof amountStr !== 'string') return amountStr || '';
+  if (lang === 'tr') return amountStr;
+  return amountStr
+    .replace(/\bkg\b/gi, getUnitLabel('kg', lang))
+    .replace(/\blt\b/gi, getUnitLabel('lt', lang))
+    .replace(/\badet\b/gi, getUnitLabel('adet', lang))
+    .replace(/\bporsiyon\b/gi, getUnitLabel('porsiyon', lang))
+    .replace(/\bpaket\b/gi, getUnitLabel('paket', lang))
+    .replace(/\bkoli\b/gi, getUnitLabel('koli', lang));
+};
+
+export const getExpenseTitle = (title, lang = 'tr') => {
+  if (!title) return '';
+  const match = EXPENSE_TITLE_MAP[title];
+  if (match && match[lang]) return match[lang];
+  // Sipariş talep başlıkları (örn: Dana Kıyma (Özel Karışım) Malzeme Alımı (15 kg))
+  const orderRegex = /^(.*?) Malzeme Alımı \((\d+(?:\.\d+)?)\s*([a-zA-ZğüşıöçĞÜŞİÖÇ]+)\)$/;
+  const m = title.match(orderRegex);
+  if (m) {
+    const rawItem = m[1];
+    const qty = m[2];
+    const unit = m[3];
+    const transItem = getItemName(rawItem, lang);
+    const transUnit = getUnitLabel(unit, lang);
+    if (lang === 'en') return `${transItem} Supply Purchase (${qty} ${transUnit})`;
+    if (lang === 'de') return `${transItem} Wareneinkauf (${qty} ${transUnit})`;
+    if (lang === 'ar') return `شراء توريد ${transItem} (${qty} ${transUnit})`;
+  }
+  return title;
+};
+
+export const getSupplierLabel = (supplier, lang = 'tr') => {
+  if (!supplier) return '';
+  const match = SUPPLIER_MAP[supplier];
+  if (match && match[lang]) return match[lang];
+  return supplier;
+};
+
+export const getChatMessageText = (msg, lang = 'tr') => {
+  if (!msg) return '';
+  if (msg.id && CHAT_MAP[msg.id] && CHAT_MAP[msg.id][lang]) {
+    return CHAT_MAP[msg.id][lang];
+  }
+  return msg.text || '';
+};

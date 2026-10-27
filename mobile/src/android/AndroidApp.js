@@ -24,7 +24,20 @@ import {
   INITIAL_EXPENSES,
   ROLE_MODULES,
 } from '../data/inventoryData';
-import { TRANSLATIONS, getCategoryLabel, getRoleLabel, getExpenseTypeLabel, getLocalizedNotification } from '../data/translations';
+import {
+  TRANSLATIONS,
+  getCategoryLabel,
+  getRoleLabel,
+  getExpenseTypeLabel,
+  getLocalizedNotification,
+  getItemName,
+  getRecipeName,
+  getUnitLabel,
+  getExpenseTitle,
+  getSupplierLabel,
+  getChatMessageText,
+  formatIngredientAmount,
+} from '../data/translations';
 import { THEME } from '../theme/tokens';
 import {
   apiFetchInventory,
@@ -337,7 +350,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
     // 3. Kasa, Muhasebe ve Depo için otomatik sistem bildirimleri
     await apiCreateNotification({
-      title: orderUrgent ? `⚡ Acil Sipariş Talebi: ${orderModalItem.name}` : `📦 Yeni Sipariş Talebi: ${orderModalItem.name}`,
+      title: orderUrgent ? `⚡ Acil Sipariş Talebi: ${getItemName(orderModalItem.name, currentLang)}` : `📦 Yeni Sipariş Talebi: ${orderModalItem.name}`,
       message: `${currentUser?.name || 'Mutfak'} personeli ${qty} ${orderModalItem.unit} ${orderModalItem.name} için sipariş talebi oluşturdu (${estimatedCost.toLocaleString('tr-TR')} ₺). Kasa onayı bekliyor.`,
       targetRole: 'ACCOUNTANT',
       type: 'WARNING',
@@ -1603,7 +1616,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
                   {pendingDeliveries.length}
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Bekleyen Sevkiyat</Text>
+                <Text style={styles.webMiniStatLbl}>{t.pendingShipments || 'Bekleyen Sevkiyat'}</Text>
               </View>
               <View style={styles.webMiniStatCard}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857', fontSize: 12 }]}>
@@ -1658,8 +1671,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     {/* Top Row: Ürün Adı, Kategori ve Barkod */}
                     <View style={styles.webItemTopRow}>
                       <View style={{ flex: 1, paddingRight: 8 }}>
-                        <Text style={styles.webItemName}>{it.name}</Text>
-                        <Text style={styles.webItemBarcode}>{t.barcodeCol || 'Barkod'}: {it.barcode || 'Belirtilmedi'}</Text>
+                        <Text style={styles.webItemName}>{getItemName(it.name, currentLang)}</Text>
+                        <Text style={styles.webItemBarcode}>{t.barcodeCol || 'Barkod'}: {it.barcode || (t.notSpecified || 'Belirtilmedi')}</Text>
                       </View>
                       <View style={styles.webCategoryBadge}>
                         <Text style={styles.webCategoryBadgeTxt}>{getCategoryLabel(it.cat, currentLang) || 'Genel'}</Text>
@@ -1671,12 +1684,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <View style={styles.webItemMetricCol}>
                         <Text style={styles.webItemMetricLbl}>{t.stockCol || 'Mevcut Stok'}</Text>
                         <Text style={[styles.webItemMetricVal, isAlert && { color: '#dc2626' }]}>
-                          {it.stock} {it.unit}
+                          {it.stock} {getUnitLabel(it.unit, currentLang)}
                         </Text>
                       </View>
                       <View style={styles.webItemMetricCol}>
                         <Text style={styles.webItemMetricLbl}>{t.minStockCol || 'Min. Stok'}</Text>
-                        <Text style={styles.webItemMetricVal}>{it.min} {it.unit}</Text>
+                        <Text style={styles.webItemMetricVal}>{it.min} {getUnitLabel(it.unit, currentLang)}</Text>
                       </View>
                       <View style={styles.webItemMetricCol}>
                         <Text style={styles.webItemMetricLbl}>{t.unitPriceCol || 'Birim Fiyat'}</Text>
@@ -1706,7 +1719,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         )}
                       </View>
                       <Text style={{ fontSize: 11, color: '#64748b' }}>
-                        {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{it.supplier || 'Standart'}</Text>
+                        {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{getSupplierLabel(it.supplier, currentLang) || (t.notSpecified || 'Standart')}</Text>
                       </Text>
                     </View>
 
@@ -1792,7 +1805,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   <View style={styles.webRecipeTopRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.webRecipeCategory}>{getCategoryLabel(r.category, currentLang)}</Text>
-                      <Text style={styles.webRecipeTitle}>{r.name}</Text>
+                      <Text style={styles.webRecipeTitle}>{getRecipeName(r.name, currentLang)}</Text>
                     </View>
                     <View style={[styles.webFcBadge, r.foodCostPercent >= 30 ? styles.webFcBadgeDanger : styles.webFcBadgeGood]}>
                       <Text style={[styles.webFcBadgeTxt, r.foodCostPercent >= 30 ? styles.webFcBadgeTxtDanger : styles.webFcBadgeTxtGood]}>
@@ -1826,8 +1839,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     <Text style={styles.webRecipeIngHead}>{t.ingredientsTitle || 'Reçete Gramajları'} (1 {t.portionCol || 'Porsiyon'}):</Text>
                     {r.ingredients.map((ing, idx) => (
                       <View key={idx} style={styles.webRecipeIngLine}>
-                        <Text style={styles.webRecipeIngName}>• {ing.name}</Text>
-                        <Text style={styles.webRecipeIngAmount}>{ing.amount}</Text>
+                        <Text style={styles.webRecipeIngName}>• {getItemName(ing.name, currentLang)}</Text>
+                        <Text style={styles.webRecipeIngAmount}>{formatIngredientAmount(ing.amount, currentLang)}</Text>
                       </View>
                     ))}
                   </View>
@@ -2038,7 +2051,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     return (
                       <View key={name} style={[styles.webSalesCard, { flexDirection: 'column', alignItems: 'stretch' }]}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <Text style={[styles.itemTitle, { flex: 1, fontSize: 15 }]}>{name}</Text>
+                          <Text style={[styles.itemTitle, { flex: 1, fontSize: 15 }]}>{getRecipeName(name, currentLang)}</Text>
                           <View style={{
                             backgroundColor: badgeBg,
                             borderColor: badgeBorder,
@@ -2062,10 +2075,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         }}>
                           <View>
                             <Text style={styles.itemMeta}>
-                              {data.quantity} {t.portionCol || 'Porsiyon'}
+                              {data.quantity} {getUnitLabel('porsiyon', currentLang)}
                             </Text>
                             <Text style={[styles.itemMeta, { fontSize: 11 }]}>
-                              Maliyet: {data.cost.toLocaleString('tr-TR')} ₺
+                              {t.costLabel || 'Maliyet'}: {data.cost.toLocaleString('tr-TR')} ₺
                             </Text>
                           </View>
                           <View style={{ alignItems: 'flex-end' }}>
@@ -2123,7 +2136,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <View style={{ flex: 1 }}>
                           <Text style={styles.itemTitle}>{itemName}</Text>
                           <Text style={styles.itemMeta}>
-                            {itemQty} {t.portionCol || 'Porsiyon'} • Maliyet: {itemCost.toLocaleString('tr-TR')} ₺
+                            {itemQty} {getUnitLabel('porsiyon', currentLang)} • {t.costLabel || 'Maliyet'}: {itemCost.toLocaleString('tr-TR')} ₺
                           </Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
@@ -2215,7 +2228,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <Text style={[styles.webMiniStatVal, { color: '#047857' }]}>
                   {pendingDeliveries.length}
                 </Text>
-                <Text style={styles.webMiniStatLbl}>Bekleyen Sevkiyat</Text>
+                <Text style={styles.webMiniStatLbl}>{t.pendingShipments || 'Bekleyen Sevkiyat'}</Text>
               </View>
               <View style={styles.webMiniStatCard}>
                 <Text style={[styles.webMiniStatVal, { color: '#047857', fontSize: 12 }]}>
@@ -2266,7 +2279,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         fontWeight: '800',
                         color: pendingDeliveries.length > 0 ? '#92400e' : '#64748b',
                       }}>
-                        {pendingDeliveries.length} Bekleyen
+                        {pendingDeliveries.length} {t.pendingCount || 'Bekleyen'}
                       </Text>
                     </View>
                   </View>
@@ -2274,7 +2287,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   {pendingDeliveries.length === 0 ? (
                     <View style={{ padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', borderStyle: 'dashed', alignItems: 'center' }}>
                       <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
-                        ✓ Şu an bekleyen açık mal kabul sevkiyatı bulunmuyor. Tüm mutfak siparişleri depoya eksiksiz alınmıştır.
+                        {t.noPendingShipments || '✓ Şu an bekleyen açık mal kabul sevkiyatı bulunmuyor. Tüm mutfak siparişleri depoya eksiksiz alınmıştır.'}
                       </Text>
                     </View>
                   ) : (
@@ -2293,7 +2306,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0f172a' }}>{del.itemName}</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0f172a' }}>{getItemName(del.itemName, currentLang)}</Text>
                                 <View style={{
                                   backgroundColor: del.isPaid ? '#ecfdf5' : '#fffbeb',
                                   paddingHorizontal: 6,
@@ -2303,17 +2316,17 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                   borderColor: del.isPaid ? '#a7f3d0' : '#fde68a',
                                 }}>
                                   <Text style={{ fontSize: 9, fontWeight: '800', color: del.isPaid ? '#047857' : '#b45309' }}>
-                                    {del.isPaid ? '✓ Kasa Ödedi' : '⏳ Kasa Onayında'}
+                                    {del.isPaid ? (t.paidByCashierBadge || '✓ Kasa Ödedi') : (t.pendingCashierBadge || '⏳ Kasa Onayında')}
                                   </Text>
                                 </View>
                               </View>
                               <Text style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                                Tedarikçi: <Text style={{ fontWeight: '700', color: '#334155' }}>{del.supplier}</Text>
+                                {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{getSupplierLabel(del.supplier, currentLang)}</Text>
                               </Text>
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>
                               <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857' }}>
-                                +{del.quantity} {del.unit}
+                                +{del.quantity} {getUnitLabel(del.unit, currentLang)}
                               </Text>
                               <Text style={{ fontSize: 10, fontWeight: '700', color: '#475569' }}>
                                 {del.totalCost ? `${del.totalCost.toLocaleString('tr-TR')} ₺` : ''}
@@ -2337,7 +2350,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             activeOpacity={0.8}
                           >
                             <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11 }}>
-                              ✓ Tek Dokunuşla Depoya Al (+{del.quantity} {del.unit})
+                              {t.oneTouchStockIn || '✓ Tek Dokunuşla Depoya Al'} (+{del.quantity} {getUnitLabel(del.unit, currentLang)})
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -2445,19 +2458,19 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 {selectedItem && (
                   <View style={styles.selectedActionCard}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.itemTitle}>{selectedItem.name}</Text>
+                      <Text style={styles.itemTitle}>{getItemName(selectedItem.name, currentLang)}</Text>
                       <TouchableOpacity style={styles.inlineBackBtn} onPress={() => setSelectedItem(null)}>
                         <Text style={styles.inlineBackBtnTxt}>✕ {t.cancel || 'Kapat'}</Text>
                       </TouchableOpacity>
                     </View>
                     <Text style={styles.itemMeta}>{t.barcodeCol || 'Barkod'}: {selectedItem.barcode || 'Yok'}</Text>
                     <Text style={styles.stockStatusBig}>
-                      {t.stockCol || 'Mevcut Stok'}: {selectedItem.stock} {selectedItem.unit} ({t.minStockCol || 'Min'}: {selectedItem.min})
+                      {t.stockCol || 'Mevcut Stok'}: {selectedItem.stock} {getUnitLabel(selectedItem.unit, currentLang)} ({t.minStockCol || 'Min'}: {selectedItem.min} {getUnitLabel(selectedItem.unit, currentLang)})
                     </Text>
 
                     <TextInput
                       style={[styles.inputBox, { marginTop: 12 }]}
-                      placeholder={`${t.quantity || 'Miktar'} (${selectedItem.unit})`}
+                      placeholder={`${t.quantity || 'Miktar'} (${getUnitLabel(selectedItem.unit, currentLang)})`}
                       placeholderTextColor={THEME.colors.textLight}
                       value={quantity}
                       onChangeText={setQuantity}
@@ -2506,7 +2519,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             <Text style={{ fontSize: 13 }}>{tx.type === 'receive' ? '📥' : '⚠️'}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.webTxName}>{tx.itemName}</Text>
+                            <Text style={styles.webTxName}>{getItemName(tx.itemName, currentLang)}</Text>
                             <Text style={styles.webTxMeta}>
                               {tx.recordedBy} • {tx.note ? tx.note : (tx.type === 'receive' ? (t.goodsReceipt || 'Mal Kabul') : (t.reportWaste || 'Zayiat'))}
                             </Text>
@@ -2518,7 +2531,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             { color: tx.type === 'receive' ? '#047857' : '#dc2626' },
                           ]}
                         >
-                          {tx.type === 'receive' ? '+' : '-'}{tx.quantity} {tx.unit}
+                          {tx.type === 'receive' ? '+' : '-'}{tx.quantity} {getUnitLabel(tx.unit, currentLang)}
                         </Text>
                       </View>
                     ))
@@ -2568,7 +2581,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <TouchableOpacity style={{ flex: 1 }} onPress={() => { setSelectedItem(it); setWarehouseTab('operations'); }} activeOpacity={0.8}>
                         <View style={styles.webItemTopRow}>
                           <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={styles.webItemName}>{it.name}</Text>
+                            <Text style={styles.webItemName}>{getItemName(it.name, currentLang)}</Text>
                             <Text style={styles.webItemBarcode}>{t.barcodeCol || 'Barkod'}: {it.barcode || 'Belirtilmedi'}</Text>
                           </View>
                           <View style={styles.webCategoryBadge}>
@@ -2580,12 +2593,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           <View style={styles.webItemMetricCol}>
                             <Text style={styles.webItemMetricLbl}>{t.stockCol || 'Mevcut Stok'}</Text>
                             <Text style={[styles.webItemMetricVal, isAlert && { color: '#dc2626' }]}>
-                              {it.stock} {it.unit}
+                              {it.stock} {getUnitLabel(it.unit, currentLang)}
                             </Text>
                           </View>
                           <View style={styles.webItemMetricCol}>
                             <Text style={styles.webItemMetricLbl}>{t.minStockCol || 'Min. Stok'}</Text>
-                            <Text style={styles.webItemMetricVal}>{it.min} {it.unit}</Text>
+                            <Text style={styles.webItemMetricVal}>{it.min} {getUnitLabel(it.unit, currentLang)}</Text>
                           </View>
                           <View style={styles.webItemMetricCol}>
                             <Text style={styles.webItemMetricLbl}>{t.unitPriceCol || 'Birim Fiyat'}</Text>
@@ -2614,7 +2627,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                             )}
                           </View>
                           <Text style={{ fontSize: 11, color: '#64748b' }}>
-                            {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{it.supplier || 'Standart'}</Text>
+                            {t.supplier || 'Tedarikçi'}: <Text style={{ fontWeight: '700', color: '#334155' }}>{getSupplierLabel(it.supplier, currentLang) || (t.notSpecified || 'Standart')}</Text>
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -3084,11 +3097,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748b' }}>1. AŞAMA</Text>
-                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#0f172a' }}>{expenses.length} Fiş</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748b' }}>{t.stage1 || '1. AŞAMA'}</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#0f172a' }}>{expenses.length} {t.receiptCountSuffix || 'Fiş'}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>📝 Gider Girişi</Text>
-                    <Text style={{ fontSize: 9.5, color: '#059669', fontWeight: '700', marginTop: 4 }}>✓ Başlangıç</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>{t.stage1Title || '📝 Gider Girişi'}</Text>
+                    <Text style={{ fontSize: 9.5, color: '#059669', fontWeight: '700', marginTop: 4 }}>{t.stage1Sub || '✓ Başlangıç'}</Text>
                   </TouchableOpacity>
 
                   {/* Aşama 2 */}
@@ -3105,12 +3118,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#166534' }}>2. AŞAMA</Text>
-                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#166534' }}>{expenses.filter(e => e.paidByCashier).length} Ödendi</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#166534' }}>{t.stage2 || '2. AŞAMA'}</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#166534' }}>{expenses.filter(e => e.paidByCashier).length} {t.paidCountSuffix || 'Ödendi'}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#14532d' }}>💵 Kasa Ödemesi</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#14532d' }}>{t.stage2Title || '💵 Kasa Ödemesi'}</Text>
                     <Text style={{ fontSize: 9.5, color: totalDebtAmount > 0 ? '#dc2626' : '#166534', fontWeight: '700', marginTop: 4 }}>
-                      {expenses.filter(e => !e.paidByCashier).length > 0 ? `⏳ ${expenses.filter(e => !e.paidByCashier).length} Borçta` : '✓ Ödendi'}
+                      {expenses.filter(e => !e.paidByCashier).length > 0 ? `⏳ ${expenses.filter(e => !e.paidByCashier).length} ${t.unpaidDebtSuffix || 'Borçta'}` : '✓ Ödendi'}
                     </Text>
                   </TouchableOpacity>
 
@@ -3128,11 +3141,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#1e40af' }}>3. AŞAMA</Text>
-                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#1d4ed8' }}>{totalPendingAdvisorCount} Fiş</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#1e40af' }}>{t.stage3 || '3. AŞAMA'}</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#1d4ed8' }}>{totalPendingAdvisorCount} {t.receiptCountSuffix || 'Fiş'}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e3a8a' }}>📤 Müşavire Gönder</Text>
-                    <Text style={{ fontSize: 9.5, color: '#2563eb', fontWeight: '700', marginTop: 4 }}>✓ İletildi</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#1e3a8a' }}>{t.stage3Title || '📤 Müşavire Gönder'}</Text>
+                    <Text style={{ fontSize: 9.5, color: '#2563eb', fontWeight: '700', marginTop: 4 }}>{t.stage3Sub || '✓ İletildi'}</Text>
                   </TouchableOpacity>
 
                   {/* Aşama 4 */}
@@ -3149,12 +3162,12 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     activeOpacity={0.7}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#6b21a8' }}>4. AŞAMA</Text>
-                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#7e22ce' }}>{expenses.filter(e => e.recordedInLedger).length} Onaylı</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#6b21a8' }}>{t.stage4 || '4. AŞAMA'}</Text>
+                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#7e22ce' }}>{expenses.filter(e => e.recordedInLedger).length} {t.approvedSuffix || 'Onaylı'}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#581c87' }}>🏛️ Defter Onayı</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#581c87' }}>{t.stage4Title || '🏛️ Defter Onayı'}</Text>
                     <Text style={{ fontSize: 9.5, color: totalRejectedCount > 0 ? '#b91c1c' : '#7e22ce', fontWeight: '700', marginTop: 4 }}>
-                      {totalRejectedCount > 0 ? `⚠️ ${totalRejectedCount} Ret` : '✓ Deftere İşlendi'}
+                      {totalRejectedCount > 0 ? `⚠️ ${totalRejectedCount} ${t.rejectedSuffix || 'Ret'}` : '✓ Deftere İşlendi'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -3274,10 +3287,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
               <View style={{ gap: 8, marginBottom: 12 }}>
                 <View style={{ backgroundColor: '#ecfdf5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
                   <Text style={{ fontSize: 13, fontWeight: '900', color: '#065f46' }}>
-                    🍽️ Bugün Restoranda Ne Satıldı? (Kasa Dökümü)
+                    {t.todaySalesSummaryTitle || '🍽️ Bugün Restoranda Ne Satıldı? (Kasa Dökümü)'}
                   </Text>
                   <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
-                    Toplam Gelir: {totalRevenue.toLocaleString('tr-TR')} ₺ • Brüt Kâr: {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺
+                    {t.totalRevenueLabel || 'Toplam Gelir'}: {totalRevenue.toLocaleString('tr-TR')} ₺ • {t.grossProfitLabel || 'Brüt Kâr'}: {(totalRevenue - foodCostTotal).toLocaleString('tr-TR')} ₺
                   </Text>
                 </View>
                 {salesItemsToProcess.map((item, idx) => {
@@ -3294,9 +3307,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           <Text style={{ fontSize: 16 }}>🍽️</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.webUserName}>{itemName}</Text>
+                          <Text style={styles.webUserName}>{getRecipeName(itemName, currentLang)}</Text>
                           <Text style={styles.webUserEmail}>
-                            Adet: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{itemQty} porsiyon</Text> • Hammadde: {itemCost.toLocaleString('tr-TR')} ₺
+                            {t.quantityPcs || 'Adet'}: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{itemQty} {getUnitLabel('porsiyon', currentLang)}</Text> • {t.rawMaterialCost || 'Hammadde'}: {itemCost.toLocaleString('tr-TR')} ₺
                           </Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
@@ -3317,8 +3330,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
             ) : filteredExpenses.length === 0 ? (
               <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 14 }}>
                 <Text style={{ fontSize: 28, marginBottom: 6 }}>📑</Text>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: THEME.colors.textDark }}>Eşleşen gider kaydı bulunamadı</Text>
-                <Text style={{ fontSize: 12, color: THEME.colors.textLight, marginTop: 4 }}>Arama terimini veya filtre sekmesini değiştirebilirsiniz.</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: THEME.colors.textDark }}>{t.noMatchingExpense || 'Eşleşen gider kaydı bulunamadı'}</Text>
+                <Text style={{ fontSize: 12, color: THEME.colors.textLight, marginTop: 4 }}>{t.changeSearchFilterHint || 'Arama terimini veya filtre sekmesini değiştirebilirsiniz.'}</Text>
               </View>
             ) : (
               filteredExpenses.map((exp) => {
@@ -3346,7 +3359,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     <View style={styles.expCardHeaderRow}>
                       <View style={{ flex: 1, paddingRight: 8 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                          <Text style={styles.expCardTitle}>{exp.title}</Text>
+                          <Text style={styles.expCardTitle}>{getExpenseTitle(exp.title, currentLang)}</Text>
                           {exp.isOwnedProperty && (
                             <View style={styles.expOwnedPropertyBadge}>
                               <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
@@ -3381,7 +3394,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       <View style={styles.expDetailCol}>
                         <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA'}</Text>
                         <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
-                          {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
+                          {getSupplierLabel(exp.counterparty, currentLang) || t.notSpecified || 'Belirtilmedi'}
                         </Text>
                         <Text style={styles.expDetailInvoiceTxt} numberOfLines={1}>
                           {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : (t.noInvoice || 'Faturasız')}
@@ -3496,7 +3509,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         {/* Deftere Kesinleştiğinde Gösterilen Kilitli Rozeti */}
                         {isFinalized && (
                           <View style={styles.webBtnFinalizedBadge}>
-                            <Text style={styles.webBtnFinalizedBadgeTxt}>🔒 Kilitli (Deftere İşlendi)</Text>
+                            <Text style={styles.webBtnFinalizedBadgeTxt}>{t.lockedInLedger || '🔒 Kilitli (Deftere İşlendi)'}</Text>
                           </View>
                         )}
                       </View>
@@ -3548,10 +3561,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                 <TouchableOpacity
                   style={[styles.webBtnPrimary, { flex: 1, minWidth: 140, backgroundColor: '#0d9488', paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 8 }]}
-                  onPress={() => showToast('📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!')}
+                  onPress={() => showToast(t.exportReadyToast || '📥 Luca & Zirve formatında Mahsup Fişi (.XML/.XLS) hazırlandı!')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>📥 Luca/Zirve Aktar</Text>
+                  <Text style={[styles.webBtnPrimaryTxt, { fontSize: 11 }]}>{t.exportLucaZirve || '📥 Luca/Zirve Aktar'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3559,7 +3572,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   onPress={() => setAdvisorTab('tax_reports')}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>📋 Vergi & Beyanname</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>{t.taxAndDeclarations || '📋 Vergi & Beyanname'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3724,35 +3737,35 @@ export default function AndroidApp({ initialUser, onLogout }) {
               <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#0d9488', marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <Text style={{ fontSize: 13, fontWeight: '900', color: '#115e59' }}>
-                    🏛️ Tek Düzen Hesap Planı (TDHP)
+                    {t.tdhpChartTitle || '🏛️ Tek Düzen Hesap Planı (TDHP)'}
                   </Text>
                   <TouchableOpacity
                     style={{ backgroundColor: '#0d9488', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
                     onPress={() => showToast('Luca/Zirve XML fişi dışa aktarıldı')}
                   >
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>XML İndir</Text>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{t.xmlDownloadBtn || 'XML İndir'}</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={{ gap: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>100.01 Merkez Kasa (Nakit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>100.01 {t.coaCash || 'Merkez Kasa (Nakit)'}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f0fdfa', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>108.01 POS / Kredi Kartı Bloke</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f766e' }}>108.01 {t.coaPos || 'POS / Kredi Kartı Bloke'}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '900', color: '#047857' }}>{Math.round(totalRevenue * 0.65).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>150.01 İlk Madde & Malzeme (Stok)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>150.01 {t.coaRawMaterials || 'İlk Madde & Malzeme (Stok)'}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '900', color: '#b45309' }}>{foodCostTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.01 Genel Yönetim (Sabit)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.01 {t.coaFixedAdmin || 'Genel Yönetim (Sabit)'}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '900', color: '#4338ca' }}>{fixedExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#f8fafc', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.02 Operasyonel Gider (Değişken)</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155' }}>770.02 {t.coaVariableOps || 'Operasyonel Gider (Değişken)'}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '900', color: '#0284c7' }}>{variableExpensesTotal.toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#ecfdf5', borderRadius: 8 }}>
@@ -3772,25 +3785,25 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     style={{ backgroundColor: '#d97706', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
                     onPress={() => showToast('🖨️ Z-Raporu PDF çıktısı oluşturuldu!')}
                   >
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>🖨️ PDF Yazdır</Text>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{t.printPdfBtn || '🖨️ PDF Yazdır'}</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={{ gap: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Nakit Tahsilat (Çekmece):</Text>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>{t.cashDrawerLabel || 'Nakit Tahsilat (Çekmece):'}</Text>
                     <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.35).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Banka POS & Temassız:</Text>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>{t.posContactlessLabel || 'Banka POS & Temassız:'}</Text>
                     <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.55).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, backgroundColor: '#fffbeb', borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#713f12' }}>Yemek Kartları (Sodexo/Multi):</Text>
+                    <Text style={{ fontSize: 11, color: '#713f12' }}>{t.mealCardsLabel || 'Yemek Kartları (Sodexo/Multi):'}</Text>
                     <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a' }}>{Math.round(totalRevenue * 0.10).toLocaleString('tr-TR')} ₺</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 10, backgroundColor: '#ecfdf5', borderRadius: 8, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065f46' }}>TOPLAM GÜNLÜK Z-HASILATI:</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: '#065f46' }}>{t.totalZRevenueLabel || 'TOPLAM GÜNLÜK Z-HASILATI:'}</Text>
                     <Text style={{ fontSize: 14, fontWeight: '900', color: '#047857' }}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
                   </View>
                 </View>
@@ -3801,10 +3814,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
                   <View style={{ flex: 1, minWidth: 150 }}>
                     <Text style={{ fontSize: 13, fontWeight: '900', color: '#065f46' }}>
-                      📋 Resmi Vergi & Beyanname Masası
+                      {t.taxReportsDeskTitle || '📋 Resmi Vergi & Beyanname Masası'}
                     </Text>
                     <Text style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-                      KDV-1, Muhtasar Stopaj & Geçici Vergi Dökümü
+                      {t.taxReportsDeskSub || 'KDV-1, Muhtasar Stopaj & Geçici Vergi Dökümü'}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -3819,19 +3832,19 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 {/* 1. KDV-1 Beyannamesi Kartı */}
                 <View style={{ backgroundColor: '#f0fdf4', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0', marginBottom: 8 }}>
                   <Text style={{ fontSize: 11, fontWeight: '900', color: '#166534', marginBottom: 4 }}>
-                    1. KDV-1 Beyannamesi (Aylık)
+                    {t.vat1Title || '1. KDV-1 Beyannamesi (Aylık)'}
                   </Text>
                   <View style={{ gap: 4 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>• Hesaplanan KDV (%10 Restoran Satış):</Text>
+                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>{t.calculatedVatLabel || '• Hesaplanan KDV (%10 Restoran Satış):'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>{Math.round(totalRevenue - (totalRevenue / 1.1)).toLocaleString('tr-TR')} ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>• İndirilecek KDV (Gider Faturaları):</Text>
+                      <Text style={{ fontSize: 10.5, color: '#15803d' }}>{t.deductibleVatLabel || '• İndirilecek KDV (Gider Faturaları):'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#166534' }}>{Math.round(variableExpensesTotal * 0.15).toLocaleString('tr-TR')} ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#bbf7d0', paddingTop: 4, marginTop: 2 }}>
-                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#064e3b' }}>ÖDENECEK NET KDV:</Text>
+                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#064e3b' }}>{t.netVatPayableLabel || 'ÖDENECEK NET KDV:'}</Text>
                       <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#047857' }}>
                         {Math.max(0, Math.round((totalRevenue - (totalRevenue / 1.1)) - (variableExpensesTotal * 0.15))).toLocaleString('tr-TR')} ₺
                       </Text>
@@ -3842,27 +3855,27 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 {/* 2. Muhtasar ve Prim Hizmet Beyannamesi (MPHB) */}
                 <View style={{ backgroundColor: '#f8fafc', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 8 }}>
                   <Text style={{ fontSize: 11, fontWeight: '900', color: '#1e293b', marginBottom: 4 }}>
-                    2. Muhtasar & Prim Hizmet Beyannamesi (MPHB)
+                    {t.withholdingTitle || '2. Muhtasar & Prim Hizmet Beyannamesi (MPHB)'}
                   </Text>
                   <View style={{ gap: 4 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Personel SGK Prim Karşılığı (6 Kişi):</Text>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>{t.sgkProvisionLabel || '• Personel SGK Prim Karşılığı (6 Kişi):'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>27.500 ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Personel Gelir Vergisi Stopajı:</Text>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>{t.incomeTaxWithholdingLabel || '• Personel Gelir Vergisi Stopajı:'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>4.800 ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• Dükkan Kira Stopajı (%20 Tevkifat):</Text>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>{t.rentWithholdingLabel || '• Dükkan Kira Stopajı (%20 Tevkifat):'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>9.000 ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 10.5, color: '#475569' }}>• SMMM Serbest Meslek Stopajı (%20):</Text>
+                      <Text style={{ fontSize: 10.5, color: '#475569' }}>{t.cpaWithholdingLabel || '• SMMM Serbest Meslek Stopajı (%20):'}</Text>
                       <Text style={{ fontSize: 11, fontWeight: '800', color: '#0f172a' }}>1.700 ₺</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 4, marginTop: 2 }}>
-                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#0f172a' }}>TOPLAM STOPAJ & SGK TAHAKKUK:</Text>
+                      <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#0f172a' }}>{t.totalWithholdingLabel || 'TOPLAM STOPAJ & SGK TAHAKKUK:'}</Text>
                       <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#b45309' }}>43.000 ₺</Text>
                     </View>
                   </View>
@@ -3871,10 +3884,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 {/* 3. Geçici Kurumlar Vergisi Özeti */}
                 <View style={{ backgroundColor: '#fffbeb', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#fde68a' }}>
                   <Text style={{ fontSize: 11, fontWeight: '900', color: '#92400e', marginBottom: 4 }}>
-                    3. Üç Aylık Geçici Vergi / Faaliyet Kârı Karşılığı
+                    {t.corpTaxTitle || '3. Üç Aylık Geçici Vergi / Faaliyet Kârı Karşılığı'}
                   </Text>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 10.5, color: '#78350f' }}>Tahmini Net Kâr Karşılığı (%25):</Text>
+                    <Text style={{ fontSize: 10.5, color: '#78350f' }}>{t.corpTaxProvisionLabel || 'Tahmini Net Kâr Karşılığı (%25):'}</Text>
                     <Text style={{ fontSize: 11.5, fontWeight: '900', color: '#b45309' }}>
                       {netOperatingProfit > 0 ? Math.round(netOperatingProfit * 0.25).toLocaleString('tr-TR') : 0} ₺
                     </Text>
@@ -3887,7 +3900,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <View style={styles.webFilterBar}>
                   <TextInput
                     style={styles.webSearchInput}
-                    placeholder="🔍 Defterde gider, kurum veya fatura ara..."
+                    placeholder={t.searchAdvisorPlaceholder || "🔍 Defterde gider, kurum veya fatura ara..."}
                     placeholderTextColor={THEME.colors.textLight}
                     value={advisorSearch}
                     onChangeText={setAdvisorSearch}
@@ -3931,7 +3944,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <View style={styles.expCardHeaderRow}>
                           <View style={{ flex: 1, paddingRight: 8 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                              <Text style={styles.expCardTitle}>{exp.title}</Text>
+                              <Text style={styles.expCardTitle}>{getExpenseTitle(exp.title, currentLang)}</Text>
                               {exp.isOwnedProperty && (
                                 <View style={styles.expOwnedPropertyBadge}>
                                   <Text style={styles.expOwnedPropertyTxt}>🏠 {t.ownedPropertyBadge || 'Öz Mülk'}</Text>
@@ -3966,7 +3979,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           <View style={styles.expDetailCol}>
                             <Text style={styles.expDetailHeaderLbl}>{t.colCounterparty || 'KURUM / FATURA'}</Text>
                             <Text style={styles.expDetailVendorTxt} numberOfLines={1}>
-                              {exp.counterparty || t.notSpecified || 'Belirtilmedi'}
+                              {getSupplierLabel(exp.counterparty, currentLang) || t.notSpecified || 'Belirtilmedi'}
                             </Text>
                             <Text style={styles.expDetailInvoiceTxt} numberOfLines={1}>
                               {exp.invoiceNumber ? `Fatura: ${exp.invoiceNumber}` : (t.noInvoice || 'Faturasız')}
@@ -4046,7 +4059,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 onPress={() => handleOpenRejectModal(exp)}
                                 activeOpacity={0.8}
                               >
-                                <Text style={styles.webBtnRejectTxt}>↺ Düzeltme İste</Text>
+                                <Text style={styles.webBtnRejectTxt}>{t.requestCorrection || '↺ Düzeltme İste'}</Text>
                               </TouchableOpacity>
                             ) : (
                               <>
@@ -4718,8 +4731,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
           <View style={[styles.modalCard, { maxWidth: 360, padding: 20 }]}>
             <View style={styles.webModalHeader}>
               <View>
-                <Text style={styles.modalTitle}>👤 Profil & Rol Değiştir</Text>
-                <Text style={styles.webModalSub}>Canlı akış ve onay denetimi için rol seçin</Text>
+                <Text style={styles.modalTitle}>{t.switchRoleModalTitle || '👤 Profil & Rol Değiştir'}</Text>
+                <Text style={styles.webModalSub}>{t.switchRoleModalSub || 'Canlı akış ve onay denetimi için rol seçin'}</Text>
               </View>
               <TouchableOpacity onPress={() => setShowRoleSwitchModal(false)}>
                 <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
@@ -4812,8 +4825,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
           <View style={[styles.modalCard, { maxWidth: 320, padding: 20 }]}>
             <View style={styles.webModalHeader}>
               <View>
-                <Text style={styles.modalTitle}>🌐 Şirket Dili / Language</Text>
-                <Text style={styles.webModalSub}>Tek dokunuşla dil değiştirin</Text>
+                <Text style={styles.modalTitle}>{t.languageModalTitle || '🌐 Şirket Dili / Language'}</Text>
+                <Text style={styles.webModalSub}>{t.languageModalSub || 'Tek dokunuşla dil değiştirin'}</Text>
               </View>
               <TouchableOpacity onPress={() => setShowLangModal(false)}>
                 <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
@@ -4886,7 +4899,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15.5, fontWeight: '800', color: '#0f172a' }} numberOfLines={1}>
-                    {currentUser.role === ROLES.FINANCIAL_ADVISOR ? 'Mali Müşavir Defter Girişi' : 'Muhasebe & Kasa Gider Girişi'}
+                    {currentUser.role === ROLES.FINANCIAL_ADVISOR ? (t.advisorLedgerEntry || 'Mali Müşavir Defter Girişi') : (t.newExpenseModalTitle || 'Muhasebe & Kasa Gider Girişi')}
                   </Text>
                   <Text style={{ fontSize: 11.5, color: '#64748b', marginTop: 1 }} numberOfLines={1}>
                     Sabit ve değişken maliyet kalemi kaydı
@@ -4906,7 +4919,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 </Text>
                 <TextInput
                   style={[styles.modalInput, { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' }]}
-                  placeholder="Elektrik Faturası, Şube Kirası, Sarf Malzeme Alımı..."
+                  placeholder={t.expenseTitlePlaceholder || "Elektrik Faturası, Şube Kirası, Sarf Malzeme Alımı..."}
                   placeholderTextColor="#94a3b8"
                   value={newExpense.title}
                   onChangeText={(val) => setNewExpense({ ...newExpense, title: val })}
@@ -4938,7 +4951,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     }}
                   >
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>
-                      {newExpense.category === 'FIXED' ? '🏢 Sabit Gider' : '⚡ Değişken Gider'}
+                      {newExpense.category === 'FIXED' ? ('🏢 ' + (t.fixedExpenseLabel || 'Sabit Gider')) : ('⚡ ' + (t.variableExpenseLabel || 'Değişken Gider'))}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#64748b' }}>▼</Text>
                   </TouchableOpacity>
@@ -4952,7 +4965,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           setOpenExpenseCatSelect(false);
                         }}
                       >
-                        <Text style={{ fontSize: 12.5, fontWeight: newExpense.category === 'FIXED' ? '800' : '600', color: '#0f172a' }}>🏢 Sabit Gider</Text>
+                        <Text style={{ fontSize: 12.5, fontWeight: newExpense.category === 'FIXED' ? '800' : '600', color: '#0f172a' }}>🏢 {t.fixedExpenseLabel || 'Sabit Gider'}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={{ padding: 10, backgroundColor: newExpense.category === 'VARIABLE' ? '#ecfdf5' : '#ffffff' }}
@@ -4961,7 +4974,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           setOpenExpenseCatSelect(false);
                         }}
                       >
-                        <Text style={{ fontSize: 12.5, fontWeight: newExpense.category === 'VARIABLE' ? '800' : '600', color: '#0f172a' }}>⚡ Değişken Gider</Text>
+                        <Text style={{ fontSize: 12.5, fontWeight: newExpense.category === 'VARIABLE' ? '800' : '600', color: '#0f172a' }}>{`⚡ ${t.variableLabel || 'Değişken Gider'}`}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -5024,7 +5037,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 setOpenExpenseSubSelect(false);
                               }}
                             >
-                              <Text style={{ fontSize: 12, fontWeight: newExpense.subType === item.id ? '800' : '600', color: '#0f172a' }}>{item.label}</Text>
+                              <Text style={{ fontSize: 12, fontWeight: newExpense.subType === item.id ? '800' : '600', color: '#0f172a' }}>{getExpenseTypeLabel(item.id, currentLang)}</Text>
                             </TouchableOpacity>
                           ))
                         ) : (
@@ -5049,7 +5062,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 setOpenExpenseSubSelect(false);
                               }}
                             >
-                              <Text style={{ fontSize: 12, fontWeight: newExpense.subType === item.id ? '800' : '600', color: '#0f172a' }}>{item.label}</Text>
+                              <Text style={{ fontSize: 12, fontWeight: newExpense.subType === item.id ? '800' : '600', color: '#0f172a' }}>{getExpenseTypeLabel(item.id, currentLang)}</Text>
                             </TouchableOpacity>
                           ))
                         )}
@@ -5098,10 +5111,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#1e293b' }}>
-                      🏠 Dükkan Restoranın Kendi Mülkü (Öz Mülk - Kira Ödenmiyor)
+                      🏠 {t.ownedPropertyTitle || 'Dükkan Restoranın Kendi Mülkü (Öz Mülk - Kira Ödenmiyor)'}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
-                      İşaretlenirse kira maliyeti 0 ₺ olarak kaydedilir ve mülkiyet resmi kayıtlara işlenir.
+                      {t.ownedPropertyDesc || 'İşaretlenirse kira maliyeti 0 ₺ olarak kaydedilir ve mülkiyet resmi kayıtlara işlenir.'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -5115,7 +5128,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   </Text>
                   <TextInput
                     style={[styles.modalInput, { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' }]}
-                    placeholder="Enerjisa, İGDAŞ, Mülk Sahibi vb."
+                    placeholder={t.counterpartyPlaceholder || "Enerjisa, İGDAŞ, Mülk Sahibi vb."}
                     placeholderTextColor="#94a3b8"
                     value={newExpense.counterparty}
                     onChangeText={(val) => setNewExpense({ ...newExpense, counterparty: val })}
@@ -5139,7 +5152,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155', marginBottom: 4 }}>
-                    {newExpense.isOwnedProperty ? 'Tutar (0 ₺ Öz Mülk)' : 'Tutar (₺) *'}
+                    {newExpense.isOwnedProperty ? (t.amountOwnedProperty || 'Tutar (0 ₺ Öz Mülk)') : ((t.amount || 'Tutar') + ' (₺) *')}
                   </Text>
                   <TextInput
                     style={[
@@ -5226,7 +5239,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#059669' }} />
                       )}
                     </View>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#065f46' }}>💵 Kasadan Peşin Ödendi</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#065f46' }}>{`💵 ${t.paidFromCashier || 'Kasadan Peşin Ödendi'}`}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -5248,7 +5261,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#dc2626' }} />
                       )}
                     </View>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>⏳ Ödenmedi (Borca / Vadeye Bırakıldı)</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>{`⏳ ${t.debtUnpaid || 'Ödenmedi (Borca / Vadeye Bırakıldı)'}`}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -5270,7 +5283,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d97706' }} />
                       )}
                     </View>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>⚡ Kısmi Ödeme (Avans / Parçalı)</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>{`⚡ ${t.partialPaid || 'Kısmi Ödeme (Avans / Parçalı)'}`}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -5291,7 +5304,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       paddingTop: 8,
                     },
                   ]}
-                  placeholder="Gider sebebi, fatura detayı veya vade açıklaması..."
+                  placeholder={t.expenseNotePlaceholder || "Gider sebebi, fatura detayı veya vade açıklaması..."}
                   placeholderTextColor="#94a3b8"
                   multiline
                   numberOfLines={2}
@@ -5314,7 +5327,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 }}
                 onPress={handleSaveExpense}
               >
-                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '800' }}>Kaydet</Text>
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '800' }}>{t.save || 'Kaydet'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -5329,7 +5342,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 }}
                 onPress={() => setShowAddExpenseModal(false)}
               >
-                <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>Vazgeç</Text>
+                <Text style={{ color: '#334155', fontSize: 14, fontWeight: '700' }}>{t.cancel || 'Vazgeç'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -5383,7 +5396,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       onPress={() => setCashInflowPeriod('DAILY')}
                     >
                       <Text style={{ fontSize: 11, fontWeight: cashInflowPeriod === 'DAILY' ? '800' : '600', color: cashInflowPeriod === 'DAILY' ? '#065f46' : '#64748b', textAlign: 'center' }}>
-                        ☀️ Günlük Kasa TL
+                        ☀️ {t.dailyCashTl || 'Günlük Kasa TL'}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -5400,7 +5413,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       onPress={() => setCashInflowPeriod('MONTHLY')}
                     >
                       <Text style={{ fontSize: 11, fontWeight: cashInflowPeriod === 'MONTHLY' ? '800' : '600', color: cashInflowPeriod === 'MONTHLY' ? '#065f46' : '#64748b', textAlign: 'center' }}>
-                        🗓️ Aylık Bütçe TL
+                        🗓️ {t.monthlyBudgetTl || 'Aylık Bütçe TL'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -5427,10 +5440,10 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   >
                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
                       {cashInflowSource === 'POS_CASH'
-                        ? 'Nakit POS & Restoran Kasa Hasılatı'
+                        ? (t.inflowPosCash || 'Nakit POS & Restoran Kasa Hasılatı')
                         : cashInflowSource === 'PARTNER'
-                          ? 'Ortak / Sermaye İlavesi'
-                          : 'Banka Hesabından Nakit Çekim'}
+                          ? (t.inflowPartner || 'Ortak / Sermaye İlavesi')
+                          : (t.inflowBankWithdraw || 'Banka Hesabından Nakit Çekim')}
                     </Text>
                     <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>▼</Text>
                   </TouchableOpacity>
@@ -5438,9 +5451,9 @@ export default function AndroidApp({ initialUser, onLogout }) {
                   {openInflowSourceSelect && (
                     <View style={{ backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, marginTop: 4, elevation: 4, zIndex: 10 }}>
                       {[
-                        { key: 'POS_CASH', label: 'Nakit POS & Restoran Kasa Hasılatı' },
-                        { key: 'PARTNER', label: 'Ortak / İşletme Sermaye İlavesi' },
-                        { key: 'BANK_WITHDRAW', label: 'Ticari Banka Hesabından Nakit Çekim' },
+                        { key: 'POS_CASH', label: t.inflowPosCash || 'Nakit POS & Restoran Kasa Hasılatı' },
+                        { key: 'PARTNER', label: t.inflowPartner || 'Ortak / İşletme Sermaye İlavesi' },
+                        { key: 'BANK_WITHDRAW', label: t.inflowBankWithdraw || 'Ticari Banka Hesabından Nakit Çekim' },
                       ].map((item) => (
                         <TouchableOpacity
                           key={item.key}
@@ -5557,7 +5570,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           if (matched) {
                             return `${matched.title} (${parseFloat(matched.amount || 0).toLocaleString('tr-TR')} ₺) - ${matched.paidByCashier ? 'Ödendi' : 'Bekleyen Borç'}`;
                           }
-                          return '-- Listeden Bekleyen Gider / Fatura Seçin --';
+                          return t.selectPendingExpense || '-- Listeden Bekleyen Gider / Fatura Seçin --';
                         })()}
                       </Text>
                       <Text style={{ fontSize: 11, color: '#64748b' }}>▼</Text>
@@ -5573,7 +5586,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                               setOpenTargetExpenseSelect(false);
                             }}
                           >
-                            <Text style={{ fontSize: 12, color: '#64748b' }}>-- Listeden Bekleyen Gider / Fatura Seçin --</Text>
+                            <Text style={{ fontSize: 12, color: '#64748b' }}>{t.selectPendingExpense || '-- Listeden Bekleyen Gider / Fatura Seçin --'}</Text>
                           </TouchableOpacity>
                           {expenses
                             .filter((e) => e.status !== 'REJECTED')
@@ -5651,7 +5664,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                                 setOpenCustomCatSelect(false);
                               }}
                             >
-                              <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#0f172a' }}>⚡ Değişken Gider</Text>
+                              <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#0f172a' }}>{`⚡ ${t.variableLabel || 'Değişken Gider'}`}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={{ padding: 8 }}
@@ -5667,7 +5680,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                       </View>
 
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#64748b', marginBottom: 3 }}>Gider Türü</Text>
+                        <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#64748b', marginBottom: 3 }}>{t.expenseType || 'Gider Türü'}</Text>
                         <TouchableOpacity
                           style={{
                             flexDirection: 'row',
@@ -5728,7 +5741,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                     </View>
 
                     <View>
-                      <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#64748b', marginBottom: 3 }}>Açıklama / Not</Text>
+                      <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#64748b', marginBottom: 3 }}>{t.note || 'Açıklama / Not'}</Text>
                       <TextInput
                         style={[styles.modalInput, { backgroundColor: '#ffffff', borderColor: '#cbd5e1' }]}
                         placeholder="Ek kasa dekontu veya tedarikçi fişi notu..."
@@ -5759,7 +5772,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 <Text style={{ fontSize: 18 }}>ℹ️</Text>
                 <Text style={{ fontSize: 11.5, color: '#166534', lineHeight: 16, flex: 1 }}>
                   Muhasebe kasasından yapılan bu nakit çıkışı doğrudan ilgili hesaba işlenecek,{' '}
-                  <Text style={{ fontWeight: '800' }}>Mali Müşavir Onay Masası</Text>'na teyit için gönderilecektir.
+                  <Text style={{ fontWeight: '800' }}>{t.advisorApprovalDesk || 'Mali Müşavir Onay Masası'}</Text>'na teyit için gönderilecektir.
                 </Text>
               </View>
             </ScrollView>
@@ -5794,7 +5807,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 }}
                 onPress={() => setShowCashAllocationModal(false)}
               >
-                <Text style={{ color: '#334155', fontSize: 13.5, fontWeight: '700' }}>Vazgeç</Text>
+                <Text style={{ color: '#334155', fontSize: 13.5, fontWeight: '700' }}>{t.cancel || 'Vazgeç'}</Text>
               </TouchableOpacity>
             </View>
           </View>
