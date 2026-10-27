@@ -5,30 +5,32 @@
 [![Spring Boot](https://img.shields.io/badge/Backend-Spring%20Boot%203.3.4-6DB33F?logo=springboot&logoColor=white)](https://spring.io/)
 [![Java](https://img.shields.io/badge/Java-21%20LTS-ED8B00?logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![WebSocket](https://img.shields.io/badge/RealTime-STOMP%20WebSocket-00A4A6?logo=websocket&logoColor=white)](https://spring.io/)
 [![Docker](https://img.shields.io/badge/DevOps-Docker%20%26%20Nginx%20Alpine-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Security](https://img.shields.io/badge/Security-Spring%20Security%206%20%2B%20JWT-red?logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
-[![Tests](https://img.shields.io/badge/Tests-16%2F16%20Passing%20(100%25)-brightgreen)](https://github.com)
+[![Tests](https://img.shields.io/badge/Tests-22%2F22%20Passing%20(100%25)-brightgreen)](https://github.com)
 [![i18n](https://img.shields.io/badge/i18n-TR%20%7C%20EN%20%7C%20DE%20%7C%20AR-blue)](https://gastrosync.local)
 
-**GastroSync ERP**, modern restoran zincirleri, çok şubeli yeme-içme operasyonları ve gastronomi işletmeleri için geliştirilmiş uçtan uca **İşletim, Kasa-Muhasebe, Mali Müşavir (SMMM) Onay Defteri, Dinamik Reçete Maliyeti (COGS) ve Tedarik Zinciri Yönetim Ekosistemidir**.
+**GastroSync ERP**, modern restoran zincirleri, çok şubeli yeme-içme operasyonları ve gastronomi işletmeleri için geliştirilmiş uçtan uca **İşletim, Kasa-Muhasebe, Mali Müşavir (SMMM) Onay Defteri, Dinamik Reçete Maliyeti (COGS), Gerçek Zamanlı Departman Telsizi ve Akıllı Uyarı Ekosistemidir**.
 
-Sistem; uluslararası ticari standartlarda (Toast POS, Oracle MICROS Simphony ve SambaPOS) çalışacak şekilde; **React 18 Web**, **React Native (iOS/Android) Mobil**, **Java 21 / Spring Boot 3.3.4** kurumsal arka yüzü ve **PostgreSQL 16** ilişkisel veritabanı ile tam senkronize tek bir mimaride birleştirilmiştir.
+Sistem; uluslararası ticari standartlarda (Toast POS, Oracle MICROS Simphony ve SambaPOS) çalışacak şekilde; **React 18 Web**, **React Native (iOS/Android) Mobil**, **Java 21 / Spring Boot 3.3.4 (STOMP WebSocket)** kurumsal arka yüzü ve **PostgreSQL 16** ilişkisel veritabanı ile tam senkronize tek bir mimaride birleştirilmiştir.
 
 ---
 
 ## 📌 İçindekiler
 1. [Öne Çıkan Kurumsal Özellikler](#-öne-çıkan-kurumsal-özellikler)
-2. [Ekranlar ve Rol Yetki Matrisi (RBAC)](#-ekranlar-ve-rol-yetki-matrisi-rbac)
-3. [Dinamik COGS & Reçeteden Otomatik Stok Düşüm Motoru](#-dinamik-cogs--reçeteden-otomatik-stok-düşüm-motoru)
-4. [3 Aşamalı Mali Müşavir (SMMM) Defter Durum Makinesi](#-3-aşamalı-mali-müşavir-smmm-defter-durum-makinesi)
-5. [Eşzamanlılık & ACID Veritabanı Bütünlüğü](#-eşzamanlılık--acid-veritabanı-bütünlüğü)
-6. [Sistem Mimarisi & Konteynerleştirme (Docker & Nginx)](#-sistem-mimarisi--konteynerleştirme-docker--nginx)
-7. [Mobil Uygulama Mimarisi (React Native & Expo)](#-mobil-uygulama-mimarisi-react-native--expo)
-8. [Uçtan Uca Doğrulama & Otomasyon Test Paketi (E2E)](#-uçtan-uca-doğrulama--otomasyon-test-paketi-e2e)
-9. [Çoklu Dil Desteği (i18n)](#-çoklu-dil-desteği-i18n)
-10. [Hızlı Başlangıç & Kurulum Rehberi](#-hızlı-başlangıç--kurulum-rehberi)
-11. [Varsayılan Demo Hesapları](#-varsayılan-demo-hesapları)
-12. [Lisans](#-lisans)
+2. [Gerçek Zamanlı Departman Telsizi & Akıllı Bildirimler (STOMP)](#-gerçek-zamanlı-departman-telsizi--akıllı-bildirimler-stomp)
+3. [Ekranlar ve Rol Yetki Matrisi (RBAC)](#-ekranlar-ve-rol-yetki-matrisi-rbac)
+4. [Dinamik COGS & Reçeteden Otomatik Stok Düşüm Motoru](#-dinamik-cogs--reçeteden-otomatik-stok-düşüm-motoru)
+5. [3 Aşamalı Mali Müşavir (SMMM) Defter Durum Makinesi](#-3-aşamalı-mali-müşavir-smmm-defter-durum-makinesi)
+6. [Eşzamanlılık & ACID Veritabanı Bütünlüğü](#-eşzamanlılık--acid-veritabanı-bütünlüğü)
+7. [Sistem Mimarisi & Konteynerleştirme (Docker & Nginx)](#-sistem-mimarisi--konteynerleştirme-docker--nginx)
+8. [Mobil Uygulama Mimarisi (React Native & Expo)](#-mobil-uygulama-mimarisi-react-native--expo)
+9. [Uçtan Uca Doğrulama & Otomasyon Test Paketi (E2E)](#-uçtan-uca-doğrulama--otomasyon-test-paketi-e2e)
+10. [Çoklu Dil Desteği (i18n)](#-çoklu-dil-desteği-i18n)
+11. [Hızlı Başlangıç & Kurulum Rehberi](#-hızlı-başlangıç--kurulum-rehberi)
+12. [Varsayılan Demo Hesapları](#-varsayılan-demo-hesapları)
+13. [Lisans](#-lisans)
 
 ---
 
@@ -58,8 +60,43 @@ Sistem; uluslararası ticari standartlarda (Toast POS, Oracle MICROS Simphony ve
 - Nginx `/api/*` isteklerini arka yüz konteynerine aktararak canlı dağıtımlarda CORS hatalarını tamamen ortadan kaldırır.
 
 ### 6. 📻 Restoran İçi Departman Telsizi & Ekip Sohbeti (Team Chat)
-- Salon, Mutfak, Kasa, Yönetim ve Depo arasında anlık kanallar (`#genel`, `#mutfak`, `#kasa`, `#yonetim`, `#depo`).
+- Salon, Mutfak, Kasa, Yönetim ve Depo arasında anlık kanallar (`#general`, `#kitchen`, `#warehouse`, `#management`, `#shift`).
 - Kritik stok tükenmesi veya acil tedarik siparişi açıldığında ilgili departmanlara anında sesli/görsel telsiz anonsu düşer.
+
+---
+
+## 📡 Gerçek Zamanlı Departman Telsizi & Akıllı Bildirimler (STOMP)
+
+GastroSync, restoran içerisindeki anlık iletişimi ve onay akışlarını **Spring Boot STOMP Message Broker** ve saf **WebSocket** üzerinden yönetir:
+
+```
+ ┌───────────────────────────────────────────────────────────────┐
+ │               GastroSync Real-Time Comm Hub                   │
+ └──────┬───────────────────────┬─────────────────────────┬──────┘
+        │ STOMP over WS         │ STOMP over WS           │
+        ▼                       ▼                         ▼
+┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
+│  React Web App   │    │ Expo Mobile App │    │ Spring Boot 3.3  │
+│  (Vite / React)  │    │ (iOS & Android) │    │ Message Broker   │
+└──────────────────┘    └─────────────────┘    └─────────┬────────┘
+                                                         │ ACID Persist
+                                                         ▼
+                                               ┌──────────────────┐
+                                               │ PostgreSQL DB    │
+                                               │ Chat & Notifs    │
+                                               └──────────────────┘
+```
+
+### Öne Çıkan İletişim & Uyarı Yetenekleri:
+1. **RFC 6750 JWT Bearer Doğrulaması:** WebSocket el sıkışması (`CONNECT`) anında JWT doğrulanır; yetkisiz oturumların sisteme sızması engellenir.
+2. **Kanal İzin Denetimi (Topic Authorization):** Mutfak (`/topic/kitchen`), Depo (`/topic/warehouse`) ve Yönetim (`/topic/management`) kanallarına abonelikler Spring Security `ChannelInterceptor` seviyesinde denetlenir.
+3. **Eyleme Dayalı Derin Bağlantı (Actionable Deep-Linking):** Bildirimler düz metin değildir. `entityId`, `targetRoute` ve `actionType` içerir. Örneğin bir faturaya ait onay uyarısına tıklandığında hem Web hem de Mobil doğrudan o faturanın onay ekranına yönlendirir.
+4. **Öncelik Rozetleri (Severity Levels):** Bildirimler önem derecesine göre rozetlenir:
+   - `CRITICAL`: Yanıp sönen kırmızı acil müdahale rozeti.
+   - `WARNING`: Kehribar renkli stok/vade uyarı rozeti.
+   - `INFO`: Zümrüt renkli bilgilendirme rozeti.
+5. **Cihazlar Arası Okundu Senkronizasyonu (Read Receipts):** Web'de okunan bir bildirim veya mesaj, `/topic/notifications/read` yayını ile mobildeki rozet sayısını ve durumunu anında günceller.
+6. **PostgreSQL Kalıcılığı & Çift Yönlü Yansıma:** Mesajlar hem veritabanında `chat_messages` tablosuna atomik olarak yazılır hem de bağlı tüm cihazlara anında fırlatılır.
 
 ---
 
@@ -161,7 +198,7 @@ GastroSync mobil uygulaması **React Native & Expo SDK 52** üzerinde yerel bile
 
 ## 🧪 Uçtan Uca Doğrulama & Otomasyon Test Paketi (E2E)
 
-Sistemin üretim öncesi kararlılığı, [`GastroSyncProductionE2ETests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncProductionE2ETests.java) ve [`GastroSyncApplicationTests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncApplicationTests.java) sınıflarında yer alan **16 adet kapsamlı entegrasyon testi** ile doğrulanmıştır.
+Sistemin üretim öncesi kararlılığı; [`GastroSyncProductionE2ETests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncProductionE2ETests.java), [`GastroSyncApplicationTests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncApplicationTests.java) ve [`SecurityAndChatSynchronizationTests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/SecurityAndChatSynchronizationTests.java) sınıflarında yer alan **22 adet kapsamlı entegrasyon testi** ile doğrulanmıştır.
 
 ```bash
 cd backend
@@ -177,9 +214,11 @@ cd backend
 [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
 [INFO] Running com.gastrosync.GastroSyncProductionE2ETests
 [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Running com.gastrosync.SecurityAndChatSynchronizationTests
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] Results:
-[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -192,6 +231,8 @@ cd backend
 4. **Eşzamanlılık & ACID Testi:** Eşzamanlı iki paralel thread üzerinden yapılan mal kabul (+50 kg) ve düzeltme (+30 kg) işlemleri PostgreSQL satır kilidiyle sıralanır; bakiye tam 180 kg olarak kaydedilir.
 5. **Reçeteden Otomatik Stok Düşümü:** POS satışı sonrası reçeteli ürünlerin hammaddeleri gramaj bazında eksiltilir.
 6. **Mali Durum Makinesi & Tahrifat Koruması:** Resmi deftere işlenmiş (`FINALIZED`) kayıtların silinmesi veya değiştirilmesi `IllegalStateException` ile reddedilir.
+7. **STOMP WebSocket & Ekip Telsizi Senkronizasyonu:** Mesajların PostgreSQL `chat_messages` tablosuna atomik yazılması ve `/topic/chat/{channel}` kanallarına anında dağıtımı doğrulanmıştır.
+8. **Akıllı Bildirim & Okundu Eşitlemesi:** Öncelik seviyelerine (`CRITICAL`, `WARNING`, `INFO`) sahip derin bağlantılı bildirimlerin oluşturulması ve cihazlar arası okundu senkronizasyonu test edilmiştir.
 
 ---
 

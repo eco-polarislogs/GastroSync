@@ -61,6 +61,7 @@ import {
   apiDeleteExpense,
   apiFetchNotifications,
   apiCreateNotification,
+  apiReportSecurityAlert,
   apiMarkNotificationRead,
   apiMarkAllNotificationsRead,
   apiFetchChatMessages,
@@ -76,32 +77,41 @@ import {
   getStoredChatMessages,
   saveStoredChatMessages,
 } from '../services/storage';
+import mobileWebSocketService from '../services/websocketService';
 
 const { width } = Dimensions.get('window');
 
+// Rol Normalizasyonu (Büyük/Küçük Harf Toleranslı Güvenli Yetkilendirme)
+const normalizeRole = (r) => (r || 'admin').toString().toLowerCase();
+
 // Web ile Birebir Yetki Matrisi (DashboardLayout.jsx NAV_ITEMS kuralı)
 const ROLE_ALLOWED_SCREENS = {
-  [ROLES.ADMIN]: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse', 'users'],
-  [ROLES.MANAGER]: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse'],
-  [ROLES.ACCOUNTANT]: ['cashier', 'dashboard', 'inventory', 'sales'],
-  [ROLES.FINANCIAL_ADVISOR]: ['advisor', 'dashboard', 'inventory', 'sales'],
-  [ROLES.CHEF]: ['recipes', 'inventory'],
-  [ROLES.WAREHOUSE]: ['warehouse'],
+  admin: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse', 'users'],
+  manager: ['dashboard', 'cashier', 'advisor', 'inventory', 'recipes', 'sales', 'warehouse'],
+  accountant: ['cashier', 'dashboard', 'inventory', 'sales'],
+  financial_advisor: ['advisor', 'dashboard', 'inventory', 'sales'],
+  chef: ['recipes', 'inventory'],
+  warehouse: ['warehouse'],
 };
 
 export default function AndroidApp({ initialUser, onLogout }) {
   const insets = useSafeAreaInsets();
-  const [currentUser, setCurrentUser] = useState(initialUser || DEMO_USERS[0]);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const raw = initialUser || DEMO_USERS[0];
+    return { ...raw, role: normalizeRole(raw?.role) };
+  });
   const [showRoleSwitchModal, setShowRoleSwitchModal] = useState(false);
 
   // Bu rolün izinli olduğu ekranlar listesi (Roller birbirinin ekranlarına geçemez)
-  const allowedScreens = ROLE_ALLOWED_SCREENS[currentUser.role] || ['warehouse'];
+  const currentRole = normalizeRole(currentUser?.role);
+  const allowedScreens = ROLE_ALLOWED_SCREENS[currentRole] || ROLE_ALLOWED_SCREENS.admin;
 
   const getDefaultScreen = (role) => {
-    if (role === ROLES.ACCOUNTANT) return 'cashier';
-    if (role === ROLES.FINANCIAL_ADVISOR) return 'advisor';
-    if (role === ROLES.WAREHOUSE) return 'warehouse';
-    if (role === ROLES.CHEF) return 'recipes';
+    const r = normalizeRole(role);
+    if (r === 'accountant') return 'cashier';
+    if (r === 'financial_advisor') return 'advisor';
+    if (r === 'warehouse') return 'warehouse';
+    if (r === 'chef') return 'recipes';
     return 'dashboard';
   };
 
@@ -118,8 +128,8 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const [showLangModal, setShowLangModal] = useState(false);
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.tr;
 
-  const isAccountantUser = currentUser.role === ROLES.ACCOUNTANT;
-  const isAdvisorUser = currentUser.role === ROLES.FINANCIAL_ADVISOR;
+  const isAccountantUser = currentRole === 'accountant';
+  const isAdvisorUser = currentRole === 'financial_advisor';
 
   const [expenseTab, setExpenseTab] = useState('all');
   const [expenseSearch, setExpenseSearch] = useState('');
@@ -217,12 +227,79 @@ export default function AndroidApp({ initialUser, onLogout }) {
 
   React.useEffect(() => {
     refreshAllData();
-    // Web'de bir kullanıcı, onay, ret veya bildirim yapıldığında mobilde anında görünmesi için 4 saniyede bir otomatik canlı senkronizasyon
+
+    // ── MOBİL GERÇEK ZAMANLI STOMP WEBSOCKET DİNLEYİCİLERİ ──────
+    const userRole = (currentUser.role || 'ALL').toUpperCase();
+
+    // 1. Genel bildirimler
+    const unsubAllNotifs = mobileWebSocketService.subscribe('/topic/notifications', (newNotif) => {
+      if (!newNotif || !newNotif.id) return;
+      setMobileNotifications((prev) => {
+        const exists = prev.some((n) => n.id === newNotif.id);
+        const updated = exists ? prev.map((n) => (n.id === newNotif.id ? { ...n, ...newNotif } : n)) : [newNotif, ...prev];
+        saveStoredNotifications(updated);
+        return updated;
+      });
+      setUnreadNotifCount((c) => c + 1);
+    });
+
+    // 2. Rol bazlı bildirimler
+    let unsubRoleNotifs = () => {};
+    if (userRole !== 'ALL') {
+      unsubRoleNotifs = mobileWebSocketService.subscribe(`/topic/notifications/${userRole}`, (newNotif) => {
+        if (!newNotif || !newNotif.id) return;
+        setMobileNotifications((prev) => {
+          const exists = prev.some((n) => n.id === newNotif.id);
+          const updated = exists ? prev.map((n) => (n.id === newNotif.id ? { ...n, ...newNotif } : n)) : [newNotif, ...prev];
+          saveStoredNotifications(updated);
+          return updated;
+        });
+        setUnreadNotifCount((c) => c + 1);
+      });
+    }
+
+    // 3. Okundu senkronizasyonu
+    const unsubRead = mobileWebSocketService.subscribe('/topic/notifications/read', (payload) => {
+      const readId = payload?.id || payload;
+      if (!readId) return;
+      setMobileNotifications((prev) =>
+        prev.map((n) => (n.id === readId ? { ...n, isRead: true } : n))
+      );
+      setUnreadNotifCount((c) => Math.max(0, c - 1));
+    });
+
+    // 4. Tümünü okundu yapma
+    const unsubMarkAll = mobileWebSocketService.subscribe('/topic/notifications/mark-all-read', () => {
+      setMobileNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadNotifCount(0);
+    });
+
+    // 5. Ekip Telsizi Sohbet Mesajları
+    const unsubChat = mobileWebSocketService.subscribe('/topic/chat/all', (incomingMsg) => {
+      if (!incomingMsg || !incomingMsg.id) return;
+      setChatMessages((prev) => {
+        const exists = prev.some((m) => m.id === incomingMsg.id);
+        if (exists) return prev;
+        const updated = [...prev, incomingMsg];
+        saveStoredChatMessages(updated);
+        return updated;
+      });
+    });
+
+    // Arka plan yedek canlı senkronizasyon (10 saniye)
     const timer = setInterval(() => {
       refreshAllData();
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [refreshAllData]);
+    }, 10000);
+
+    return () => {
+      clearInterval(timer);
+      unsubAllNotifs();
+      unsubRoleNotifs();
+      unsubRead();
+      unsubMarkAll();
+      unsubChat();
+    };
+  }, [refreshAllData, currentUser.role]);
 
   // Kamera barkod tarayıcı
   const [cameraActive, setCameraActive] = useState(false);
@@ -275,6 +352,24 @@ export default function AndroidApp({ initialUser, onLogout }) {
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [chatMessages, setChatMessages] = useState(getStoredChatMessages);
 
+  // Aktif kanala dinamik STOMP WebSocket aboneliği (Web ile birebir eşzamanlı)
+  React.useEffect(() => {
+    if (!activeChatChannel) return;
+    const unsubChannel = mobileWebSocketService.subscribe(`/topic/chat/${activeChatChannel.toLowerCase()}`, (incomingMsg) => {
+      if (!incomingMsg || !incomingMsg.id) return;
+      setChatMessages((prev) => {
+        const exists = prev.some((m) => m.id === incomingMsg.id);
+        if (exists) return prev;
+        const updated = [...prev, incomingMsg];
+        saveStoredChatMessages(updated);
+        return updated;
+      });
+    });
+    return () => {
+      if (unsubChannel) unsubChannel();
+    };
+  }, [activeChatChannel]);
+
   const handleSendChatMessage = async () => {
     if (!chatInputMsg.trim()) return;
     const tempId = Date.now();
@@ -297,6 +392,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
     showToast('Mesaj ilgili kanala gönderildi');
 
     try {
+      mobileWebSocketService.send('/app/chat.sendMessage', newMsg);
       await apiSendChatMessage(newMsg);
       refreshAllData();
     } catch (_) { }
@@ -571,17 +667,18 @@ export default function AndroidApp({ initialUser, onLogout }) {
     if (!allowedScreens.includes(screen)) {
       showToast('🚨 Yetkisiz Erişim Engellendi!');
       try {
+        await apiReportSecurityAlert(screen, 'MOBİL_NAVİGASYON_DENEMESİ');
         await apiCreateNotification({
           title: '🚨 Yetkisiz Sayfa Erişim Girişimi!',
           message: `${currentUser?.name} (${ROLE_LABELS[currentUser?.role]}) yetkisi olmayan '${screen}' ekranına erişmeye çalıştı. Erişim otomatik engellendi.`,
           targetRole: 'MANAGER',
-          type: 'WARNING',
+          type: 'SECURITY_ALERT',
         });
         await apiCreateNotification({
           title: '🚨 Yetkisiz Sayfa Erişim Girişimi!',
           message: `${currentUser?.name} (${ROLE_LABELS[currentUser?.role]}) yetkisi olmayan '${screen}' ekranına erişmeye çalıştı. Erişim otomatik engellendi.`,
           targetRole: 'ADMIN',
-          type: 'WARNING',
+          type: 'SECURITY_ALERT',
         });
       } catch (_) {}
       return;
@@ -1311,14 +1408,14 @@ export default function AndroidApp({ initialUser, onLogout }) {
     refreshAllData();
   };
 
-  const canViewFinancials = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR;
-  const canViewCashier = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.ACCOUNTANT;
-  const canViewAdvisor = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.FINANCIAL_ADVISOR;
+  const canViewFinancials = ['admin', 'manager', 'accountant', 'financial_advisor'].includes(currentRole);
+  const canViewCashier = ['admin', 'manager', 'accountant'].includes(currentRole);
+  const canViewAdvisor = ['admin', 'manager', 'financial_advisor'].includes(currentRole);
   const canViewAccounting = canViewCashier;
-  const canViewUsers = currentUser.role === ROLES.ADMIN;
-  const canViewRecipes = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.CHEF;
-  const canViewInventory = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.CHEF || currentUser.role === ROLES.ACCOUNTANT || currentUser.role === ROLES.FINANCIAL_ADVISOR;
-  const canViewWarehouse = currentUser.role === ROLES.ADMIN || currentUser.role === ROLES.MANAGER || currentUser.role === ROLES.WAREHOUSE;
+  const canViewUsers = currentRole === 'admin';
+  const canViewRecipes = ['admin', 'manager', 'chef'].includes(currentRole);
+  const canViewInventory = ['admin', 'manager', 'chef', 'accountant', 'financial_advisor', 'warehouse'].includes(currentRole);
+  const canViewWarehouse = ['admin', 'manager', 'warehouse'].includes(currentRole);
 
   // Samsung, Xiaomi, Pixel vb. telefonların alt navigasyon tuşları için dinamik boşluk
   const androidBottomPadding = Math.max(insets.bottom, 16);
@@ -4685,6 +4782,11 @@ export default function AndroidApp({ initialUser, onLogout }) {
               ) : (
                 mobileNotifications.map((notif) => {
                   const loc = getLocalizedNotification(notif, currentLang);
+                  const severity = notif.severity || 'INFO';
+                  const badgeColor = severity === 'CRITICAL' ? '#ef4444' : severity === 'WARNING' ? '#f59e0b' : '#10b981';
+                  const badgeBg = severity === 'CRITICAL' ? '#fee2e2' : severity === 'WARNING' ? '#fef3c7' : '#ecfdf5';
+                  const badgeText = severity === 'CRITICAL' ? 'KRİTİK' : severity === 'WARNING' ? 'UYARI' : 'BİLGİ';
+
                   return (
                     <TouchableOpacity
                       key={notif.id}
@@ -4693,7 +4795,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         borderRadius: 10,
                         backgroundColor: notif.isRead ? '#f8fafc' : '#f0fdf4',
                         borderWidth: 1,
-                        borderColor: notif.isRead ? '#e2e8f0' : '#86efac',
+                        borderColor: notif.isRead ? '#e2e8f0' : (severity === 'CRITICAL' ? '#fca5a5' : '#86efac'),
                         marginBottom: 8,
                       }}
                       onPress={async () => {
@@ -4704,13 +4806,51 @@ export default function AndroidApp({ initialUser, onLogout }) {
                           );
                           setUnreadNotifCount((c) => Math.max(0, c - 1));
                         }
+                        // Mobil Derin Bağlantı (Deep Linking)
+                        if (notif.route) {
+                          setShowNotifModal(false);
+                          if (notif.route.includes('cashier')) {
+                            navigateTo('cashier');
+                          } else if (notif.route.includes('advisor')) {
+                            navigateTo('advisor');
+                          } else if (notif.route.includes('inventory')) {
+                            navigateTo('inventory');
+                          } else if (notif.route.includes('warehouse')) {
+                            navigateTo('warehouse');
+                          } else if (notif.route.includes('recipes')) {
+                            navigateTo('recipes');
+                          } else if (notif.route.includes('sales')) {
+                            navigateTo('sales');
+                          } else if (notif.route.includes('users')) {
+                            navigateTo('users');
+                          } else if (notif.route.includes('chat')) {
+                            setShowTeamChatModal(true);
+                          }
+                        }
                       }}
                       activeOpacity={0.8}
                     >
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: notif.isRead ? '#475569' : '#166534', flex: 1, marginRight: 6 }}>
-                          {loc.title}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 6 }}>
+                          <View
+                            style={{
+                              backgroundColor: badgeBg,
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                              borderRadius: 4,
+                              marginRight: 6,
+                              borderWidth: 0.5,
+                              borderColor: badgeColor,
+                            }}
+                          >
+                            <Text style={{ fontSize: 9, fontWeight: '900', color: badgeColor }}>
+                              {badgeText}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: notif.isRead ? '#475569' : '#166534', flex: 1 }}>
+                            {loc.title}
+                          </Text>
+                        </View>
                         {!notif.isRead && (
                           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' }} />
                         )}
@@ -4722,9 +4862,16 @@ export default function AndroidApp({ initialUser, onLogout }) {
                         <Text style={{ fontSize: 10, color: '#64748b' }}>
                           👤 {notif.senderName || 'Sistem'}
                         </Text>
-                        <Text style={{ fontSize: 10, color: '#94a3b8' }}>
-                          🕒 {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Şimdi'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {notif.route && (
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#059669', textDecorationLine: 'underline' }}>
+                              İncele →
+                            </Text>
+                          )}
+                          <Text style={{ fontSize: 10, color: '#94a3b8' }}>
+                            🕒 {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Şimdi'}
+                          </Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -6018,6 +6165,7 @@ export default function AndroidApp({ initialUser, onLogout }) {
                 {[
                   { id: 'general', label: `📢 ${t.chGeneralShort || 'Genel'}`, color: '#10b981' },
                   { id: 'kitchen', label: `🍳 ${t.chKitchenShort || 'Mutfak'}`, color: '#ea580c' },
+                  { id: 'warehouse', label: `📦 ${t.chWarehouseShort || 'Depo'}`, color: '#8b5cf6' },
                   { id: 'cashier', label: `💰 ${t.chCashierShort || 'Kasa'}`, color: '#047857' },
                   { id: 'shift', label: `📋 ${t.chShiftShort || 'Vardiya'}`, color: '#6366f1' },
                 ].map((ch) => (

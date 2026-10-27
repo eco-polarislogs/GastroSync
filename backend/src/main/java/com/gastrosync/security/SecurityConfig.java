@@ -63,11 +63,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
+                          JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                          CustomAccessDeniedHandler customAccessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.customAccessDeniedHandler = customAccessDeniedHandler;
     }
 
     /**
@@ -109,9 +112,11 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // EXCEPTION HANDLING: Return JSON ApiResponse for 401 errors
+                // EXCEPTION HANDLING: Return JSON ApiResponse for 401 & 402/403 with automatic Security Alerts
                 .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        exception
+                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                .accessDeniedHandler(customAccessDeniedHandler)
                 )
 
                 // ENDPOINT AUTHORIZATION RULES
@@ -132,6 +137,9 @@ public class SecurityConfig {
 
                         // Health check endpoint (useful for deployment monitoring)
                         .requestMatchers("/actuator/health").permitAll()
+
+                        // Real-Time WebSocket & STOMP Handshake Endpoints
+                        .requestMatchers("/ws/**").permitAll()
 
                         // ── PROTECTED ENDPOINTS ───────────────────────────────
                         // Everything else requires authentication.

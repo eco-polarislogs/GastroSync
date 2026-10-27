@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout, currentLanguage, setLanguage } = useAuthStore()
-  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore()
+  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, initWebSocket } = useNotificationStore()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -29,16 +29,27 @@ export default function DashboardLayout({ children }) {
     { path: '/users', label: t.users, icon: FiUsers, roles: [ROLES.ADMIN] },
   ]
 
-  // Rol bazlı bildirimleri mount anında ve periyodik çek
+  // Rol bazlı bildirimleri mount anında çek ve STOMP WebSocket aboneliklerini kur
   useEffect(() => {
     if (user?.role) {
       fetchNotifications(user.role)
+      if (initWebSocket) {
+        initWebSocket(user.role)
+      }
       const timer = setInterval(() => {
         fetchNotifications(user.role)
-      }, 4000)
+      }, 10000)
       return () => clearInterval(timer)
     }
   }, [user?.role])
+
+  const handleNotificationClick = (notif) => {
+    markAsRead(notif.id)
+    if (notif.route) {
+      navigate(notif.route)
+      setShowNotifications(false)
+    }
+  }
 
   // Kullanıcıya yönelik filtrelenmiş bildirimler
   const userNotifications = notifications.filter(
@@ -364,24 +375,48 @@ export default function DashboardLayout({ children }) {
                     ) : (
                       userNotifications.map((notif) => {
                         const localized = getLocalizedNotification(notif, currentLanguage)
+                        const severity = notif.severity || 'INFO'
+                        const badgeStyle = severity === 'CRITICAL'
+                          ? { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5', label: 'KRİTİK' }
+                          : severity === 'WARNING'
+                          ? { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'UYARI' }
+                          : { bg: '#ecfdf5', color: '#047857', border: '#a7f3d0', label: 'BİLGİ' }
+
                         return (
                           <div
                             key={notif.id}
-                            onClick={() => markAsRead(notif.id)}
+                            onClick={() => handleNotificationClick(notif)}
                             style={{
                               padding: '12px 16px',
                               borderBottom: '1px solid #f1f5f9',
                               backgroundColor: notif.isRead ? '#ffffff' : '#f0fdf4',
                               cursor: 'pointer',
-                              transition: 'background-color 0.15s'
+                              transition: 'background-color 0.15s',
+                              position: 'relative'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                              <strong style={{ fontSize: '0.82rem', color: notif.isRead ? '#475569' : '#065f46' }}>
-                                {localized.title}
-                              </strong>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '9px',
+                                    fontWeight: 900,
+                                    padding: '1px 6px',
+                                    borderRadius: '6px',
+                                    backgroundColor: badgeStyle.bg,
+                                    color: badgeStyle.color,
+                                    border: `1px solid ${badgeStyle.border}`,
+                                    letterSpacing: '0.5px'
+                                  }}
+                                >
+                                  {badgeStyle.label}
+                                </span>
+                                <strong style={{ fontSize: '0.82rem', color: notif.isRead ? '#475569' : '#065f46' }}>
+                                  {localized.title}
+                                </strong>
+                              </div>
                               {!notif.isRead && (
-                                <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: '#10b981' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: '#10b981', flexShrink: 0 }} />
                               )}
                             </div>
                             <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#334155', lineHeight: '1.4' }}>
@@ -389,7 +424,14 @@ export default function DashboardLayout({ children }) {
                             </p>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: '#64748b' }}>
                               <span>👤 {notif.senderName || 'Sistem'}</span>
-                              <span>🕒 {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString(currentLanguage === 'ar' ? 'ar-SA' : currentLanguage === 'en' ? 'en-US' : currentLanguage === 'de' ? 'de-DE' : 'tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Az önce'}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {notif.route && (
+                                  <span style={{ color: '#059669', fontWeight: 800, textDecoration: 'underline' }}>
+                                    İncele →
+                                  </span>
+                                )}
+                                <span>🕒 {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString(currentLanguage === 'ar' ? 'ar-SA' : currentLanguage === 'en' ? 'en-US' : currentLanguage === 'de' ? 'de-DE' : 'tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Az önce'}</span>
+                              </div>
                             </div>
                           </div>
                         )

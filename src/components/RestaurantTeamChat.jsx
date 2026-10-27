@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { FiMessageSquare, FiSend, FiX, FiUsers, FiClock, FiAlertCircle, FiCheck, FiTag, FiSearch } from 'react-icons/fi'
 import { useAuthStore, useNotificationStore, ROLES } from '../store'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
-import { useChatMessages, useSendChatMessage } from '../hooks/useChatQuery'
+import { useChatMessages, useSendChatMessage, CHAT_KEYS } from '../hooks/useChatQuery'
+import { useQueryClient } from '@tanstack/react-query'
+import websocketService from '../services/websocketService'
 
 // Kanal tanımları – her kanalın hangi rollere açık olduğunu belirler
 const CHANNEL_DEFS = [
@@ -40,6 +42,8 @@ export default function RestaurantTeamChat() {
   const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
+  const messagesEndRef = useRef(null)
 
   const [isOpen, setIsOpen] = useState(false)
   const [activeChannel, setActiveChannel] = useState('general')
@@ -64,6 +68,41 @@ export default function RestaurantTeamChat() {
     }
   }, [accessibleChannels, activeChannel])
 
+  // ── WEBSOCKET / STOMP REAL-TIME SUBSCRIPTION ──────────────────
+  useEffect(() => {
+    if (!activeChannel) return
+
+    const handleIncomingMessage = (incomingMsg) => {
+      if (!incomingMsg || !incomingMsg.id) return
+
+      queryClient.setQueryData(CHAT_KEYS.messages(activeChannel), (old = []) => {
+        const exists = old.some(m => m.id === incomingMsg.id)
+        if (exists) return old
+        return [...old, incomingMsg]
+      })
+
+      // Bildirim listesini güncelle
+      if (useNotificationStore?.getState()?.fetchNotifications && user?.role) {
+        useNotificationStore.getState().fetchNotifications(user.role)
+      }
+    }
+
+    const unsubChannel = websocketService.subscribe(`/topic/chat/${activeChannel}`, handleIncomingMessage)
+    const unsubAll = websocketService.subscribe('/topic/chat/all', handleIncomingMessage)
+
+    return () => {
+      unsubChannel()
+      unsubAll()
+    }
+  }, [activeChannel, queryClient, user?.role])
+
+  // Yeni mesaj geldiğinde veya chat açıldığında otomatik aşağı kaydır
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, isOpen, activeChannel])
+
   const handleSend = async (e) => {
     e.preventDefault()
     if (!inputMsg.trim()) return
@@ -80,6 +119,11 @@ export default function RestaurantTeamChat() {
 
     setInputMsg('')
     setIsUrgent(false)
+
+    // STOMP üzerinden de doğrudan gönder
+    try {
+      websocketService.send('/app/chat.sendMessage', newMsg)
+    } catch (_) {}
 
     // Send to PostgreSQL via Spring Boot ChatController
     sendMessageMutation.mutate(newMsg, {
@@ -315,6 +359,7 @@ export default function RestaurantTeamChat() {
                 )
               })
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Box & Priority Toggle */}

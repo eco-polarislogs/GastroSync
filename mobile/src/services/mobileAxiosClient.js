@@ -25,10 +25,7 @@ try {
  *    Unwraps Spring Boot's ApiResponse<T> wrapper and handles 401 eviction.
  */
 export const getMobileApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-
+  // 1. Dinamik Expo Metro Bağlantı Tespiti (Fiziksel cihaz ve simülatörler için en taze LAN IP)
   try {
     const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || '';
     if (hostUri) {
@@ -39,12 +36,21 @@ export const getMobileApiBaseUrl = () => {
     }
   } catch (_) {}
 
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const host = window.location.hostname;
-    return `http://${host}:8080/api`;
+  // 2. Ortam Değişkeni (Expo Public URL)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  return 'http://localhost:8080/api';
+  // 3. Web Tarayıcısı veya Yerel Host
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:8080/api`;
+    }
+  }
+
+  // 4. Varsayılan Yerel Wi-Fi IP ve Geliştirici Fallback
+  return 'http://192.168.1.149:8080/api';
 };
 
 export const MOBILE_API_BASE_URL = getMobileApiBaseUrl();

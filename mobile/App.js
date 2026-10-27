@@ -15,6 +15,15 @@ function MainApp() {
     setAuthenticatedUser(null);
   };
 
+  const handleLoginSuccess = (user) => {
+    if (!user) return;
+    const normalizedUser = {
+      ...user,
+      role: (user.role || 'manager').toLowerCase(),
+    };
+    setAuthenticatedUser(normalizedUser);
+  };
+
   // Cihazın işletim sistemi donanım düzeyinde otomatik algılanır (iOS ise iOS, Android ise Android)
   const isIOS = Platform.OS === 'ios';
 
@@ -25,7 +34,7 @@ function MainApp() {
       {/* Uygulama Ekranı */}
       <View style={styles.appContainer}>
         {!authenticatedUser ? (
-          <MobileLogin onLoginSuccess={(user) => setAuthenticatedUser(user)} />
+          <MobileLogin onLoginSuccess={handleLoginSuccess} />
         ) : isIOS ? (
           <IOSApp initialUser={authenticatedUser} onLogout={handleLogout} />
         ) : (

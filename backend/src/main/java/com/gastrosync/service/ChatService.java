@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.gastrosync.model.ChatMessage;
@@ -13,12 +16,18 @@ import com.gastrosync.repository.ChatMessageRepository;
 @Service
 public class ChatService {
 
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
+
     private final ChatMessageRepository chatMessageRepository;
     private final NotificationService notificationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public ChatService(ChatMessageRepository chatMessageRepository, NotificationService notificationService) {
+    public ChatService(ChatMessageRepository chatMessageRepository,
+                       NotificationService notificationService,
+                       SimpMessagingTemplate messagingTemplate) {
         this.chatMessageRepository = chatMessageRepository;
         this.notificationService = notificationService;
+        this.messagingTemplate = messagingTemplate;
         initDefaultChatMessagesIfEmpty();
     }
 
@@ -76,6 +85,14 @@ public class ChatService {
 
         ChatMessage saved = chatMessageRepository.save(message);
 
+        // Real-Time STOMP Broadcast: Kanala abone olan tüm cihazlara (Web & Mobil) anında ilet
+        try {
+            messagingTemplate.convertAndSend("/topic/chat/" + saved.getChannelId().toLowerCase(), saved);
+            messagingTemplate.convertAndSend("/topic/chat/all", saved);
+        } catch (Exception ex) {
+            log.warn("WebSocket sohbet yayını gönderilemedi: {}", ex.getMessage());
+        }
+
         // Sohbet gönderildiğinde otomatik olarak bildirim üret ve tüm ilgili rollere düşür
         try {
             boolean isUrgent = "urgent".equalsIgnoreCase(saved.getPriority());
@@ -96,7 +113,10 @@ public class ChatService {
                 "ALL", // Tüm ekip ve cihazlar görsün
                 saved.getSender(),
                 "CHAT",
-                saved.getId()
+                saved.getId(),
+                "CHAT_OPEN",
+                "/chat",
+                isUrgent ? "CRITICAL" : "INFO"
             );
             notificationService.createNotification(notif);
         } catch (Exception ignored) {

@@ -36,9 +36,15 @@ public class Notification {
 
     private String senderName; // Örn: "Ahmet Yılmaz (Kasa / Muhasebe)"
 
-    private String type; // EXPENSE_APPROVAL, EXPENSE_REJECTED, CASH_ALLOCATED, DEBT_ALERT, GENERAL
+    private String type; // EXPENSE_APPROVAL, EXPENSE_REJECTED, CASH_ALLOCATED, DEBT_ALERT, GENERAL, SECURITY_ALERT, CHAT
 
-    private Long relatedEntityId; // İlgili gider veya sipariş ID'si
+    private Long relatedEntityId; // İlgili gider, fatura veya sipariş ID'si
+
+    private String actionType; // Örn: EXPENSE_DETAIL, INVENTORY_RESTOCK, SECURITY_LOG, CHAT_OPEN
+
+    private String route; // Deep linking rota yönlendirmesi: /advisor-ledger, /cashier, /inventory, /users
+
+    private String severity = "INFO"; // CRITICAL, WARNING, INFO
 
     private Boolean isRead = false;
 
@@ -53,10 +59,15 @@ public class Notification {
         if (this.isRead == null) {
             this.isRead = false;
         }
+        if (this.severity == null) {
+            this.severity = "INFO";
+        }
     }
 
     public Notification() {
         this.createdAt = LocalDateTime.now();
+        this.severity = "INFO";
+        this.isRead = false;
     }
 
     public Notification(String title, String message, String targetRole, String senderName, String type, Long relatedEntityId) {
@@ -66,6 +77,21 @@ public class Notification {
         this.senderName = senderName;
         this.type = type;
         this.relatedEntityId = relatedEntityId;
+        this.isRead = false;
+        this.severity = "SECURITY_ALERT".equalsIgnoreCase(type) ? "CRITICAL" : "INFO";
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Notification(String title, String message, String targetRole, String senderName, String type, Long relatedEntityId, String actionType, String route, String severity) {
+        this.title = title;
+        this.message = message;
+        this.targetRole = targetRole;
+        this.senderName = senderName;
+        this.type = type;
+        this.relatedEntityId = relatedEntityId;
+        this.actionType = actionType;
+        this.route = route;
+        this.severity = severity != null ? severity : "INFO";
         this.isRead = false;
         this.createdAt = LocalDateTime.now();
     }
@@ -90,6 +116,15 @@ public class Notification {
 
     public Long getRelatedEntityId() { return relatedEntityId; }
     public void setRelatedEntityId(Long relatedEntityId) { this.relatedEntityId = relatedEntityId; }
+
+    public String getActionType() { return actionType; }
+    public void setActionType(String actionType) { this.actionType = actionType; }
+
+    public String getRoute() { return route; }
+    public void setRoute(String route) { this.route = route; }
+
+    public String getSeverity() { return severity; }
+    public void setSeverity(String severity) { this.severity = severity; }
 
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }

@@ -65,6 +65,32 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.ok("Bildirim başarıyla kaydedildi", created));
     }
 
+    @PostMapping("/security-alert")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Yetkisiz erişim teşebbüsünü Manager ve Admin paneline ilet")
+    public ResponseEntity<ApiResponse<Void>> reportSecurityAlert(@RequestBody(required = false) java.util.Map<String, String> payload) {
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String username = auth != null ? auth.getName() : "Bilinmeyen Kullanıcı";
+        String role = auth != null
+                ? auth.getAuthorities().stream().map(org.springframework.security.core.GrantedAuthority::getAuthority).findFirst().orElse("YETKİSİZ").replace("ROLE_", "")
+                : "YETKİSİZ";
+
+        String screen = (payload != null && payload.containsKey("screen")) ? payload.get("screen") : "Kısıtlı Ekran";
+        String action = (payload != null && payload.containsKey("action")) ? payload.get("action") : "Yetkisiz Erişim";
+
+        String title = "🚨 Yetkisiz Erişim Engeli: " + username;
+        String message = String.format("%s (%s) kullanıcısı yetkisiz olarak '%s' ekranına erişmeye (%s) çalıştı ve sistem tarafından engellendi.",
+                username, role, screen, action);
+
+        Notification managerAlert = new Notification(title, message, "MANAGER", "Mobil/Web Güvenlik Koruyucusu", "SECURITY_ALERT", null);
+        Notification adminAlert = new Notification(title, message, "ADMIN", "Mobil/Web Güvenlik Koruyucusu", "SECURITY_ALERT", null);
+
+        notificationService.createNotification(managerAlert);
+        notificationService.createNotification(adminAlert);
+
+        return ResponseEntity.ok(ApiResponse.ok("Güvenlik alarmı yöneticilere başarıyla iletildi", null));
+    }
+
     @PutMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Bildirimi okundu olarak işaretle")

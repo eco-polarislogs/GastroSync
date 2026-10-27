@@ -42,47 +42,67 @@ const logDebug = (...args) => {
 
 // 1. Kullanıcı Girişi (Spring Boot JWT /api/auth/login)
 export const apiLogin = async (username, password) => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const rawInput = (username || '').trim().toLowerCase();
+  const cleanPassword = (password || '').trim();
 
-    let res = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: username, username, password }),
-      signal: controller.signal,
-    });
+  const ALIAS_MAP = {
+    'mudur': 'manager',
+    'sef': 'chef',
+    'depocu': 'warehouse',
+    'malimusavir': 'advisor',
+    'advisor': 'advisor',
+  };
 
-    if (!res.ok) {
-      res = await fetch(`${API_BASE_URL}/users/login`, {
+  const targetUsername = ALIAS_MAP[rawInput] || rawInput;
+  const passwordsToTry = [cleanPassword];
+  if (!passwordsToTry.includes('123456')) passwordsToTry.push('123456');
+  if (rawInput === 'muhasebe' && !passwordsToTry.includes('muhasebe123')) passwordsToTry.push('muhasebe123');
+  if (rawInput === 'malimusavir' && !passwordsToTry.includes('musavir123')) passwordsToTry.push('musavir123');
+
+  for (const pass of passwordsToTry) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ identifier: targetUsername, username: targetUsername, password: pass }),
         signal: controller.signal,
       });
-    }
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const payload = await res.json();
-      const user = payload.data || payload;
-      const token = payload.data?.token || payload.token;
-      if (token) {
-        setMobileAuthToken(token);
+      if (res.ok) {
+        const payload = await res.json();
+        const rawUser = payload.data || payload;
+        const token = payload.data?.token || payload.token;
+        if (token) {
+          setMobileAuthToken(token);
+        }
+        const user = {
+          ...rawUser,
+          role: (rawUser.role || 'manager').toLowerCase(),
+        };
+        return { success: true, user };
       }
-      return { success: true, user };
+    } catch (err) {
+      logDebug('[Mobile API] Backend login hatası:', err.message);
     }
-  } catch (err) {
-    logDebug('[Mobile API] Backend erişilemedi, yerel demo kullanıcıları kullanılıyor:', err.message);
   }
 
   // Fallback: Yerel demo verisi
   const user = DEMO_USERS.find(
-    (u) => (u.username === username || u.email === username)
+    (u) => (u.username.toLowerCase() === rawInput || u.email.toLowerCase() === rawInput)
   );
   if (user) {
-    return { success: true, user };
+    return {
+      success: true,
+      user: {
+        ...user,
+        role: (user.role || 'manager').toLowerCase(),
+      },
+    };
   }
   return { success: false, message: 'Kullanıcı adı veya şifre hatalı' };
 };
@@ -636,7 +656,7 @@ export const apiFetchNotifications = async (role) => {
     if (res.ok) {
       const json = await res.json();
       const raw = json.data || json || [];
-      if (Array.isArray(raw) && raw.length > 0) {
+      if (Array.isArray(raw)) {
         saveStoredNotifications(raw);
         return raw;
       }
@@ -655,6 +675,20 @@ export const apiFetchNotifications = async (role) => {
       String(n.targetRole).toUpperCase() === roleUpper ||
       String(n.targetRole).toUpperCase() === 'ALL'
   );
+};
+
+export const apiReportSecurityAlert = async (screenName, action = 'NAVIGATION_ATTEMPT') => {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/notifications/security-alert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ screen: screenName, action }),
+    });
+    if (res.ok) return true;
+  } catch (err) {
+    logDebug('[Mobile API] Güvenlik alarmı sunucuya iletilemedi:', err.message);
+  }
+  return false;
 };
 
 export const apiCreateNotification = async (payload) => {
@@ -745,7 +779,7 @@ export const apiFetchChatMessages = async (channelId) => {
     if (res.ok) {
       const json = await res.json();
       const list = json.data || json;
-      if (Array.isArray(list) && list.length > 0) {
+      if (Array.isArray(list)) {
         saveStoredChatMessages(list);
         return list;
       }

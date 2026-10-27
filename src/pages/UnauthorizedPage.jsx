@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, useNotificationStore } from '../store'
 import { FiArrowLeft, FiLock, FiAlertOctagon } from 'react-icons/fi'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
+import axiosClient from '../api/axiosClient'
 
 export default function UnauthorizedPage() {
   const navigate = useNavigate()
@@ -22,7 +23,15 @@ export default function UnauthorizedPage() {
 
       const roleDisplay = getRoleLabel(user.role, currentLanguage) || user.role
 
-      // Müdüre bildirim gönder
+      // 1. Backend güvenlik denetim uç noktasına bildir
+      try {
+        axiosClient.post('/notifications/security-alert', {
+          screen: attemptedPath,
+          action: 'WEB_SAYFA_GEÇİŞ_DENEMESİ'
+        }).catch(() => {})
+      } catch (_) {}
+
+      // 2. Müdüre anlık bildirim gönder
       sendNotification({
         title: t.unauthorizedAttemptAlertTitle || '🚨 Yetkisiz Sayfa Erişim Girişimi!',
         message: `${user.name} (${roleDisplay}) adlı kullanıcı yetkisi olmayan '${attemptedPath}' sayfasına erişmeye çalıştı. İşlem zamanı: ${attemptTime}. Erişim otomatik engellendi.`,
@@ -32,7 +41,7 @@ export default function UnauthorizedPage() {
         relatedEntityId: null
       })
 
-      // Admine bildirim gönder
+      // 3. Admine anlık bildirim gönder
       sendNotification({
         title: t.unauthorizedAttemptAlertTitle || '🚨 Yetkisiz Sayfa Erişim Girişimi!',
         message: `${user.name} (${roleDisplay}) adlı kullanıcı yetkisi olmayan '${attemptedPath}' sayfasına erişmeye çalıştı. İşlem zamanı: ${attemptTime}. Erişim otomatik engellendi.`,

@@ -46,7 +46,10 @@ export default function MobileLogin({ onLoginSuccess }) {
       const res = await apiLogin(rawInput, cleanPassword);
       if (res && res.success && res.user) {
         setLoading(false);
-        onLoginSuccess(res.user);
+        onLoginSuccess({
+          ...res.user,
+          role: (res.user.role || 'manager').toLowerCase(),
+        });
         return;
       }
     } catch (_) { }
@@ -70,7 +73,10 @@ export default function MobileLogin({ onLoginSuccess }) {
     setLoading(false);
 
     if (found && isMatch) {
-      onLoginSuccess(found);
+      onLoginSuccess({
+        ...found,
+        role: (found.role || 'manager').toLowerCase(),
+      });
     } else {
       setError('Geçersiz kullanıcı adı veya şifre!');
     }

@@ -47,7 +47,7 @@ public class InventoryService {
      * Mal kabul işlemi: Stoğu artırır ve denetim hareketi kaydeder.
      */
     public StockTransaction receiveStock(Long itemId, BigDecimal quantity, String recordedBy) {
-        InventoryItem item = itemRepository.findById(itemId)
+        InventoryItem item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Ürün bulunamadı: ID " + itemId));
 
         item.setCurrentStock(item.getCurrentStock().add(quantity));
@@ -62,7 +62,7 @@ public class InventoryService {
      * Zayiat / Fire bildirimi: Stoğu düşer, maliyeti hesaplar ve denetim kaydı oluşturur.
      */
     public StockTransaction recordWaste(Long itemId, BigDecimal quantity, String reason, String recordedBy) {
-        InventoryItem item = itemRepository.findById(itemId)
+        InventoryItem item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Ürün bulunamadı: ID " + itemId));
 
         BigDecimal newStock = item.getCurrentStock().subtract(quantity);

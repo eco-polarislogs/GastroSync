@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import axiosClient from '../api/axiosClient'
+import websocketService from '../services/websocketService'
 
 // ============================================================
 // Kullanıcı Rolleri
@@ -1307,9 +1308,88 @@ const saveNotificationsToStorage = (list) => {
 
 const initialSaved = loadSavedNotifications()
 
+let wsUnsubscribers = []
+
 export const useNotificationStore = create((set, get) => ({
   notifications: initialSaved,
   unreadCount: initialSaved.filter(n => !n.isRead).length,
+  isWsConnected: false,
+
+  initWebSocket: (role) => {
+    // Önceki abonelikleri temizle
+    wsUnsubscribers.forEach(unsub => {
+      try { unsub() } catch (_) {}
+    })
+    wsUnsubscribers = []
+
+    const normalizedRole = (role || 'ALL').toUpperCase()
+
+    // 1. Genel bildirim kanalı (/topic/notifications)
+    const unsubAll = websocketService.subscribe('/topic/notifications', (newNotif) => {
+      if (!newNotif || !newNotif.id) return
+      set(state => {
+        const exists = state.notifications.some(n => n.id === newNotif.id)
+        const next = exists
+          ? state.notifications.map(n => n.id === newNotif.id ? { ...n, ...newNotif } : n)
+          : [newNotif, ...state.notifications]
+        saveNotificationsToStorage(next)
+        return {
+          notifications: next,
+          unreadCount: next.filter(n => !n.isRead).length
+        }
+      })
+    })
+    wsUnsubscribers.push(unsubAll)
+
+    // 2. Rol bazlı bildirim kanalı (/topic/notifications/{role})
+    if (normalizedRole !== 'ALL') {
+      const unsubRole = websocketService.subscribe(`/topic/notifications/${normalizedRole}`, (newNotif) => {
+        if (!newNotif || !newNotif.id) return
+        set(state => {
+          const exists = state.notifications.some(n => n.id === newNotif.id)
+          const next = exists
+            ? state.notifications.map(n => n.id === newNotif.id ? { ...n, ...newNotif } : n)
+            : [newNotif, ...state.notifications]
+          saveNotificationsToStorage(next)
+          return {
+            notifications: next,
+            unreadCount: next.filter(n => !n.isRead).length
+          }
+        })
+      })
+      wsUnsubscribers.push(unsubRole)
+    }
+
+    // 3. Bildirim okundu senkronizasyonu (/topic/notifications/read)
+    const unsubRead = websocketService.subscribe('/topic/notifications/read', (payload) => {
+      const readId = payload?.id || payload
+      if (!readId) return
+      set(state => {
+        const next = state.notifications.map(n => n.id === readId ? { ...n, isRead: true } : n)
+        saveNotificationsToStorage(next)
+        return {
+          notifications: next,
+          unreadCount: next.filter(n => !n.isRead).length
+        }
+      })
+    })
+    wsUnsubscribers.push(unsubRead)
+
+    // 4. Tüm bildirimleri okundu yapma senkronizasyonu (/topic/notifications/mark-all-read)
+    const unsubMarkAll = websocketService.subscribe('/topic/notifications/mark-all-read', () => {
+      set(state => {
+        const next = state.notifications.map(n => ({ ...n, isRead: true }))
+        saveNotificationsToStorage(next)
+        return {
+          notifications: next,
+          unreadCount: 0
+        }
+      })
+    })
+    wsUnsubscribers.push(unsubMarkAll)
+
+    set({ isWsConnected: true })
+  },
 
   fetchNotifications: async (role) => {
     try {
