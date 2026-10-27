@@ -567,8 +567,25 @@ export default function AndroidApp({ initialUser, onLogout }) {
     return matchTab && matchSearch;
   });
 
-  const navigateTo = (screen) => {
-    if (!allowedScreens.includes(screen)) return;
+  const navigateTo = async (screen) => {
+    if (!allowedScreens.includes(screen)) {
+      showToast('🚨 Yetkisiz Erişim Engellendi!');
+      try {
+        await apiCreateNotification({
+          title: '🚨 Yetkisiz Sayfa Erişim Girişimi!',
+          message: `${currentUser?.name} (${ROLE_LABELS[currentUser?.role]}) yetkisi olmayan '${screen}' ekranına erişmeye çalıştı. Erişim otomatik engellendi.`,
+          targetRole: 'MANAGER',
+          type: 'WARNING',
+        });
+        await apiCreateNotification({
+          title: '🚨 Yetkisiz Sayfa Erişim Girişimi!',
+          message: `${currentUser?.name} (${ROLE_LABELS[currentUser?.role]}) yetkisi olmayan '${screen}' ekranına erişmeye çalıştı. Erişim otomatik engellendi.`,
+          targetRole: 'ADMIN',
+          type: 'WARNING',
+        });
+      } catch (_) {}
+      return;
+    }
     if (screen === currentScreen) return;
     setScreenStack((prev) => {
       const filtered = prev.filter((s) => s !== screen);
@@ -4725,92 +4742,105 @@ export default function AndroidApp({ initialUser, onLogout }) {
         </View>
       </Modal>
 
-      {/* MODAL 4C-2: HIZLI PROFİL / ROL DEĞİŞTİRİCİ (Accountant <-> Financial Advisor Canlı Geçiş) */}
+      {/* MODAL 4C-2: KULLANICI PROFİL KARTI & GÜVENLİK KORUMASI (Yetkisiz Rol Değişimi Engelli) */}
       <Modal visible={showRoleSwitchModal} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { maxWidth: 360, padding: 20 }]}>
             <View style={styles.webModalHeader}>
               <View>
-                <Text style={styles.modalTitle}>{t.switchRoleModalTitle || '👤 Profil & Rol Değiştir'}</Text>
-                <Text style={styles.webModalSub}>{t.switchRoleModalSub || 'Canlı akış ve onay denetimi için rol seçin'}</Text>
+                <Text style={styles.modalTitle}>👤 Profil & Güvenlik Kartı</Text>
+                <Text style={styles.webModalSub}>Aktif Yetkili Kullanıcı Oturumu</Text>
               </View>
               <TouchableOpacity onPress={() => setShowRoleSwitchModal(false)}>
                 <Text style={{ fontSize: 20, color: THEME.colors.textLight }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={{ gap: 8, marginTop: 8 }}>
-              {DEMO_USERS.map((usr) => {
-                const isSelected = currentUser.id === usr.id;
-                const isCashier = usr.role === ROLES.ACCOUNTANT;
-                const isAdvisor = usr.role === ROLES.FINANCIAL_ADVISOR;
+            {/* Kullanıcı Kimlik Kartı */}
+            <View style={{
+              alignItems: 'center',
+              paddingVertical: 16,
+              backgroundColor: '#f8fafc',
+              borderRadius: 16,
+              borderWidth: 1.5,
+              borderColor: '#e2e8f0',
+              marginTop: 10,
+              gap: 8
+            }}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: ROLE_COLORS[currentUser.role] || '#10b981',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20 }}>{currentUser.avatar}</Text>
+              </View>
 
-                return (
-                  <TouchableOpacity
-                    key={usr.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 12,
-                      borderRadius: 12,
-                      backgroundColor: isSelected ? '#ecfdf5' : '#f8fafc',
-                      borderWidth: 1.5,
-                      borderColor: isSelected ? '#10b981' : '#e2e8f0',
-                      gap: 10,
-                    }}
-                    onPress={() => {
-                      setCurrentUser(usr);
-                      const defScreen = getDefaultScreen(usr.role);
-                      setCurrentScreen(defScreen);
-                      setScreenStack([defScreen]);
-                      setShowRoleSwitchModal(false);
-                      showToast(`✓ Profil: ${usr.name} (${ROLE_LABELS[usr.role]})`);
-                      refreshAllData();
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 19,
-                        backgroundColor: ROLE_COLORS[usr.role] || '#64748b',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>{usr.avatar}</Text>
-                    </View>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a' }}>{currentUser.name}</Text>
+              <View style={{
+                backgroundColor: ROLE_COLORS[currentUser.role] ? `${ROLE_COLORS[currentUser.role]}20` : '#ecfdf5',
+                paddingHorizontal: 10,
+                paddingVertical: 3,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: ROLE_COLORS[currentUser.role] || '#10b981'
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: ROLE_COLORS[currentUser.role] || '#059669' }}>
+                  {ROLE_LABELS[currentUser.role]}
+                </Text>
+              </View>
 
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#0f172a' }}>{usr.name}</Text>
-                        {isCashier && (
-                          <View style={{ backgroundColor: '#e0e7ff', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
-                            <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#4338ca' }}>Kasa</Text>
-                          </View>
-                        )}
-                        {isAdvisor && (
-                          <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 6 }}>
-                            <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#b45309' }}>SMMM</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                        {ROLE_LABELS[usr.role]} • {usr.username}
-                      </Text>
-                    </View>
-
-                    {isSelected && (
-                      <Text style={{ fontSize: 16, color: '#059669', fontWeight: '900' }}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+              <Text style={{ fontSize: 12, color: '#64748b' }}>
+                Kullanıcı: @{currentUser.username} • {currentUser.email || 'gastrosync.com'}
+              </Text>
             </View>
 
+            {/* Güvenlik & Yetkilendirme Uyarısı */}
+            <View style={{
+              backgroundColor: '#fef2f2',
+              borderRadius: 12,
+              padding: 12,
+              marginTop: 12,
+              borderWidth: 1,
+              borderColor: '#fecaca',
+              gap: 4
+            }}>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#991b1b' }}>
+                🛡️ Yetkilendirme Koruması Aktif
+              </Text>
+              <Text style={{ fontSize: 11, color: '#b91c1c', lineHeight: 15 }}>
+                Sistem politikası gereği profilden diğer rollere doğrudan geçiş yapılamaz. Farklı bir personel olarak işlem yapmak için lütfen güvenli çıkış yapıp kendi şifrenizle giriş yapınız.
+              </Text>
+            </View>
+
+            {/* Güvenli Çıkış Yap Butonu */}
             <TouchableOpacity
-              style={[styles.modalCancelBtn, { marginTop: 14 }]}
+              style={{
+                backgroundColor: '#dc2626',
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+                marginTop: 14,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 8
+              }}
+              onPress={() => {
+                setShowRoleSwitchModal(false);
+                if (onLogout) onLogout();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }}>⎋ Güvenli Çıkış Yap</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalCancelBtn, { marginTop: 8 }]}
               onPress={() => setShowRoleSwitchModal(false)}
             >
               <Text style={styles.modalCancelTxt}>Kapat</Text>
