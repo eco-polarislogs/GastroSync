@@ -8,11 +8,13 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.gastrosync.app",
       "infoPlist": {
         "NSCameraUsageDescription": "GastroSync depo mal kabul ve barkod okuma işlemleri için kamera izni gereklidir."
       }
     },
     "android": {
+      "package": "com.gastrosync.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

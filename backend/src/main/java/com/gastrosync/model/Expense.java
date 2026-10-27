@@ -3,7 +3,9 @@ package com.gastrosync.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(
@@ -13,10 +15,13 @@ import java.time.LocalDateTime;
         @Index(name = "idx_expenses_category_subtype", columnList = "category, subType"),
         @Index(name = "idx_expenses_status", columnList = "status"),
         @Index(name = "idx_expenses_payment_status", columnList = "paymentStatus"),
-        @Index(name = "idx_expenses_date", columnList = "expenseDate DESC")
+        @Index(name = "idx_expenses_date", columnList = "expenseDate DESC"),
+        @Index(name = "idx_expenses_is_deleted", columnList = "is_deleted")
     }
 )
-public class Expense {
+@SQLDelete(sql = "UPDATE expenses SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+public class Expense extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,31 +53,20 @@ public class Expense {
 
     // Muhasebe & Kasa & Mali Müşavir Entegrasyon Alanları
     private Boolean isOwnedProperty = false; // Dükkan mülk sahibi mi yoksa kira mı?
-    private Boolean paidByCashier = true;     // Muhasebeci / Kasa tarafından fiilen ödendi mi?
+    private Boolean paidByCashier = false;    // Muhasebeci / Kasa tarafından fiilen ödendi mi?
     private Boolean recordedInLedger = false; // Mali Müşavir tarafından resmi deftere işlendi mi?
     private Boolean sentToAdvisor = false;    // Muhasebe tarafından Mali Müşavir onayına gönderildi mi?
     private String status = "PENDING_APPROVAL"; // PENDING_APPROVAL, SENT_TO_ADVISOR, APPROVED_IN_LEDGER, REJECTED
     
     // Gerçekçi Muhasebe & Borç/Vade & Müşavir Ret Yönetimi Alanları
-    private String paymentStatus = "PAID"; // PAID (Ödendi), UNPAID (Ödenmedi/Borçta), PARTIAL (Kısmi Ödendi)
+    private String paymentStatus = "UNPAID"; // PAID (Ödendi), UNPAID (Ödenmedi/Borçta), PARTIAL (Kısmi Ödendi)
     private String rejectionReason; // Mali müşavir reddederse yazacağı gerekçe (örn: "Fatura aslı eksik", "Stopaj oranı hatalı")
     private LocalDate dueDate; // Son ödeme vadesi (borç/vade takibi için)
     private String invoiceNumber; // Resmi Fatura / Fiş / Dekont No
     private String counterparty; // Alacaklı / Tedarikçi / Kurum (örn: "Enerjisa", "İSKİ", "Mal Sahibi Mehmet Bey")
 
-    // Enterprise Audit Fields
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-        if (this.updatedAt == null) {
-            this.updatedAt = LocalDateTime.now();
-        }
         if (this.expenseDate == null) {
             this.expenseDate = LocalDate.now();
         }
@@ -89,7 +83,6 @@ public class Expense {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
         if (this.expenseDate != null && (this.period == null || this.period.isBlank())) {
             this.period = this.expenseDate.getYear() + "-" + String.format("%02d", this.expenseDate.getMonthValue());
         }
@@ -181,10 +174,4 @@ public class Expense {
 
     public String getCounterparty() { return counterparty; }
     public void setCounterparty(String counterparty) { this.counterparty = counterparty; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

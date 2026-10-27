@@ -1,5 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore, useNotificationStore } from '../store'
+import { 
+  useUsers, 
+  useCreateUser, 
+  useUpdateUserRole, 
+  useDeleteUser 
+} from '../hooks/useUserQuery'
 import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter, FiAlertTriangle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
@@ -22,14 +28,18 @@ export default function UsersPage() {
   const isSuperAdmin = currentUser?.role === ROLES.ADMIN
   const { sendNotification } = useNotificationStore()
 
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  // ── TANSTACK QUERY HOOKS (Authoritative PostgreSQL State) ──────
+  const { data: users = [], isLoading: loading, isError, error, refetch: fetchUsers } = useUsers()
+  const createUserMutation = useCreateUser()
+  const updateRoleMutation = useUpdateUserRole()
+  const deleteUserMutation = useDeleteUser()
+
   const [showAddModal, setShowAddModal] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const submitting = createUserMutation.isPending
+  const deleting = deleteUserMutation.isPending
 
   // Custom confirmation modal (alert/confirm yerine modern message box)
   const [userToDelete, setUserToDelete] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -66,122 +76,32 @@ export default function UsersPage() {
     return result
   }, [users, searchQuery, filterRole])
 
-  const fetchUsers = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('http://localhost:8080/api/users')
-      if (res.ok) {
-        const data = await res.json()
-        const formatted = data.map((u) => {
-          const roleKey = (u.role || 'manager').toLowerCase()
-          const initials = u.name
-            ? u.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
-            : 'GS'
-          return {
-            id: u.id,
-            name: u.name,
-            username: u.username,
-            email: u.email || `${u.username}@gastrosync.com`,
-            role: roleKey,
-            avatar: initials,
-            lastLogin: 'Bugün, Aktif',
-          }
-        })
-        setUsers(formatted)
-      } else {
-        notifyError('Kullanıcı listesi alınamadı')
-      }
-    } catch (err) {
-      console.warn('Backend erişim hatası, yerel veriler kullanılıyor:', err)
-      // Fallback local list
-      setUsers([
-        { id: 1, name: 'Ahmet Yılmaz', username: 'admin', email: 'admin@gastrosync.com', role: ROLES.ADMIN, avatar: 'AY', lastLogin: 'Bugün, 09:15' },
-        { id: 2, name: 'Zeynep Kaya', username: 'manager', email: 'manager@gastrosync.com', role: ROLES.MANAGER, avatar: 'ZK', lastLogin: 'Bugün, 08:30' },
-        { id: 3, name: 'Mehmet Şef', username: 'chef', email: 'chef@gastrosync.com', role: ROLES.CHEF, avatar: 'MŞ', lastLogin: 'Dün, 17:45' },
-        { id: 4, name: 'Ali Depocu', username: 'warehouse', email: 'warehouse@gastrosync.com', role: ROLES.WAREHOUSE, avatar: 'AD', lastLogin: 'Bugün, 14:00' },
-        { id: 5, name: 'Canan Kasa', username: 'accountant', email: 'accountant@gastrosync.com', role: ROLES.ACCOUNTANT, avatar: 'CK', lastLogin: 'Bugün, 09:00' },
-        { id: 6, name: 'Selahattin Müşavir', username: 'advisor', email: 'advisor@gastrosync.com', role: ROLES.FINANCIAL_ADVISOR, avatar: 'SM', lastLogin: 'Bugün, 10:00' },
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchUsers()
-    // Mobilde veya webde rol güncellendiğinde senkronize kalması için periyodik kontrol
-    const timer = setInterval(() => {
-      fetchUsers()
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const handleCreateUser = async (e) => {
+  const handleCreateUser = (e) => {
     e.preventDefault()
     if (!newUser.name || !newUser.username) {
       notifyError('Lütfen ad soyad ve kullanıcı adı alanlarını doldurun')
       return
     }
 
-    setSubmitting(true)
-    try {
-      const res = await fetch('http://localhost:8080/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newUser.name.trim(),
-          username: newUser.username.trim().toLowerCase(),
-          email: newUser.email.trim() || `${newUser.username.trim().toLowerCase()}@gastrosync.com`,
-          role: newUser.role.toUpperCase(),
-          password: newUser.password || '123456',
-        }),
-      })
-
-      if (res.ok) {
-        notifySuccess(`${newUser.name} sisteme başarıyla kaydedildi!`, 'Kullanıcı Eklendi')
+    createUserMutation.mutate({
+      name: newUser.name.trim(),
+      username: newUser.username.trim().toLowerCase(),
+      email: newUser.email.trim() || `${newUser.username.trim().toLowerCase()}@gastrosync.com`,
+      role: newUser.role.toUpperCase(),
+      password: newUser.password || '123456',
+    }, {
+      onSuccess: () => {
         setShowAddModal(false)
         setNewUser({ name: '', username: '', email: '', role: ROLES.MANAGER, password: '123456' })
-        fetchUsers()
-      } else {
-        let errMessage = 'Kullanıcı eklenemedi'
-        try {
-          const errData = await res.json()
-          errMessage = errData.message || errMessage
-        } catch (_) {}
-        notifyError(errMessage)
       }
-    } catch (err) {
-      // Offline fallback: yerel listeye ekle ve kullanıcıyı uyar
-      const createdUser = {
-        id: Date.now(),
-        name: newUser.name.trim(),
-        username: newUser.username.trim().toLowerCase(),
-        email: newUser.email.trim() || `${newUser.username.trim().toLowerCase()}@gastrosync.com`,
-        role: newUser.role.toLowerCase(),
-        avatar: newUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
-        lastLogin: 'Yeni Kayıt'
-      }
-      setUsers(prev => [createdUser, ...prev])
-      setShowAddModal(false)
-      setNewUser({ name: '', username: '', email: '', role: ROLES.MANAGER, password: '123456' })
-      notifySuccess(`${newUser.name} eklendi (Backend çevrimdışı, yerel kaydedildi)`, 'Kullanıcı Eklendi')
-    } finally {
-      setSubmitting(false)
-    }
+    })
   }
 
-  const handleUpdateRole = async (userId) => {
+  const handleUpdateRole = (userId) => {
     if (!selectedRole) return
-    try {
-      const res = await fetch(`http://localhost:8080/api/users/${userId}/role`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: selectedRole.toUpperCase() }),
-      })
 
-      if (res.ok) {
-        notifySuccess(`Kullanıcı rolü ${ROLE_LABELS[selectedRole]} olarak güncellendi!`, 'Rol Güncellendi')
-        
+    updateRoleMutation.mutate({ id: userId, role: selectedRole.toUpperCase() }, {
+      onSuccess: () => {
         const targetUser = users.find(u => u.id === userId)
         sendNotification({
           title: '👤 Personel Yetki / Rol Değişikliği',
@@ -191,18 +111,9 @@ export default function UsersPage() {
           type: 'ROLE_CHANGED',
           relatedEntityId: userId
         })
-
         setEditingUserId(null)
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role: selectedRole } : u))
-        )
-      } else {
-        const errData = await res.json()
-        notifyError(errData.message || 'Rol güncellenemedi')
       }
-    } catch (err) {
-      notifyError('Bağlantı hatası oluştu')
-    }
+    })
   }
 
   const handleDeleteUser = (user) => {
@@ -213,31 +124,13 @@ export default function UsersPage() {
     setUserToDelete(user)
   }
 
-  const executeDeleteUser = async () => {
+  const executeDeleteUser = () => {
     if (!userToDelete) return
-    setDeleting(true)
-
-    try {
-      const res = await fetch(`http://localhost:8080/api/users/${userToDelete.id}`, {
-        method: 'DELETE',
-      })
-
-      if (res.ok) {
-        notifySuccess(`${userToDelete.name} sistemden çıkarıldı.`, 'Görevden Alındı')
-        setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
+    deleteUserMutation.mutate(userToDelete.id, {
+      onSuccess: () => {
         setUserToDelete(null)
-      } else {
-        const errData = await res.json()
-        notifyError(errData.message || 'Kullanıcı silinemedi')
       }
-    } catch (err) {
-      // Fallback: Yerel listeden de kaldır
-      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
-      notifySuccess(`${userToDelete.name} yerel listeden kaldırıldı.`, 'Görevden Alındı')
-      setUserToDelete(null)
-    } finally {
-      setDeleting(false)
-    }
+    })
   }
 
   return (

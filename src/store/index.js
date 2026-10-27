@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import axiosClient from '../api/axiosClient'
 
 // ============================================================
 // Kullanıcı Rolleri
@@ -104,79 +105,53 @@ export const useAuthStore = create((set, get) => ({
       return { success: false, message: 'Kullanıcı adı veya e-posta ve şifre zorunludur!' }
     }
 
-    // 1. Backend REST API üzerinden kimlik doğrulama (/api/users/login)
+    const ALIAS_MAP = {
+      'mudur': 'manager',
+      'sef': 'chef',
+      'depocu': 'warehouse',
+      'malimusavir': 'advisor',
+      'advisor': 'advisor',
+    }
+
+    const lowerInput = rawInput.toLowerCase()
+    const targetUsername = ALIAS_MAP[lowerInput] || rawInput
+
     try {
-      const response = await fetch('http://localhost:8080/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: rawInput, password: cleanPassword })
+      const payload = await axiosClient.post('/auth/login', {
+        identifier: targetUsername,
+        username: targetUsername,
+        password: cleanPassword
       })
 
-      if (response.ok) {
-        const backendUser = await response.json()
-        const normalizedRole = (backendUser.role || 'MANAGER').toLowerCase()
-        const initials = backendUser.name
-          ? backendUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
-          : 'GS'
-
-        const userData = {
-          id: backendUser.id,
-          username: backendUser.username,
-          name: backendUser.name,
-          email: backendUser.email || `${backendUser.username}@gastrosync.com`,
-          role: normalizedRole,
-          avatar: initials
-        }
-
-        const token = btoa(
-          JSON.stringify({ userId: userData.id, role: userData.role, exp: Date.now() + 86400000 })
-        )
-
-        localStorage.setItem('gastrosync_token', token)
-        localStorage.setItem('gastrosync_user', JSON.stringify(userData))
-
-        set({ user: userData, token, isAuthenticated: true })
-        return { success: true, user: userData }
+      const backendUser = payload.data || payload
+      const token = backendUser.token
+      if (!token) {
+        return { success: false, message: 'Sunucudan yetkilendirme belirteci (JWT) alınamadı.' }
       }
+
+      const normalizedRole = (backendUser.role || 'MANAGER').toLowerCase()
+      const initials = backendUser.name
+        ? backendUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+        : 'GS'
+
+      const userData = {
+        id: backendUser.userId || backendUser.id,
+        username: backendUser.username,
+        name: backendUser.name,
+        email: backendUser.email || `${backendUser.username}@gastrosync.com`,
+        role: normalizedRole,
+        avatar: initials
+      }
+
+      localStorage.setItem('gastrosync_token', token)
+      localStorage.setItem('gastrosync_user', JSON.stringify(userData))
+
+      set({ user: userData, token, isAuthenticated: true })
+      return { success: true, user: userData }
     } catch (err) {
-      console.warn('Backend API isteği başarısız oldu, yerel doğrulamaya geçiliyor:', err.message)
+      const errorMsg = err.response?.data?.message || err.message || 'Geçersiz kullanıcı adı veya şifre!'
+      return { success: false, message: errorMsg }
     }
-
-    // 2. Yedek / Yerel Doğrulama (Sadece offline veya backend kapalıysa)
-    const normalizedLower = rawInput.toLowerCase()
-    const isDemoPasswordMatch = (u, p) => {
-      if (u === 'admin' && (p === 'admin123' || p === '123456')) return true
-      if (u === 'manager' && (p === 'mudur123' || p === '123456')) return true
-      if (u === 'chef' && (p === 'sef123' || p === '123456')) return true
-      if (u === 'warehouse' && (p === 'depo123' || p === '123456')) return true
-      return false
-    }
-
-    const found = DEMO_USERS.find((u) => {
-      const match = u.username.toLowerCase() === normalizedLower ||
-        u.email.toLowerCase() === normalizedLower ||
-        (normalizedLower === 'mudur' && u.username === 'manager') ||
-        (normalizedLower === 'sef' && u.username === 'chef') ||
-        (normalizedLower === 'depocu' && u.username === 'warehouse')
-      return match && (u.password === cleanPassword || isDemoPasswordMatch(u.username, cleanPassword))
-    })
-
-    if (!found) {
-      return { success: false, message: 'Geçersiz kullanıcı adı/e-posta veya şifre!' }
-    }
-
-    // JWT token simülasyonu
-    const token = btoa(
-      JSON.stringify({ userId: found.id, role: found.role, exp: Date.now() + 86400000 })
-    )
-    const userData = { ...found }
-    delete userData.password
-
-    localStorage.setItem('gastrosync_token', token)
-    localStorage.setItem('gastrosync_user', JSON.stringify(userData))
-
-    set({ user: userData, token, isAuthenticated: true })
-    return { success: true, user: userData }
   },
 
   currentLanguage: localStorage.getItem('gastrosync_lang') || 'tr',
@@ -247,8 +222,7 @@ export const useInventoryStore = create((set, get) => ({
 
   fetchItems: async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/inventory')
-      const json = await res.json()
+      const json = await axiosClient.get('/inventory')
       const rawList = Array.isArray(json) ? json : (json?.data || [])
       if (Array.isArray(rawList) && rawList.length > 0) {
         const mapped = rawList.map(item => ({
@@ -270,10 +244,10 @@ export const useInventoryStore = create((set, get) => ({
 
   fetchTransactions: async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/inventory/transactions/recent')
-      const json = await res.json()
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const mappedTx = json.data.map(tx => {
+      const json = await axiosClient.get('/inventory/transactions/recent')
+      const rawList = json?.data || (Array.isArray(json) ? json : [])
+      if (Array.isArray(rawList) && rawList.length > 0) {
+        const mappedTx = rawList.map(tx => {
           const itemObj = tx.item || {}
           const dateObj = tx.timestamp ? new Date(tx.timestamp) : new Date()
           return {
@@ -498,8 +472,7 @@ export const useRecipeStore = create((set, get) => ({
 
   fetchRecipes: async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/recipes')
-      const json = await res.json()
+      const json = await axiosClient.get('/recipes')
       const rawList = Array.isArray(json) ? json : (json?.data || [])
       if (Array.isArray(rawList) && rawList.length > 0) {
         // En güncel hammadde fiyatlarını inventory store'dan al
@@ -562,18 +535,13 @@ export const useRecipeStore = create((set, get) => ({
 
   addRecipe: async (recipe) => {
     try {
-      const res = await fetch('http://localhost:8080/api/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: recipe.name,
-          category: recipe.category,
-          salePrice: recipe.salePrice,
-          portions: recipe.portions || 1,
-          ingredientsJson: JSON.stringify(recipe.ingredients || [])
-        })
+      const data = await axiosClient.post('/recipes', {
+        name: recipe.name,
+        category: recipe.category,
+        salePrice: recipe.salePrice,
+        portions: recipe.portions || 1,
+        ingredientsJson: JSON.stringify(recipe.ingredients || [])
       })
-      const data = await res.json()
       if (data && data.success && data.data) {
         set((state) => ({ recipes: [...state.recipes, data.data] }))
       }
@@ -584,17 +552,13 @@ export const useRecipeStore = create((set, get) => ({
 
   updateRecipe: async (id, updates) => {
     try {
-      await fetch(`http://localhost:8080/api/recipes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: updates.name,
-          category: updates.category,
-          salePrice: updates.salePrice,
-          portions: updates.portions || 1,
-          description: updates.description || '',
-          ingredientsJson: JSON.stringify(updates.ingredients || [])
-        })
+      await axiosClient.put(`/recipes/${id}`, {
+        name: updates.name,
+        category: updates.category,
+        salePrice: updates.salePrice,
+        portions: updates.portions || 1,
+        description: updates.description || '',
+        ingredientsJson: JSON.stringify(updates.ingredients || [])
       })
     } catch (_) { }
     // Güncellenen veriyi anında yeniden çekerek maliyetleri tazele
@@ -604,9 +568,7 @@ export const useRecipeStore = create((set, get) => ({
   deleteRecipe: async (id) => {
     set((state) => ({ recipes: state.recipes.filter((r) => r.id !== id) }))
     try {
-      await fetch(`http://localhost:8080/api/recipes/${id}`, {
-        method: 'DELETE'
-      })
+      await axiosClient.delete(`/recipes/${id}`)
     } catch (_) { }
     get().fetchRecipes()
   },
@@ -639,18 +601,19 @@ export const useSalesStore = create((set, get) => ({
 
   fetchSales: async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/sales/today')
-      const json = await res.json()
+      const json = await axiosClient.get('/sales/today')
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const recipes = useRecipeStore.getState().recipes || []
         const mapped = json.data.map(s => {
           const unitPrice = parseFloat(s.unitPrice) || 0
           const totalPrice = parseFloat(s.totalPrice) || (unitPrice * (s.quantity || 1))
-          const portionCost = Math.round(unitPrice * 0.285 * 100) / 100
+          const matchedRecipe = recipes.find(r => r.name?.trim().toLowerCase() === s.productName?.trim().toLowerCase())
+          const portionCost = matchedRecipe ? matchedRecipe.cost : Math.round(unitPrice * 0.285 * 100) / 100
           const totalCost = Math.round(portionCost * (s.quantity || 1) * 100) / 100
 
           return {
             id: s.id,
-            recipeId: s.id,
+            recipeId: matchedRecipe ? matchedRecipe.id : s.id,
             recipeName: s.productName,
             quantity: s.quantity || 1,
             salePrice: unitPrice,
@@ -686,18 +649,14 @@ export const useSalesStore = create((set, get) => ({
     const tempId = Date.now()
     set((state) => ({ todaySales: [...state.todaySales, { ...sale, id: tempId }] }))
     try {
-      await fetch('http://localhost:8080/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: sale.recipeName,
-          quantity: sale.quantity || 1,
-          unitPrice: sale.salePrice || (sale.totalRevenue / (sale.quantity || 1)),
-          totalPrice: sale.totalRevenue,
-          time: sale.time || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          tableNo: sale.tableNo || 'Masa 1',
-          paymentMethod: sale.paymentMethod || 'Kredi Kartı'
-        })
+      await axiosClient.post('/sales', {
+        productName: sale.recipeName,
+        quantity: sale.quantity || 1,
+        unitPrice: sale.salePrice || (sale.totalRevenue / (sale.quantity || 1)),
+        totalPrice: sale.totalRevenue,
+        time: sale.time || new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        tableNo: sale.tableNo || 'Masa 1',
+        paymentMethod: sale.paymentMethod || 'Kredi Kartı'
       })
     } catch (_) { }
   },
@@ -1160,8 +1119,7 @@ export const useExpenseStore = create((set, get) => ({
 
   fetchExpenses: async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/expenses')
-      const json = await res.json()
+      const json = await axiosClient.get('/expenses')
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         const mapped = json.data.map(e => ({
           id: e.id,
@@ -1207,34 +1165,28 @@ export const useExpenseStore = create((set, get) => ({
 
   addExpense: async (expenseData) => {
     try {
-      const res = await fetch('http://localhost:8080/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: expenseData.title,
-          category: expenseData.category,
-          subType: expenseData.subType,
-          amount: expenseData.amount,
-          period: expenseData.period || '2026-10',
-          expenseDate: expenseData.expenseDate || new Date().toISOString().split('T')[0],
-          dueDate: expenseData.dueDate || expenseData.expenseDate || new Date().toISOString().split('T')[0],
-          invoiceNumber: expenseData.invoiceNumber || '',
-          counterparty: expenseData.counterparty || '',
-          paymentStatus: expenseData.paymentStatus || (expenseData.paidByCashier ? 'PAID' : 'UNPAID'),
-          rejectionReason: expenseData.rejectionReason || '',
-          recordedBy: expenseData.recordedBy || 'Muhasebe',
-          note: expenseData.note || '',
-          isOwnedProperty: !!expenseData.isOwnedProperty,
-          paidByCashier: expenseData.paidByCashier !== false,
-          recordedInLedger: !!expenseData.recordedInLedger,
-          sentToAdvisor: expenseData.sentToAdvisor !== false,
-          status: expenseData.status || (expenseData.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR'),
-        })
+      await axiosClient.post('/expenses', {
+        title: expenseData.title,
+        category: expenseData.category,
+        subType: expenseData.subType,
+        amount: expenseData.amount,
+        period: expenseData.period || '2026-10',
+        expenseDate: expenseData.expenseDate || new Date().toISOString().split('T')[0],
+        dueDate: expenseData.dueDate || expenseData.expenseDate || new Date().toISOString().split('T')[0],
+        invoiceNumber: expenseData.invoiceNumber || '',
+        counterparty: expenseData.counterparty || '',
+        paymentStatus: expenseData.paymentStatus || (expenseData.paidByCashier ? 'PAID' : 'UNPAID'),
+        rejectionReason: expenseData.rejectionReason || '',
+        recordedBy: expenseData.recordedBy || 'Muhasebe',
+        note: expenseData.note || '',
+        isOwnedProperty: !!expenseData.isOwnedProperty,
+        paidByCashier: expenseData.paidByCashier !== false,
+        recordedInLedger: !!expenseData.recordedInLedger,
+        sentToAdvisor: expenseData.sentToAdvisor !== false,
+        status: expenseData.status || (expenseData.recordedInLedger ? 'APPROVED_IN_LEDGER' : 'SENT_TO_ADVISOR'),
       })
-      if (res.ok) {
-        get().fetchExpenses()
-        return true
-      }
+      get().fetchExpenses()
+      return true
     } catch (_) { }
     // Offline fallback
     const temp = { ...expenseData, id: Date.now() }
@@ -1264,11 +1216,7 @@ export const useExpenseStore = create((set, get) => ({
 
     // 2. Backend API senkronizasyonu
     try {
-      await fetch(`http://localhost:8080/api/expenses/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      })
+      await axiosClient.put(`/expenses/${id}`, updates)
     } catch (_) { }
     get().fetchExpenses()
   },
@@ -1284,7 +1232,7 @@ export const useExpenseStore = create((set, get) => ({
       }
     })
     try {
-      await fetch(`http://localhost:8080/api/expenses/${id}`, { method: 'DELETE' })
+      await axiosClient.delete(`/expenses/${id}`)
     } catch (_) { }
     get().fetchExpenses()
   }
@@ -1363,9 +1311,8 @@ export const useNotificationStore = create((set, get) => ({
 
   fetchNotifications: async (role) => {
     try {
-      const url = role ? `http://localhost:8080/api/notifications?role=${role.toUpperCase()}` : 'http://localhost:8080/api/notifications'
-      const res = await fetch(url)
-      const json = await res.json()
+      const url = role ? `/notifications?role=${role.toUpperCase()}` : '/notifications'
+      const json = await axiosClient.get(url)
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         // Sunucudan gelen bildirimler ile yerel bildirimleri birleştir (id'ye göre tekil yap)
         const currentLocal = get().notifications
@@ -1406,11 +1353,7 @@ export const useNotificationStore = create((set, get) => ({
     })
 
     try {
-      await fetch('http://localhost:8080/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notifData)
-      })
+      await axiosClient.post('/notifications', notifData)
     } catch (_) { }
     get().fetchNotifications(notifData.targetRole)
   },
@@ -1425,7 +1368,7 @@ export const useNotificationStore = create((set, get) => ({
       }
     })
     try {
-      await fetch(`http://localhost:8080/api/notifications/${id}/read`, { method: 'PUT' })
+      await axiosClient.put(`/notifications/${id}/read`)
     } catch (_) { }
   },
 
@@ -1439,7 +1382,7 @@ export const useNotificationStore = create((set, get) => ({
       }
     })
     try {
-      await fetch(`http://localhost:8080/api/notifications/mark-all-read?role=${role || ''}`, { method: 'PUT' })
+      await axiosClient.put(`/notifications/mark-all-read?role=${role || ''}`)
     } catch (_) { }
   }
 }))

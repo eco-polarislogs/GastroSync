@@ -6,6 +6,7 @@ import com.gastrosync.service.RecipeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,12 +23,14 @@ public class RecipeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CHEF', 'ACCOUNTANT', 'FINANCIAL_ADVISOR')")
     @Operation(summary = "Tüm aktif reçeteleri listele")
     public ResponseEntity<ApiResponse<List<Recipe>>> getAll() {
         return ResponseEntity.ok(ApiResponse.ok("Reçeteler başarıyla listelendi", recipeService.getAllRecipes()));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CHEF', 'ACCOUNTANT', 'FINANCIAL_ADVISOR')")
     @Operation(summary = "ID ile reçete detayı getir")
     public ResponseEntity<ApiResponse<Recipe>> getById(@PathVariable("id") Long id) {
         return recipeService.getRecipeById(id)
@@ -36,6 +39,7 @@ public class RecipeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CHEF')")
     @Operation(summary = "Yeni reçete tanımla")
     public ResponseEntity<ApiResponse<Recipe>> create(@RequestBody Recipe recipe) {
         Recipe saved = recipeService.saveRecipe(recipe);
@@ -43,6 +47,7 @@ public class RecipeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CHEF')")
     @Operation(summary = "Mevcut reçeteyi güncelle")
     public ResponseEntity<ApiResponse<Recipe>> update(@PathVariable("id") Long id, @RequestBody Recipe updated) {
         return recipeService.getRecipeById(id).map(r -> {
@@ -60,6 +65,7 @@ public class RecipeController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CHEF')")
     @Operation(summary = "Reçeteyi sil")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
         recipeService.deleteRecipe(id);

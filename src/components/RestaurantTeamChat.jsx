@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { FiMessageSquare, FiSend, FiX, FiUsers, FiClock, FiAlertCircle, FiCheck, FiTag, FiSearch } from 'react-icons/fi'
 import { useAuthStore, useNotificationStore, ROLES } from '../store'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
+import { useChatMessages, useSendChatMessage } from '../hooks/useChatQuery'
 
 // Kanal tanımları – her kanalın hangi rollere açık olduğunu belirler
 const CHANNEL_DEFS = [
@@ -35,14 +36,6 @@ const CHANNEL_DEFS = [
   },
 ]
 
-const INITIAL_MESSAGES = [
-  { id: 1, channelId: 'kitchen', sender: 'Mehmet Şef', role: 'chef', text: 'Depoda pancar son 2 kg kaldı! Akşamki kış menüsü ve pancarlı meze servisi için acil 15 kg takviye gerekiyor.', time: '10:15', avatar: 'MŞ', priority: 'urgent' },
-  { id: 2, channelId: 'cashier', sender: 'Canan Kasa', role: 'accountant', text: 'Şefin pancar talebi üzerine toptancıya 1.500 TL nakit kasa çıkışı yapıldı ve fiilen ödendi. Onay masasına iletildi.', time: '10:45', avatar: 'CK', priority: 'normal' },
-  { id: 3, channelId: 'kitchen', sender: 'Ali Depocu', role: 'warehouse', text: 'Halden 15 kg taze pancar geldi, tartıp mal kabul terminalinden barkodla stoğa işledim şefim.', time: '11:30', avatar: 'AD', priority: 'normal' },
-  { id: 4, channelId: 'cashier', sender: 'SMMM Selim', role: 'financial_advisor', text: 'Pancar alım faturası ile elektrik faturası dekontunu inceledim ve resmi yevmiye defterine onayladım.', time: '12:00', avatar: 'SS', priority: 'normal' },
-  { id: 5, channelId: 'shift', sender: 'Zeynep Müdür', role: 'manager', text: 'Akşam 20:00 için 8 kişilik VIP rezervasyon var (Masa 4-5 birleştirilecek). Tatlı porsiyonları kontrol edilsin.', time: '09:00', avatar: 'ZM', priority: 'urgent' },
-]
-
 export default function RestaurantTeamChat() {
   const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
@@ -50,57 +43,13 @@ export default function RestaurantTeamChat() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [activeChannel, setActiveChannel] = useState('general')
-  const [messages, setMessages] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gastrosync_team_chat')
-      return saved ? JSON.parse(saved) : INITIAL_MESSAGES
-    } catch (_) {
-      return INITIAL_MESSAGES
-    }
-  })
   const [inputMsg, setInputMsg] = useState('')
   const [isUrgent, setIsUrgent] = useState(false)
   const [chatSearch, setChatSearch] = useState('')
 
-  // Backend'den mesajları çek ve senkronize et
-  const fetchBackendMessages = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/api/chat/messages')
-      if (res.ok) {
-        const json = await res.json()
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          setMessages(json.data)
-          localStorage.setItem('gastrosync_team_chat', JSON.stringify(json.data))
-        }
-      }
-    } catch (_) {}
-  }
-
-  // İlk açılışta ve periyodik (2.5 saniyede bir) canlı mesaj senkronizasyonu
-  useEffect(() => {
-    fetchBackendMessages()
-    const interval = setInterval(fetchBackendMessages, 2500)
-    return () => clearInterval(interval)
-  }, [])
-
-  // LocalStorage persist ve sekmeler arası anlık senkronizasyon
-  useEffect(() => {
-    try {
-      localStorage.setItem('gastrosync_team_chat', JSON.stringify(messages))
-    } catch (_) {}
-  }, [messages])
-
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'gastrosync_team_chat' && e.newValue) {
-        try {
-          setMessages(JSON.parse(e.newValue))
-        } catch (_) {}
-      }
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+  // ── TANSTACK QUERY: PostgreSQL Persisted Team Chat ─────────────
+  const { data: messages = [], isLoading: isChatLoading } = useChatMessages(activeChannel)
+  const sendMessageMutation = useSendChatMessage()
 
   // Kullanıcının rolüne göre erişebildiği kanalları filtrele
   const accessibleChannels = useMemo(() => {
@@ -119,7 +68,6 @@ export default function RestaurantTeamChat() {
     e.preventDefault()
     if (!inputMsg.trim()) return
 
-    const tempId = Date.now()
     const newMsg = {
       channelId: activeChannel,
       sender: user?.name || 'Personel',
@@ -130,39 +78,17 @@ export default function RestaurantTeamChat() {
       priority: isUrgent ? 'urgent' : 'normal'
     }
 
-    // Arayüzde anında görünmesi için optimistik güncelleme
-    setMessages(prev => [...prev, { ...newMsg, id: tempId }])
     setInputMsg('')
     setIsUrgent(false)
 
-    // Backend'e POST isteği gönder (Veritabanına yazar ve tüm cihazlara bildirim üretir)
-    try {
-      const res = await fetch('http://localhost:8080/api/chat/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMsg)
-      })
-      if (res.ok) {
-        const json = await res.json()
-        if (json.success && json.data) {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== tempId)
-            const updated = [...filtered, json.data]
-            localStorage.setItem('gastrosync_team_chat', JSON.stringify(updated))
-            return updated
-          })
+    // Send to PostgreSQL via Spring Boot ChatController
+    sendMessageMutation.mutate(newMsg, {
+      onSuccess: () => {
+        if (useNotificationStore?.getState()?.fetchNotifications) {
+          useNotificationStore.getState().fetchNotifications(user?.role)
         }
       }
-    } catch (err) {
-      console.warn('Backend sohbet iletim uyarısı:', err)
-    }
-
-    // Bildirimleri web tarafında anında yenile
-    try {
-      if (useNotificationStore?.getState()?.fetchNotifications) {
-        useNotificationStore.getState().fetchNotifications(user?.role)
-      }
-    } catch (_) {}
+    })
   }
 
   const currentChannelMessages = useMemo(() => {

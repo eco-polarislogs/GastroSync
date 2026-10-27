@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import axiosClient from '../api/axiosClient'
 import { useRecipeStore, useInventoryStore, useAuthStore, useNotificationStore } from '../store'
 import { FiPlus, FiEdit3, FiTrash2, FiChevronDown, FiChevronUp, FiSearch, FiFilter, FiAlertTriangle, FiX, FiCheck } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
@@ -145,9 +146,7 @@ export default function RecipesPage() {
 
     // Backend silme isteği
     try {
-      await fetch(`http://localhost:8080/api/recipes/${recipeToDelete.id}`, {
-        method: 'DELETE',
-      })
+      await axiosClient.delete(`/recipes/${recipeToDelete.id}`)
     } catch (_) { }
 
     deleteRecipe(recipeToDelete.id)

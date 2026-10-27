@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { useInventoryStore, useAuthStore, useExpenseStore, useNotificationStore, ROLES } from '../store'
-import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText, FiShoppingCart, FiPlus, FiCheck, FiX } from 'react-icons/fi'
+import { useAuthStore, useExpenseStore, useNotificationStore, ROLES } from '../store'
+import { useInventoryItems } from '../hooks/useInventoryQuery'
+import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText, FiShoppingCart, FiPlus, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
@@ -10,11 +11,8 @@ export default function InventoryPage() {
   const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
 
-  const { items, fetchItems } = useInventoryStore()
-  
-  React.useEffect(() => {
-    if (fetchItems) fetchItems()
-  }, [fetchItems])
+  // TanStack Query: Server State management with automatic caching & background refetch
+  const { data: items = [], isLoading, isError, error, refetch } = useInventoryItems()
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -205,6 +203,14 @@ export default function InventoryPage() {
           >
             <FiFileText className="export-tile-icon" /> {t.exportCsv}
           </button>
+          <button 
+            className="export-tile-btn" 
+            onClick={() => refetch()}
+            title="Veritabanından Yenile"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <FiRefreshCw className="export-tile-icon" /> Yenile
+          </button>
         </div>
       </div>
 
@@ -256,7 +262,28 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Loading & Error States */}
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #e2e8f0', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+          <p style={{ marginTop: '12px', fontSize: '14px', fontWeight: 600, color: '#64748b' }}>
+            Stok ve envanter verileri PostgreSQL veritabanından çekiliyor...
+          </p>
+        </div>
+      ) : isError ? (
+        <div style={{ textAlign: 'center', padding: '30px 20px', background: '#fef2f2', borderRadius: '16px', border: '1px solid #fecaca', color: '#b91c1c' }}>
+          <FiAlertCircle size={28} style={{ marginBottom: '8px' }} />
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700 }}>Veritabanı Senkronizasyon Hatası</h4>
+          <p style={{ margin: 0, fontSize: '13px' }}>{error?.message || 'Stok listesi sunucudan yüklenemedi.'}</p>
+          <button 
+            onClick={() => refetch()} 
+            style={{ marginTop: '12px', padding: '6px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '12.5px' }}
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      ) : (
+      /* Table */
       <div className="table-card">
         <div className="table-wrapper">
           <table className="data-table-main">
@@ -336,6 +363,7 @@ export default function InventoryPage() {
           </table>
         </div>
       </div>
+      )}
 
       {/* SİPARİŞ / SATIN ALMA TALEP MODALI */}
       {orderModalItem && (

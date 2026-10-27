@@ -14,9 +14,12 @@ public interface StockTransactionRepository extends JpaRepository<StockTransacti
     List<StockTransaction> findByType(String type);
     List<StockTransaction> findByTimestampBetween(LocalDateTime start, LocalDateTime end);
 
-    @Query("SELECT st FROM StockTransaction st ORDER BY st.timestamp DESC")
+    @Query("SELECT st FROM StockTransaction st JOIN FETCH st.item ORDER BY st.timestamp DESC")
     List<StockTransaction> findRecentTransactions();
 
-    @Query("SELECT st FROM StockTransaction st WHERE st.type = 'WASTE' ORDER BY st.timestamp DESC")
+    @Query("SELECT st FROM StockTransaction st JOIN FETCH st.item WHERE st.type = 'WASTE' ORDER BY st.timestamp DESC")
     List<StockTransaction> findAllWasteRecords();
+
+    @Query("SELECT COALESCE(SUM(st.totalAmount), 0) FROM StockTransaction st WHERE st.type = 'OUTBOUND_SALE'")
+    java.math.BigDecimal calculateTotalCogs();
 }

@@ -12,49 +12,68 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  const handleRoleNavigation = (role) => {
+    switch (role) {
+      case ROLES.ADMIN:
+      case ROLES.MANAGER:
+        navigate('/dashboard')
+        break
+      case ROLES.ACCOUNTANT:
+      case ROLES.FINANCIAL_ADVISOR:
+        navigate('/accounting')
+        break
+      case ROLES.CHEF:
+        navigate('/recipes')
+        break
+      case ROLES.WAREHOUSE:
+        navigate('/warehouse')
+        break
+      default:
+        navigate('/dashboard')
+    }
+  }
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     setError('')
     setLoading(true)
 
     // Simulate light network latency
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 400))
 
     const result = await login(username, password)
     setLoading(false)
 
     if (result.success) {
-      const role = result.user.role
-      switch (role) {
-        case ROLES.ADMIN:
-        case ROLES.MANAGER:
-          navigate('/dashboard')
-          break
-        case ROLES.ACCOUNTANT:
-        case ROLES.FINANCIAL_ADVISOR:
-          navigate('/accounting')
-          break
-        case ROLES.CHEF:
-          navigate('/recipes')
-          break
-        case ROLES.WAREHOUSE:
-          navigate('/warehouse')
-          break
-        default:
-          navigate('/dashboard')
-      }
+      handleRoleNavigation(result.user.role)
+    } else {
+      setError(result.message)
+    }
+  }
+
+  const handleQuickLogin = async (acc) => {
+    setUsername(acc.username)
+    setPassword(acc.realPass)
+    setError('')
+    setLoading(true)
+
+    const result = await login(acc.username, acc.realPass)
+    setLoading(false)
+
+    if (result.success) {
+      handleRoleNavigation(result.user.role)
     } else {
       setError(result.message)
     }
   }
 
   const demoAccounts = [
-    { username: 'admin', role: ROLES.ADMIN, realPass: 'admin123' },
-    { username: 'mudur', role: ROLES.MANAGER, realPass: 'mudur123' },
-    { username: 'muhasebe', role: ROLES.ACCOUNTANT, realPass: 'muhasebe123' },
-    { username: 'malimusavir', role: ROLES.FINANCIAL_ADVISOR, realPass: 'musavir123' },
-    { username: 'sef', role: ROLES.CHEF, realPass: 'sef123' },
-    { username: 'depocu', role: ROLES.WAREHOUSE, realPass: 'depo123' },
+    { username: 'admin', label: 'admin', role: ROLES.ADMIN, realPass: '123456' },
+    { username: 'manager', label: 'müdür', role: ROLES.MANAGER, realPass: '123456' },
+    { username: 'chef', label: 'şef', role: ROLES.CHEF, realPass: '123456' },
+    { username: 'warehouse', label: 'depocu', role: ROLES.WAREHOUSE, realPass: '123456' },
+    { username: 'muhasebe', label: 'muhasebe', role: ROLES.ACCOUNTANT, realPass: 'muhasebe123' },
+    { username: 'advisor', label: 'mali müşavir', role: ROLES.FINANCIAL_ADVISOR, realPass: '123456' },
   ]
 
   const featureBadges = [
@@ -235,21 +254,19 @@ export default function LoginPage() {
 
             {/* Quick Demo Accounts Selection */}
             <div className="tein-demo-section">
-              <span className="tein-demo-hint">Hızlı Demo Erişimi:</span>
+              <span className="tein-demo-hint">Hızlı Demo Erişimi (Tek Tıkla Giriş):</span>
               <div className="tein-demo-chips">
                 {demoAccounts.map((acc) => (
                   <button
                     key={acc.username}
                     type="button"
                     className="tein-demo-chip"
-                    onClick={() => {
-                      setUsername(acc.username)
-                      setPassword(acc.realPass)
-                      setError('')
-                    }}
+                    disabled={loading}
+                    onClick={() => handleQuickLogin(acc)}
+                    title={`${acc.label} olarak hızlı giriş yap`}
                   >
                     <span className="tein-chip-dot" style={{ backgroundColor: ROLE_COLORS[acc.role] }}></span>
-                    <span className="tein-chip-name">{acc.username}</span>
+                    <span className="tein-chip-name">{acc.label || acc.username}</span>
                   </button>
                 ))}
               </div>

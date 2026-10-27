@@ -77,6 +77,14 @@ function WarehouseRouteWrapper() {
 }
 
 export default function App() {
+  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
+
+  React.useEffect(() => {
+    const isRtl = currentLanguage === 'ar'
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr'
+    document.documentElement.lang = currentLanguage
+  }, [currentLanguage])
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

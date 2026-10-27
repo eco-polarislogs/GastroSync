@@ -1,7 +1,9 @@
 package com.gastrosync.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(
@@ -9,10 +11,13 @@ import java.time.LocalDateTime;
     indexes = {
         @Index(name = "idx_users_username", columnList = "username", unique = true),
         @Index(name = "idx_users_email", columnList = "email"),
-        @Index(name = "idx_users_role", columnList = "role")
+        @Index(name = "idx_users_role", columnList = "role"),
+        @Index(name = "idx_users_is_deleted", columnList = "is_deleted")
     }
 )
-public class AppUser {
+@SQLDelete(sql = "UPDATE users SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+public class AppUser extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,26 +36,6 @@ public class AppUser {
     private String role; // ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, FINANCIAL_ADVISOR
 
     private String email;
-
-    // Enterprise Audit Fields
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-        if (this.updatedAt == null) {
-            this.updatedAt = LocalDateTime.now();
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public AppUser() {}
 
@@ -79,10 +64,4 @@ public class AppUser {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <mapstruct.version>1.6.2</mapstruct.version>
     </properties>
 
     <dependencies>
@@ -53,10 +55,103 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.6.0</version>
         </dependency>
+
+        <!-- ==================== SECURITY LAYER ==================== -->
+
+        <!--
+            WHY spring-boot-starter-security?
+            ─────────────────────────────────
+            This single starter brings in:
+            • SecurityFilterChain — the core servlet filter that intercepts every HTTP request
+            • BCryptPasswordEncoder — industry-standard adaptive hashing (cost factor 10 by default)
+            • UserDetailsService — the SPI Spring uses to load user credentials from any data source
+            • @PreAuthorize / @Secured — method-level RBAC annotations
+            Without this, the application has ZERO authentication — any HTTP client can call any endpoint.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
+            WHY JJWT (3 modules: api + impl + jackson)?
+            ────────────────────────────────────────────
+            JJWT follows the Service Provider Interface (SPI) pattern:
+            • jjwt-api    — compile-time interfaces (Jwts.builder(), Jwts.parser())
+            • jjwt-impl   — runtime implementation (actual signing/verification logic)
+            • jjwt-jackson — JSON serialization adapter (converts claims to/from JSON)
+            
+            We use JJWT over alternatives (e.g., java-jwt by Auth0) because:
+            1. It's the most widely adopted Java JWT library (10K+ GitHub stars)
+            2. It supports HMAC-SHA256/384/512, RSA, and ECDSA algorithms
+            3. It provides type-safe builder pattern (compile-time safety)
+            4. The SPI separation prevents accidental coupling to implementation details
+
+            THESIS NOTE: JWT enables STATELESS authentication — the server never stores
+            session state. Each request carries its own proof of identity in the
+            Authorization header. This is essential for horizontal scalability (multiple
+            server instances) and RESTful architecture purity.
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Starter Test (JUnit 5, Mockito, Spring Test Context) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Security Test -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Maven Compiler Plugin with MapStruct Processor -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

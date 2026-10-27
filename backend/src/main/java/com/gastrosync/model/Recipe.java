@@ -1,11 +1,15 @@
 package com.gastrosync.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "recipes")
-public class Recipe {
+@SQLDelete(sql = "UPDATE recipes SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+public class Recipe extends BaseAuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

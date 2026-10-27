@@ -1,75 +1,65 @@
-# 🍽️ GastroSync — Restoran İşletim, Kasa/Muhasebe & Maliyet Zekası Sistemi (OS)
+# 🍽️ GastroSync ERP — Kurumsal Restoran İşletim, Kasa/Muhasebe & Maliyet Zekası Sistemi (OS)
 
-[![React](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![React Native](https://img.shields.io/badge/Mobile-React%20Native%20%2F%20Expo-61DAFB?logo=react&logoColor=black)](https://reactnative.dev/)
+[![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite%206-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![React Native](https://img.shields.io/badge/Mobile-React%20Native%20%2F%20Expo%2052-61DAFB?logo=react&logoColor=black)](https://reactnative.dev/)
 [![Spring Boot](https://img.shields.io/badge/Backend-Spring%20Boot%203.3.4-6DB33F?logo=springboot&logoColor=white)](https://spring.io/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2015+-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Design](https://img.shields.io/badge/Design-Keyvo%20Mint%20%26%20Emerald-047857)](https://gastrosync.local)
+[![Java](https://img.shields.io/badge/Java-21%20LTS-ED8B00?logo=openjdk&logoColor=white)](https://adoptium.net/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/DevOps-Docker%20%26%20Nginx%20Alpine-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Security](https://img.shields.io/badge/Security-Spring%20Security%206%20%2B%20JWT-red?logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
+[![Tests](https://img.shields.io/badge/Tests-16%2F16%20Passing%20(100%25)-brightgreen)](https://github.com)
 [![i18n](https://img.shields.io/badge/i18n-TR%20%7C%20EN%20%7C%20DE%20%7C%20AR-blue)](https://gastrosync.local)
 
-**GastroSync**, modern restoranlar, gastronomi işletmeleri ve çok şubeli gıda operasyonları için geliştirilmiş uçtan uca **İşletim, Kasa-Muhasebe, Mali Müşavir Onay ve Maliyet Zekası (Food Cost Intelligence) Ekosistemidir**. 
+**GastroSync ERP**, modern restoran zincirleri, çok şubeli yeme-içme operasyonları ve gastronomi işletmeleri için geliştirilmiş uçtan uca **İşletim, Kasa-Muhasebe, Mali Müşavir (SMMM) Onay Defteri, Dinamik Reçete Maliyeti (COGS) ve Tedarik Zinciri Yönetim Ekosistemidir**.
 
-Reçete standardizasyonu, gerçek zamanlı hammadde gramaj takibi, optik kamera tabanlı barkodlu mal kabul, zayiat/fire analitiği, dinamik rol bazlı yetkilendirme (RBAC), restoran içi departman telsizi (Team Chat), kasa/nakit akışı yönetimi, resmi Mali Müşavir (SMMM) onay defteri ve hem Web hem de yerel **React Native (Android & iOS)** mobil arayüzlerini tek bir senkronize çatı altında birleştirir.
+Sistem; uluslararası ticari standartlarda (Toast POS, Oracle MICROS Simphony ve SambaPOS) çalışacak şekilde; **React 18 Web**, **React Native (iOS/Android) Mobil**, **Java 21 / Spring Boot 3.3.4** kurumsal arka yüzü ve **PostgreSQL 16** ilişkisel veritabanı ile tam senkronize tek bir mimaride birleştirilmiştir.
 
 ---
 
 ## 📌 İçindekiler
-1. [Öne Çıkan Özellikler](#-öne-çıkan-özellikler)
+1. [Öne Çıkan Kurumsal Özellikler](#-öne-çıkan-kurumsal-özellikler)
 2. [Ekranlar ve Rol Yetki Matrisi (RBAC)](#-ekranlar-ve-rol-yetki-matrisi-rbac)
-3. [GastroSync Kasa & Mali Müşavir (SMMM) Modülü](#-gastrosync-kasa--mali-müşavir-smmm-modülü)
-4. [Sistem Mimarisi](#-sistem-mimarisi)
-5. [Mobil Uygulama Mimarisi (React Native)](#-mobil-uygulama-mimarisi-react-native)
-6. [Çoklu Dil Desteği (i18n)](#-çoklu-dil-desteği-i18n)
-7. [Teknoloji Yığını & GitHub Dil Dağılımı](#-teknoloji-yığını--github-dil-dağılımı)
-8. [Hızlı Başlangıç & All-in-One Çalıştırma](#-hızlı-başlangıç--all-in-one-çalıştırma)
-9. [Manuel Kurulum Rehberi](#-manuel-kurulum-rehberi)
-10. [Varsayılan Demo Hesapları](#-varsayılan-demo-hesapları)
-11. [Yakında Gelecek Özellikler (Roadmap)](#-yakında-gelecek-özellikler-roadmap)
+3. [Dinamik COGS & Reçeteden Otomatik Stok Düşüm Motoru](#-dinamik-cogs--reçeteden-otomatik-stok-düşüm-motoru)
+4. [3 Aşamalı Mali Müşavir (SMMM) Defter Durum Makinesi](#-3-aşamalı-mali-müşavir-smmm-defter-durum-makinesi)
+5. [Eşzamanlılık & ACID Veritabanı Bütünlüğü](#-eşzamanlılık--acid-veritabanı-bütünlüğü)
+6. [Sistem Mimarisi & Konteynerleştirme (Docker & Nginx)](#-sistem-mimarisi--konteynerleştirme-docker--nginx)
+7. [Mobil Uygulama Mimarisi (React Native & Expo)](#-mobil-uygulama-mimarisi-react-native--expo)
+8. [Uçtan Uca Doğrulama & Otomasyon Test Paketi (E2E)](#-uçtan-uca-doğrulama--otomasyon-test-paketi-e2e)
+9. [Çoklu Dil Desteği (i18n)](#-çoklu-dil-desteği-i18n)
+10. [Hızlı Başlangıç & Kurulum Rehberi](#-hızlı-başlangıç--kurulum-rehberi)
+11. [Varsayılan Demo Hesapları](#-varsayılan-demo-hesapları)
 12. [Lisans](#-lisans)
 
 ---
 
-## ✨ Öne Çıkan Özellikler
+## ✨ Öne Çıkan Kurumsal Özellikler
 
-### 1. 🎯 Akıllı Food Cost & Kârlılık Zekası
-- Menüdeki tüm reçetelerin porsiyon maliyeti hammadde gramajı ve güncel toptancı birim fiyatları üzerinden otomatik hesaplanır.
-- Hedeflenen ve gerçekleşen **Food Cost %** oranı renkli canlı göstergelerle (`%25 altı yeşil • Yüksek Kârlı`, `%25-%35 arası sarı • Dengeli`, `%35 üstü kırmızı • Kritik Maliyet`) anlık izlenir.
-- Günlük Kasa Cirosu, Gerçekleşen Gıda Maliyeti, Faaliyet Kârı ve Zayiat Kayıpları şeffaf panellerde özetlenir.
+### 1. 🎯 Dinamik Gerçek Zamanlı COGS (Satılan Malın Maliyeti) Motoru
+- Sabit yüzdelik veya tahmini yapay çarpanlar **tamamen kaldırılmıştır**.
+- Kasa POS üzerinden satılan her menü kalemi (`SalesRecord`), arka yüzde reçetesindeki hammadde gramajlarını (`RecipeIngredient` / `ingredientsJson`) çözer ve PostgreSQL üzerinde anlık olarak stoktan düşer.
+- Gerçekleşen hammadde maliyeti, `stock_transactions` tablosundaki `OUTBOUND_SALE` kayıtlarının toptancı birim fiyatları üzerinden toplanarak kuruşu kuruşuna dinamik hesaplanır.
 
-### 2. 💰 Kasa & Muhasebe (Nakit Akışı & Borç Takibi)
-- Restoranın günlük nakit, kredi kartı ve POS adisyon tahsilatları ile kasadan yapılan harcamalar tek ekranda takip edilir.
-- **Sabit Giderler** (Kira, Personel Maaşı, Müşavir Aidatı) ve **Değişken Giderler** (Elektrik, Su, Doğalgaz, Sarf, SGK/Vergi) kategorize edilir.
-- Kasadan fiilen ödenen giderler toptancı borçlarından anında düşülür, bekleyen vadeli borçlar alarm rozetleriyle listelenir.
+### 2. 🛡️ Güçlendirilmiş Spring Security 6 & JWT Mimarisi
+- **Metot Düzeyinde RBAC:** `@PreAuthorize("hasAnyRole(...)")` anotasyonları ile hassas finansal veriler, satış özetleri ve kullanıcı yönetimi denetlenir.
+- **IDOR (Yetkisiz Nesne Erişimi) Koruması:** Kullanıcıların istek parametrelerini değiştirerek diğer rollere ait bildirimleri çekmesi engellenmiş; bildirim servisi kullanıcının doğrulanmış JWT rolüne kilitlenmiştir.
+- **Kriptografik Denetim İzi (Audit Identity):** Stok giriş-çıkış hareketlerinde operatör kimliği (`recordedBy`), istemciden gelen güvensiz parametrelerden değil, doğrudan Spring `SecurityContextHolder` üzerinden doğrulanmış kullanıcı oturumundan çekilir.
+- **Otomatik 401 Eviction:** Web ve Mobilde süresi dolmuş veya geçersiz tokenlar anında tespit edilir, yerel depolama temizlenir ve kullanıcı güvenle `/login?expired=true` ekranına yönlendirilir.
 
-### 3. 📖 Mali Müşavir (SMMM) Resmi Yevmiye Defteri
-- Muhasebenin ve kasanın girdiği tüm faturalı/fişli giderler Mali Müşavir kontrol paneline düşer.
-- Mali Müşavir giderleri tek tıkla **Resmi Deftere Onaylar** veya eksik evrak durumunda **Gerekçeli Ret** bildirimi gönderir.
-- Muhasebe yazılımları için **Luca & Zirve Entegre Mahsup Fişi (.XML / .XLS)** ve **Gün Sonu Z-Raporu Mutabakatı** altyapısı mevcuttur.
+### 3. 📖 3 Aşamalı Mali Müşavir (SMMM) Defter Durum Makinesi
+- Faturalar ve işletme giderleri katı bir durum akışına (`PENDING_APPROVAL -> APPROVED -> FINALIZED`) tabidir.
+- **Tahrifat Koruması (Tamper-Proof Ledger):** Mali Müşavir tarafından resmi deftere onaylanmış (`FINALIZED`) bir gider kaydının silinmesi (`DELETE`) veya güncellenmesi (`UPDATE`) sistem seviyesinde `IllegalStateException` fırlatılarak engellenir.
 
-### 4. 🧭 Finansal Rubrik Soruları & Kasa Teşhisi
-- İşletme sahipleri ve yöneticiler için sık sorulan 4 kritik soruya otomatik yanıt veren canlı karne:
-  1. *Bugün ne satıldı ve ne kadar gelir sağlandı?*
-  2. *Gerçek net kâr ve hammadde maliyeti nedir?*
-  3. *Kasada bekleyen borçlar ve vadeli harcamalar ne durumda?*
-  4. *Mali Müşavir denetiminde reddedilen veya bekleyen var mı?*
+### 4. ⚡ Eşzamanlılık & ACID Uyumu (Concurrency & Row Locking)
+- Depo görevlisinin Mobil Uygulamadan mal kabulü (+50 kg un) yaptığı esnada, Kasa/Müdürün Web Dashboard üzerinden manuel sayım düzeltmesi (+30 kg un) yapması durumunda PostgreSQL satır düzeyinde kilit (`Pessimistic / Row-Level Lock`) ile işlemleri sıralar.
+- Sıfır kayıp güncelleme (Zero Lost Updates), sıfır kirli okuma (Zero Dirty Reads) garantisi verilir.
 
-### 5. 📻 Restoran İçi Departman Telsizi & Ekip Sohbeti (Team Chat)
-- Salon, Mutfak, Kasa ve Yönetim arasında anlık haberleşme kanalları (`#genel`, `#mutfak`, `#kasa`, `#yonetim`).
-- Acil durum anonsları (Örn: `🚨 Acil Stok / Malzeme Uyarısı`), kasa ödemesi bildirimi ve vardiya notları.
+### 5. 🐳 Sıfır-CORS Nginx Ters Proxy & Docker Orkestrasyonu
+- `docker-compose.yml` ile PostgreSQL 16 Alpine, Spring Boot 3.3.4 (Java 21 Alpine) ve React 18 Nginx Alpine servisleri tek komutla ayağa kaldırılır.
+- Nginx `/api/*` isteklerini arka yüz konteynerine aktararak canlı dağıtımlarda CORS hatalarını tamamen ortadan kaldırır.
 
-### 6. 📦 Barkodlu Mal Kabul & Zayiat Terminali (Web & Mobil)
-- Cihaz kamerası (iOS & Android Expo Camera) ve Web vizörü ile temassız optik EAN-13 / Code 128 barkod tarama.
-- Barkodsuz ürünler için klavyeden hızlı arama.
-- Mal kabul ile anında stok artışı; bozulma, kırık veya SKT geçmesi durumunda gerekçeli **Zayiat / Fire Kaydı**.
-
-### 7. 👥 Dinamik Kullanıcı Yönetimi & Güçlü Yetkilendirme (RBAC)
-- 6 farklı sektör rolü (**Yönetici, Müdür, Kasa/Muhasebe, Mali Müşavir, Mutfak Şefi, Depo Sorumlusu**).
-- Süper Yönetici tarafından tek tıkla şifre belirleme, rol değiştirme ve görevden alma; PostgreSQL ile kalıcı yetki senkronizasyonu.
-- Yetkisiz sayfalara girişlerde özel **403 Güvenlik İhlal Paneli** ve otomatik yöneticiye ihlal bildirimi.
-
-### 8. 🌍 Uluslararası 4 Dilli Altyapı (i18n)
-- **Türkçe (TR)**, **İngilizce (EN)**, **Almanca (DE)** ve **Arapça (AR)** desteği.
-- Kategoriler, roller, filtreler, modal pencereler ve finansal metrikler dahil %100 eksiksiz sözlük mimarisi.
+### 6. 📻 Restoran İçi Departman Telsizi & Ekip Sohbeti (Team Chat)
+- Salon, Mutfak, Kasa, Yönetim ve Depo arasında anlık kanallar (`#genel`, `#mutfak`, `#kasa`, `#yonetim`, `#depo`).
+- Kritik stok tükenmesi veya acil tedarik siparişi açıldığında ilgili departmanlara anında sesli/görsel telsiz anonsu düşer.
 
 ---
 
@@ -78,75 +68,130 @@ Reçete standardizasyonu, gerçek zamanlı hammadde gramaj takibi, optik kamera 
 | Rol Adı | Kod | Varsayılan Sayfa | Erişebildiği Modüller & Arayüzler |
 | :--- | :--- | :--- | :--- |
 | **Sistem Yöneticisi (Super Admin)** | `ADMIN` | `/dashboard` | Tüm Ekranlar (Yönetim Paneli, Kasa, Müşavir Defteri, Stok, Reçeteler, Satış, Depo, Kullanıcılar, Telsiz) |
-| **İşletme Yöneticisi (Müdür)** | `MANAGER` | `/dashboard` | Finansal Dashboard, Kasa Takibi, Stok, Reçeteler, Satış Analizi, Departman Telsizi |
-| **Muhasebeci (Kasa)** | `ACCOUNTANT` | `/accounting` | Kasa & Nakit Akışı, Gider Ekleme, Toptancı Borç Ödeme, Z Raporu, Günlük Ciro |
-| **Mali Müşavir (SMMM)** | `FINANCIAL_ADVISOR` | `/advisor-ledger` | Resmi Defter Onayı, Gerekçeli Ret, TDHP Hesap Planı, Luca/Zirve Aktarımı |
-| **Mutfak Şefi (Chef)** | `CHEF` | `/recipes` | Reçete Merkezi, Gramaj & Porsiyon Maliyeti, Depo Stok İzleme, Mutfak Telsizi |
-| **Depo Sorumlusu** | `WAREHOUSE` | `/warehouse` | Barkodlu Mal Kabul Terminali, Zayiat/Fire Girişi, Manuel Arama, Depo Telsizi |
+| **İşletme Yöneticisi (Müdür)** | `MANAGER` | `/dashboard` | Finansal Dashboard, Kasa Takibi, Stok, Reçeteler, Satış Analizi, Gider Onay/Ödeme, Departman Telsizi |
+| **Muhasebeci (Kasa)** | `ACCOUNTANT` | `/cashier` | Kasa & Nakit Akışı, POS Satış, Gider Faturası Girişi, Toptancı Borç Ödeme, Z Raporu, Günlük Ciro |
+| **Mali Müşavir (SMMM)** | `FINANCIAL_ADVISOR` | `/advisor-ledger` | Resmi Defter Onayı (Finalize), Gerekçeli Ret, TDHP Hesap Planı, Luca/Zirve Mahsup Fişi, KDV Beyannamesi |
+| **Mutfak Şefi (Chef)** | `CHEF` | `/recipes` | Reçete Merkezi, Gramaj & Porsiyon Maliyeti, Depo Stok İzleme, Acil Tedarik Siparişi Açma, Mutfak Telsizi |
+| **Depo Sorumlusu** | `WAREHOUSE` | `/warehouse` | Barkodlu Mal Kabul Terminali, Zayiat/Fire Girişi, Manuel Stok Arama, Sayım Düzeltme, Depo Telsizi |
 
 ---
 
-## 💼 GastroSync Kasa & Mali Müşavir (SMMM) Modülü
+## 🔄 Dinamik COGS & Reçeteden Otomatik Stok Düşüm Motoru
 
-Web ve Mobilde tam senkronize çalışan muhasebe modülü, geleneksel POS yazılımlarının aksine doğrudan maliyet ve yevmiye süreçlerine odaklanır:
+GastroSync, ticari restorancılığın en kritik operasyonel zincirini hatasız işletir:
 
 ```
-[POS & Adisyon Satışı] ──► [Kasa Geliri (Ciro)]
-                                │
-[Depo Mal Kabul Faturası] ──────┼──► [Kasa Ödemesi / Borç Takibi]
-                                │               │
-                                ▼               ▼
-                      [Net Faaliyet Kârı]   [Mali Müşavir İnceleme]
-                                                ├──► [✓ Resmi Deftere Onay]
-                                                └──► [❌ Gerekçeli Ret & Revize]
-```
-
-- **Mali Müşavir Onay Süreci:** Kasadan ödenen toptancı veya operasyon gideri *"Müşavir Defterine İlet"* butonuyla SMMM paneline aktarılır. Müşavir evrakları inceler, tek tıkla onaylar veya gerekçe belirterek reddeder.
-- **Canlı Finansal Bilanço:** `Toplam Ciro - (Hammadde Maliyeti + Sabit Giderler + Değişken Giderler) = Net İşletme Faaliyet Kârı`.
-- **Dışa Aktarma:** Muhasebe tabloları tek tıkla **Excel (.xlsx)** ve **CSV** formatında indirilebilir.
-
----
-
-## 🏛️ Sistem Mimarisi
-
-```mermaid
-graph TD
-    subgraph Clients [İstemci Katmanı]
-        Web[React 19 + Vite Web App :3000]
-        MobileAndroid[Android Native App :8081]
-        MobileIOS[iOS Native App :8081]
-    end
-
-    subgraph Backend [Arka Yüz Katmanı]
-        API[Spring Boot 3.3.4 REST API :8080]
-        Security[CORS & RBAC Güvenlik Katmanı]
-        Swagger[OpenAPI 3 / Swagger UI]
-    end
-
-    subgraph Database [Veri Katmanı]
-        PG[(PostgreSQL 15+ :5432)]
-    end
-
-    Web <-->|REST API / JSON| API
-    MobileAndroid <-->|REST API / Dynamic LAN & Tunnel| API
-    MobileIOS <-->|REST API / Dynamic LAN & Tunnel| API
-    API <--> Security
-    API <--> Swagger
-    API <-->|Spring Data JPA & Hibernate| PG
+ [1. Depo Mal Kabul] ────────► [2. Reçete Standartlaştırma]
+        │                                     │
+   Mobil Barkod Okuma                  BOM Gramaj Tanımı
+   +50.00 kg Dana Antrikot             0.250 kg / Porsiyon
+        │                                     │
+        ▼                                     ▼
+ [4. Dinamik COGS Analizi]  ◄───────── [3. POS Satış Kaydı]
+   Gerçek Toptancı Fiyatı                4 Porsiyon Satış
+   (Örn: 1.00 kg * 450 TL = 450 TL)      Stoktan Anında 1.00 kg Düşüm
+   PostgreSQL Ledger Kaydı               Kalan Stok: 49.00 kg
 ```
 
 ---
 
-## 📱 Mobil Uygulama Mimarisi (React Native)
+## 🏛️ 3 Aşamalı Mali Müşavir (SMMM) Defter Durum Makinesi
 
-GastroSync mobil uygulaması **React Native & Expo** üzerinde native mobil bileşenlerle geliştirilmiştir. Web arayüzünün basit bir WebView sarmalayıcısı değil, **tamamen yerel (native) performanslı** bir mobil istemcidir:
+Finansal disiplin ve vergi mevzuatına uyum için gider kayıtları 3 katmanlı durum makinesiyle korunur:
 
-- **Platform Odaklı İkiz Mimari:**
-  - **Android (`mobile/src/android/AndroidApp.js`):** Material Design kartları, dinamik alt güvenli alan (`insets.bottom`), kaydırmalı sekmeler ve yerel Android geri tuşu optimizasyonu.
-  - **iOS (`mobile/src/ios/IOSApp.js`):** Cupertino estetiği, cam efektli başlıklar ve dinamik ada/çentik (`insets.top`) uyumu.
-- **Kamera Barkod Okuyucu (`mobile/src/components/CameraScanner.js`):** Telefon kamerasını doğrudan kullanarak depoda barkod okuma imkanı sunar.
-- **Dahili Geri Navigasyonu (`← Geri`):** Donanımsal tuşlara bağımlılığı kaldıran, yığın (stack) tabanlı yerel geri tuşu mekanizması.
-- **Metin Taşma & Dar Ekran Koruması:** Türkçe ve diğer dillerde başlıkların kutulardan taşmasını engelleyen `adjustsFontSizeToFit` ve `numberOfLines={1}` optimizasyonları.
+```
+ [Gider Talebi Oluşturma]
+        │
+        ▼
+   PENDING_APPROVAL ──(Kasa / Müdür Onayı)──► APPROVED & PAID
+                                                    │
+                                                    ▼ (Mali Müşavir İncelemesi)
+                                       ┌────────────┴────────────┐
+                                       │                         │
+                                    FINALIZED                 REJECTED
+                            (Resmi Deftere İşlendi)     (Gerekçeli Düzeltme)
+                               [KİLİTLİ: Silinemez]
+```
+
+---
+
+## 🐳 Sistem Mimarisi & Konteynerleştirme (Docker & Nginx)
+
+Sistem hem yerel ortamda hem de AWS/DigitalOcean VPS üzerinde üretim standardında konteyner mimarisi sunar:
+
+```
+                     ┌───────────────────────────────────────────────┐
+                     │            NGINX ALPINE REVERSE PROXY         │
+                     │          (Port 80: HTTP / SSL Termination)    │
+                     └───────┬───────────────────────────────┬───────┘
+                             │                               │
+                      Statik SPA Dosyaları               /api/* Ters Proxy
+                      (React 18 / Vite 6)           (Zero CORS / Upgrade headers)
+                             │                               │
+                             ▼                               ▼
+                     ┌───────────────┐               ┌───────────────┐
+                     │ gastrosync-   │               │ gastrosync-   │
+                     │ frontend      │               │ backend       │
+                     │ (Dist static) │               │ (Java 21 JRE) │
+                     └───────────────┘               └───────┬───────┘
+                                                             │
+                                                     JDBC Bağlantı Havuzu
+                                                     (HikariCP / Port 5432)
+                                                             │
+                                                             ▼
+                                                     ┌───────────────┐
+                                                     │ gastrosync-db │
+                                                     │ (Postgres 16) │
+                                                     │ Volume: pgdata│
+                                                     └───────────────┘
+```
+
+---
+
+## 📱 Mobil Uygulama Mimarisi (React Native & Expo)
+
+GastroSync mobil uygulaması **React Native & Expo SDK 52** üzerinde yerel bileşenlerle inşa edilmiştir:
+
+- **Dinamik Ağ & Host Çözümleme (`mobileAxiosClient.js`):** Yerel ağdaki (LAN) geliştirme bilgisayarının IP adresini Expo üzerinden dinamik tespit eder; kod içine gömülü statik localhost bağımlılıklarını sıfırlar.
+- **Kamera Barkod Okuyucu (`CameraScanner.js`):** Cihaz kamerasını doğrudan kullanarak EAN-13, Code 128 ve QR kodları milisaniyeler içinde çözer.
+- **TanStack Query v5 Senkronizasyonu:** Depoda yapılan mal kabul veya sayım işlemleri, web üzerindeki yönetici paneline anında yansır (`queryClient.invalidateQueries`).
+- **Platform Odaklı Tasarım:** Android için Material Design sekmeleri; iOS için Cupertino dinamik ada/çentik (`Safe Area`) uyumu.
+
+---
+
+## 🧪 Uçtan Uca Doğrulama & Otomasyon Test Paketi (E2E)
+
+Sistemin üretim öncesi kararlılığı, [`GastroSyncProductionE2ETests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncProductionE2ETests.java) ve [`GastroSyncApplicationTests.java`](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/backend/src/test/java/com/gastrosync/GastroSyncApplicationTests.java) sınıflarında yer alan **16 adet kapsamlı entegrasyon testi** ile doğrulanmıştır.
+
+```bash
+cd backend
+./maven/apache-maven-3.9.9/bin/mvn test
+```
+
+### Test Sonucu
+```
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.gastrosync.GastroSyncApplicationTests
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Running com.gastrosync.GastroSyncProductionE2ETests
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] Results:
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+```
+
+### Doğrulanan Kritik Test Senaryoları
+1. **RBAC Metot Koruması:** `CHEF` ve `WAREHOUSE` rollerinin `/api/sales/summary` uç noktasına erişimi katı biçimde `HTTP 403 Forbidden` ile engellenir; `MANAGER` erişebilir (`HTTP 200`).
+2. **IDOR Zafiyet Koruması:** Mutfak şefinin `?role=FINANCIAL_ADVISOR` parametresiyle mali müşavir bildirimlerini dinlemesi engellenmiştir.
+3. **Audit Identity Doğrulaması:** Stok hareketlerindeki `recordedBy` operatör alanı, kullanıcının gönderdiği JSON gövdesinden bağımsız olarak Spring JWT oturumundan güvenle alınır.
+4. **Eşzamanlılık & ACID Testi:** Eşzamanlı iki paralel thread üzerinden yapılan mal kabul (+50 kg) ve düzeltme (+30 kg) işlemleri PostgreSQL satır kilidiyle sıralanır; bakiye tam 180 kg olarak kaydedilir.
+5. **Reçeteden Otomatik Stok Düşümü:** POS satışı sonrası reçeteli ürünlerin hammaddeleri gramaj bazında eksiltilir.
+6. **Mali Durum Makinesi & Tahrifat Koruması:** Resmi deftere işlenmiş (`FINALIZED`) kayıtların silinmesi veya değiştirilmesi `IllegalStateException` ile reddedilir.
 
 ---
 
@@ -161,90 +206,63 @@ Sistem `src/utils/translations.js` (Web) ve `mobile/src/data/translations.js` (M
 | **Almanca** | `de` | Avrupa gastronomi standartları ve GuV muhasebe terimleri |
 | **Arapça** | `ar` | Körfez ve Orta Doğu restoran zincirleri için RTL uyumlu çeviriler |
 
-Kullanıcı arayüzün sağ üst köşesindeki dil seçiciye dokunduğunda tüm menüler, butonlar, placeholder'lar ve finansal tablolar sayfa yenilenmeden anında değişir.
+---
+
+## 🚀 Hızlı Başlangıç & Kurulum Rehberi
+
+### Yöntem A: Docker Compose ile Tek Komutla Çalıştırma (Önerilen)
+Sistemde Docker kurulu ise kök dizinden tek komutla tüm mimariyi ayağa kaldırabilirsiniz:
+```bash
+docker-compose up -d --build
+```
+> - **Web Uygulaması:** `http://localhost` (Port 80)  
+> - **Backend API & Swagger:** `http://localhost:8080/swagger-ui/index.html`  
+> - **PostgreSQL Veritabanı:** `localhost:5432`  
 
 ---
 
-## 💻 Teknoloji Yığını & GitHub Dil Dağılımı
-
-### Teknoloji Bileşenleri
-- **Frontend Web:** React 19, Vite, Zustand, React Router DOM v7, React Icons, Canvas Confetti, SheetJS (XLSX), React Hot Toast.
-- **Mobil:** React Native, Expo SDK 52, Expo Camera, React Native Safe Area Context.
-- **Backend:** Java 21, Spring Boot 3.3.4, Spring Data JPA, Hibernate, Tomcat Embedded, Springdoc OpenAPI 2.6 (Swagger UI).
-- **Veritabanı:** PostgreSQL 15+ (Hibernate DDL Auto & Data Seeder).
-- **Tasarım:** Keyvo Mint & Emerald Custom Vanilla CSS Design System (Sıfır ağır CSS framework bağımlılığı).
-
-### 🏷️ GitHub Dil Dağılımı Notu (.gitattributes)
-> Repo içerisinde hem **React Native** (mobil), hem **React Web**, hem de **Java Spring Boot** backend bulunmaktadır. GitHub Linguist istatistiklerinde projenin yalnızca yalın JavaScript olarak görünmemesi; kök dizindeki yardımcı scriptlerin (`seed-recipes.js`, `compile_backend.ps1` vb.) hariç tutulması ve mobil projenin React Native kimliğinin doğru algılanması için `.gitattributes` yapılandırması projeye eklenmiştir.
-
----
-
-## 🚀 Hızlı Başlangıç & All-in-One Çalıştırma
-
-Projeyi klonlayan bir geliştiricinin saniyeler içinde tüm ekosistemi (Backend, Web, Mobil) canlı başlatabilmesi için tek tıkla çalıştırıcılar hazırlanmıştır:
-
-### 🟢 Windows (Tek Tıkla Başlatma):
-Klasör içerisindeki **`start-all.bat`** dosyasına çift tıklayın veya CMD/PowerShell üzerinden çalıştırın:
+### Yöntem B: Windows Tek Tıkla Başlatıcı
+Kök dizindeki **`start-all.bat`** dosyasını çalıştırarak Backend (`:8080`), Web (`:3000`) ve Mobil Expo (`:8081`) sunucularını aynı anda başlatabilirsiniz:
 ```cmd
 start-all.bat
 ```
-Bu betik sırasıyla:
-1. `backend` dizininde gömülü Maven ile Spring Boot API sunucusunu (`:8080`) ayağa kaldırır.
-2. `GastroSync` React Web arayüzünü (`:3000`) başlatır.
-3. `mobile` dizininde Expo Metro sunucusunu ve mobil tüneli açar.
-
-### 🍎 macOS / Linux:
-```bash
-chmod +x start-all.sh
-./start-all.sh
-```
 
 ---
 
-## 🛠️ Manuel Kurulum Rehberi
+### Yöntem C: Manuel Geliştirici Kurulumu
 
-### Gereksinimler
-- **Node.js**: v18.0.0 veya üzeri ([İndir](https://nodejs.org/))
-- **Java JDK**: 21 veya üzeri ([Eclipse Temurin / OpenJDK](https://adoptium.net/))
-- **PostgreSQL**: v14 veya üzeri ([İndir](https://www.postgresql.org/download/))
-
-### 1. Veritabanını Oluşturun
-PostgreSQL'de `gastrosync` isimli bir veritabanı açın:
+#### 1. Veritabanını Başlatın
+PostgreSQL üzerinde `gastrosync` adında bir veritabanı açın:
 ```sql
 CREATE DATABASE gastrosync;
 ```
-*(Gerekirse `backend/src/main/resources/application.properties` içindeki şifreyi kendi PostgreSQL şifrenizle güncelleyin).*
 
-### 2. Backend API'yi Başlatın
+#### 2. Backend API'yi Başlatın
 ```bash
 cd backend
-mvn spring-boot:run
+./maven/apache-maven-3.9.9/bin/mvn spring-boot:run
 ```
-> Sunucu **`http://localhost:8080`** üzerinde başlar. `DataSeeder` sınıfı 6 farklı roldeki demo kullanıcıları, 9 reçeteyi ve 21 hammaddeyi otomatik olarak veritabanına yükler.
-> - **Swagger UI Dokümantasyonu:** `http://localhost:8080/swagger-ui/index.html`
+> Sunucu `http://localhost:8080` üzerinde başlar. `DataSeeder` sınıfı demo kullanıcıları, reçeteleri ve hammadde kayıtlarını otomatik olarak oluşturur.
 
-### 3. Frontend Web Uygulamasını Başlatın
-Ana dizinde yeni bir terminal açın:
+#### 3. Web Dashboard'u Başlatın
 ```bash
 npm install
 npm run dev
 ```
-> Web arayüzü **`http://localhost:3000`** üzerinde açılır.
+> Web arayüzü `http://localhost:3000` (veya `5173`) üzerinde açılır.
 
-### 4. React Native Mobil Uygulamayı Başlatın (Expo)
-Yeni bir terminalde:
+#### 4. Mobil Uygulamayı Başlatın (Expo)
 ```bash
 cd mobile
 npm install
-npx expo start --tunnel
+npx expo start
 ```
-> Terminaldeki QR kodu iOS'ta Kamera, Android'de Expo Go uygulaması ile okutarak telefonunuzda test edebilirsiniz.
 
 ---
 
 ## 🔑 Varsayılan Demo Hesapları
 
-Sisteme giriş yapabileceğiniz hazır roller (Tüm hesapların şifresi `123456`'dır):
+Tüm hesapların varsayılan şifresi **`123456`** olarak ayarlanmıştır:
 
 | Kullanıcı Adı | E-posta | Rol | Açıklama |
 | :--- | :--- | :--- | :--- |
@@ -255,10 +273,14 @@ Sisteme giriş yapabileceğiniz hazır roller (Tüm hesapların şifresi `123456
 | **`chef`** | `chef@gastrosync.com` | Mutfak Şefi | Reçete gramajları, porsiyon maliyeti ve tüketim |
 | **`warehouse`** | `depo@gastrosync.com` | Depo Sorumlusu | Barkodlu mal kabul, zayiat ve stok sayımı |
 
-
-
-## 📄 Lisans
-Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.  
-GastroSync © 2026 Tüm Hakları Saklıdır.
 ---
-Geliştirici - Ecren Solmazgül
+
+## 📄 Jüri & Canlı Değerlendirme Kılavuzu
+Projenin canlı değerlendirmesi, rol geçişleri ve senaryo adımları için detaylı [Jüri Değerlendirme Kılavuzu (JURY_EVALUATION_PLAYBOOK.md)](file:///c:/Users/solma/OneDrive/Desktop/GastroSync/JURY_EVALUATION_PLAYBOOK.md) dosyasını inceleyebilirsiniz.
+
+---
+
+## 📜 Lisans
+Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır.  
+GastroSync © 2026 Tüm Hakları Saklıdır.  
+Geliştirici: Ecren Solmazgül

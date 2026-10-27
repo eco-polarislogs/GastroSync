@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axiosClient from '../api/axiosClient'
 import { useAuthStore, useInventoryStore, useExpenseStore, useNotificationStore, ROLE_COLORS } from '../store'
 import { FiAlertTriangle, FiSearch, FiFilter, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft, FiCamera, FiTruck, FiClock, FiCheckCircle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
@@ -76,13 +77,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      const data = await res.json()
-      if (data.success) {
+      const data = await axiosClient.post('/inventory', payload)
+      if (data && data.success) {
         notifySuccess(`"${payload.name}" ürünü depoya eklendi! (Barkod: ${payload.barcode})`, 'Ürün Oluşturuldu')
       }
     } catch (_) {
@@ -136,13 +132,11 @@ export default function WarehouseMobile({ isEmbedded = false }) {
     if (selectedItem && quantity > 0) {
       const parsedQty = parseFloat(quantity)
       try {
-        const res = await fetch(`http://localhost:8080/api/inventory/${selectedItem.id}/receive`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantity: parsedQty, recordedBy: user?.name || 'Depo Sorumlusu' })
+        const data = await axiosClient.post(`/inventory/${selectedItem.id}/receive`, {
+          quantity: parsedQty,
+          recordedBy: user?.name || 'Depo Sorumlusu'
         })
-        const data = await res.json()
-        if (data.success) {
+        if (data && data.success) {
           notifySuccess(data.message || `${selectedItem.name} stoğa işlendi (+${parsedQty} ${selectedItem.unit})`, 'Mal Kabul Onaylandı')
         }
       } catch (err) {
@@ -176,10 +170,9 @@ export default function WarehouseMobile({ isEmbedded = false }) {
 
     if (matchedItem) {
       try {
-        await fetch(`http://localhost:8080/api/inventory/${matchedItem.id}/receive`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantity: qty, recordedBy: user?.name || 'Depo Sorumlusu' })
+        await axiosClient.post(`/inventory/${matchedItem.id}/receive`, {
+          quantity: qty,
+          recordedBy: user?.name || 'Depo Sorumlusu'
         })
       } catch (_) { }
       addStock(matchedItem.id, qty)
@@ -211,12 +204,11 @@ export default function WarehouseMobile({ isEmbedded = false }) {
     if (selectedItem && quantity > 0 && wasteReason) {
       const parsedQty = parseFloat(quantity)
       try {
-        const res = await fetch(`http://localhost:8080/api/inventory/${selectedItem.id}/waste`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantity: parsedQty, reason: wasteReason, recordedBy: user?.name || 'Depo Sorumlusu' })
+        const data = await axiosClient.post(`/inventory/${selectedItem.id}/waste`, {
+          quantity: parsedQty,
+          reason: wasteReason,
+          recordedBy: user?.name || 'Depo Sorumlusu'
         })
-        const data = await res.json()
         if (data && data.success) {
           notifySuccess(data.message || `${selectedItem.name} için -${parsedQty} ${selectedItem.unit} fire kaydedildi`, 'Zayiat Kaydedildi')
         } else {
@@ -816,11 +808,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           onClick={async () => {
                             try {
                               // Backend'e barkodu bu ürüne kalıcı ata
-                              await fetch(`http://localhost:8080/api/inventory/${item.id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ ...item, barcode: unrecognizedBarcode })
-                              })
+                              await axiosClient.put(`/inventory/${item.id}`, { ...item, barcode: unrecognizedBarcode })
                               if (fetchItems) fetchItems()
                             } catch (_) { }
 
@@ -921,9 +909,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                             let found = items.find(i => i.barcode === cleanCode || (i.barcode && i.barcode.replace(/\s+/g, '') === cleanCode))
                             if (!found) {
                               try {
-                                const res = await fetch(`http://localhost:8080/api/inventory/barcode/${encodeURIComponent(cleanCode)}`)
-                                const json = await res.json()
-                                if (json.success && json.data) {
+                                const json = await axiosClient.get(`/inventory/barcode/${encodeURIComponent(cleanCode)}`)
+                                if (json && json.success && json.data) {
                                   found = {
                                     id: json.data.id,
                                     name: json.data.name,
@@ -961,9 +948,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           let found = items.find(i => i.barcode === cleanCode || (i.barcode && i.barcode.replace(/\s+/g, '') === cleanCode))
                           if (!found) {
                             try {
-                              const res = await fetch(`http://localhost:8080/api/inventory/barcode/${encodeURIComponent(cleanCode)}`)
-                              const json = await res.json()
-                              if (json.success && json.data) {
+                              const json = await axiosClient.get(`/inventory/barcode/${encodeURIComponent(cleanCode)}`)
+                              if (json && json.success && json.data) {
                                 found = {
                                   id: json.data.id,
                                   name: json.data.name,

@@ -8,4 +8,7 @@ import java.util.Optional;
 @Repository
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
     Optional<InventoryItem> findByBarcode(String barcode);
+    Optional<InventoryItem> findByNameIgnoreCase(String name);
+    Optional<InventoryItem> findFirstByNameIgnoreCase(String name);
+    Optional<InventoryItem> findFirstByNameContainingIgnoreCase(String name);
 }

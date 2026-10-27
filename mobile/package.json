@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "@tanstack/react-query": "^5.105.0",
+    "axios": "^1.21.0",
     "expo": "^58.0.19",
     "expo-camera": "~58.0.12",
     "expo-constants": "~58.0.13",

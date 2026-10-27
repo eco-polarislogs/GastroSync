@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { THEME } from './theme/tokens'
 import './styles/index.css'
@@ -18,10 +19,23 @@ if (typeof document !== 'undefined') {
   root.style.setProperty('--color-border', THEME.colors.border);
 }
 
+// Enterprise QueryClient configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 minutes
+      gcTime: 1000 * 60 * 10,   // 10 minutes cache garbage collection
+      retry: 1,
+      refetchOnWindowFocus: false
+    }
+  }
+})
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <App />
       <Toaster 
         position="top-right" 
         toastOptions={{
@@ -47,7 +61,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           }
         }}
       />
-    </BrowserRouter>
+      </BrowserRouter>
+    </QueryClientProvider>
   </React.StrictMode>
 )
 

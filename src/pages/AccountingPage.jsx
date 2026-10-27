@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useExpenseStore, useSalesStore, useInventoryStore, useRecipeStore, useNotificationStore, EXPENSE_TYPES, useAuthStore, ROLES } from '../store'
-import { FiDollarSign, FiPlus, FiFilter, FiSearch, FiCalendar, FiPieChart, FiTrendingUp, FiTrendingDown, FiFileText, FiCheck, FiX, FiTrash2, FiEdit3, FiLayers, FiAlertCircle } from 'react-icons/fi'
+import { useSalesStore, useInventoryStore, useRecipeStore, useNotificationStore, EXPENSE_TYPES, useAuthStore, ROLES } from '../store'
+import { 
+  useExpenses, 
+  useExpenseSummary, 
+  useCreateExpense, 
+  useUpdateExpense, 
+  useDeleteExpense,
+  useApproveExpense,
+  useFinalizeExpense,
+  useRejectExpense
+} from '../hooks/useExpenseQuery'
+import { FiDollarSign, FiPlus, FiFilter, FiSearch, FiCalendar, FiPieChart, FiTrendingUp, FiTrendingDown, FiFileText, FiCheck, FiX, FiTrash2, FiEdit3, FiLayers, FiAlertCircle, FiRefreshCw } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
 import { TRANSLATIONS, getExpenseTypeLabel } from '../utils/translations'
@@ -9,24 +19,26 @@ import '../styles/pages.css'
 export default function AccountingPage({ viewMode }) {
   const { user, currentLanguage } = useAuthStore()
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
-  const { expenses, summary: expenseSummary, fetchExpenses, addExpense, updateExpense, deleteExpense } = useExpenseStore()
+
+  // ── TANSTACK QUERY (True Database Persistence & Finite State Machine) ──
+  const { data: expenses = [], isLoading, isError, error, refetch } = useExpenses()
+  const { data: backendSummary } = useExpenseSummary()
+  const createExpenseMutation = useCreateExpense()
+  const updateExpenseMutation = useUpdateExpense()
+  const deleteExpenseMutation = useDeleteExpense()
+  const approveExpenseMutation = useApproveExpense()
+  const finalizeExpenseMutation = useFinalizeExpense()
+  const rejectExpenseMutation = useRejectExpense()
+
   const { sendNotification } = useNotificationStore()
   const { summary: salesSummary, todaySales, fetchSales } = useSalesStore()
   const { items, fetchItems } = useInventoryStore()
   const { recipes, fetchRecipes } = useRecipeStore()
 
   useEffect(() => {
-    fetchExpenses()
     if (fetchSales) fetchSales()
     if (fetchItems) fetchItems()
     if (fetchRecipes) fetchRecipes()
-
-    // Canlı 2-Yönlü Veritabanı Senkronizasyonu (Mobilde bir onay, ödeme veya ret yapıldığında web anında güncellenir)
-    const timer = setInterval(() => {
-      fetchExpenses()
-      if (fetchSales) fetchSales()
-    }, 4000)
-    return () => clearInterval(timer)
   }, [])
 
   // Mod tespiti: URL'den gelen viewMode prop'u ('cashier' | 'advisor') veya kullanıcının rolü
@@ -106,9 +118,16 @@ export default function AccountingPage({ viewMode }) {
   // 1. Hammadde Maliyeti (Food Cost)
   const rawMaterialCost = salesSummary.totalCost || 18785.85
   // 2. Sabit Giderler (Kira, İşçilik, Mali Müşavir)
-  const totalFixed = expenseSummary.totalFixed || 138500
+  const computedFixed = useMemo(() => 
+    expenses.filter(e => e.category === 'FIXED').reduce((sum, e) => sum + (e.amount || 0), 0)
+  , [expenses])
   // 3. Değişken Giderler (Elektrik, Su, Doğalgaz, Telefon, İnternet, Vergi, SGK, Sarf, Lojistik, Reklam, Tadilat)
-  const totalVariable = expenseSummary.totalVariable || 103100
+  const computedVariable = useMemo(() => 
+    expenses.filter(e => e.category === 'VARIABLE').reduce((sum, e) => sum + (e.amount || 0), 0)
+  , [expenses])
+
+  const totalFixed = computedFixed > 0 ? computedFixed : (backendSummary?.fixedTotal || 138500)
+  const totalVariable = computedVariable > 0 ? computedVariable : (backendSummary?.variableTotal || 103100)
   // Toplam Borç Tutarı (Ödenmemiş fatura ve taahhütler)
   const totalUnpaidDebt = expenses
     .filter(e => e.paymentStatus === 'UNPAID' || e.paymentStatus === 'PARTIAL' || !e.paidByCashier)
@@ -154,46 +173,43 @@ export default function AccountingPage({ viewMode }) {
       status: 'PENDING_APPROVAL',
     }
 
-    await addExpense(payload)
-    sendNotification({
-      title: '📋 Yeni Gider İnceleme Bekliyor (Taslak)',
-      message: `${user?.name || 'Kasa / Muhasebe'} tarafından '${payload.title} (${payload.amount?.toLocaleString('tr-TR')} ₺)' sisteme girildi. Mali Müşavir denetimi ve defter onayı bekleniyor.`,
-      targetRole: 'FINANCIAL_ADVISOR',
-      senderName: user?.name || 'Kasa / Muhasebe',
-      type: 'EXPENSE_APPROVAL',
-      relatedEntityId: null
-    })
-    notifySuccess(
-      newExpense.paymentStatus === 'PAID'
-        ? `"${payload.title}" kasadan ödendi ve taslak olarak Mali Müşavir onayına iletildi!`
-        : `"${payload.title}" borç kaydı olarak sisteme işlendi (Vade: ${payload.dueDate})`,
-      'Gider Kaydedildi (Taslak)'
-    )
-    setShowAddModal(false)
-    setNewExpense({
-      title: '',
-      category: 'FIXED',
-      subType: 'RENT',
-      amount: '',
-      period: '2026-10',
-      expenseDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
-      invoiceNumber: '',
-      counterparty: '',
-      paymentStatus: 'PAID',
-      note: '',
-      isOwnedProperty: false,
-      paidByCashier: true,
-      recordedInLedger: false,
-      sentToAdvisor: true,
-      status: 'PENDING_APPROVAL',
-      rejectionReason: '',
+    createExpenseMutation.mutate(payload, {
+      onSuccess: () => {
+        sendNotification({
+          title: '📋 Yeni Gider İnceleme Bekliyor (Taslak)',
+          message: `${user?.name || 'Kasa / Muhasebe'} tarafından '${payload.title} (${payload.amount?.toLocaleString('tr-TR')} ₺)' sisteme girildi. Mali Müşavir denetimi ve defter onayı bekleniyor.`,
+          targetRole: 'FINANCIAL_ADVISOR',
+          senderName: user?.name || 'Kasa / Muhasebe',
+          type: 'EXPENSE_APPROVAL',
+          relatedEntityId: null
+        })
+        setShowAddModal(false)
+        setNewExpense({
+          title: '',
+          category: 'FIXED',
+          subType: 'RENT',
+          amount: '',
+          period: '2026-10',
+          expenseDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+          invoiceNumber: '',
+          counterparty: '',
+          paymentStatus: 'PAID',
+          note: '',
+          isOwnedProperty: false,
+          paidByCashier: true,
+          recordedInLedger: false,
+          sentToAdvisor: true,
+          status: 'PENDING_APPROVAL',
+          rejectionReason: '',
+        })
+      }
     })
   }
 
   // Muhasebecinin Mali Müşavire Gönderme İşlemi
-  const handleSendToAdvisor = async (exp) => {
-    await updateExpense(exp.id, { sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' })
+  const handleSendToAdvisor = (exp) => {
+    updateExpenseMutation.mutate({ id: exp.id, sentToAdvisor: true, status: 'PENDING_APPROVAL', rejectionReason: '' })
     sendNotification({
       title: '🚀 Gider Defter Onayı Bekliyor',
       message: `${user?.name || 'Kasa / Muhasebe'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' onaylanmak üzere Mali Müşavire iletildi.`,
@@ -202,29 +218,26 @@ export default function AccountingPage({ viewMode }) {
       type: 'EXPENSE_APPROVAL',
       relatedEntityId: exp.id
     })
-    notifySuccess(`"${exp.title}" (${exp.amount} ₺) Mali Müşavir defter onayına gönderildi.`, 'Müşavire İletildi 🚀')
   }
 
   // Mali Müşavir resmi deftere onaylama (Approve & Record -> FINALIZED)
-  const handleApproveLedger = async (exp) => {
-    await updateExpense(exp.id, {
-      recordedInLedger: true,
-      status: 'FINALIZED',
-      rejectionReason: ''
+  const handleApproveLedger = (exp) => {
+    finalizeExpenseMutation.mutate(exp.id, {
+      onSuccess: () => {
+        sendNotification({
+          title: '✓ Gider Deftere İşlendi & Kesinleşti',
+          message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' resmi yevmiye defterine kaydedildi ve kesinleşti.`,
+          targetRole: 'ACCOUNTANT',
+          senderName: user?.name || 'Mali Müşavir',
+          type: 'EXPENSE_APPROVAL',
+          relatedEntityId: exp.id
+        })
+      }
     })
-    sendNotification({
-      title: '✓ Gider Deftere İşlendi & Kesinleşti',
-      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' resmi yevmiye defterine kaydedildi ve kesinleşti.`,
-      targetRole: 'ACCOUNTANT',
-      senderName: user?.name || 'Mali Müşavir',
-      type: 'EXPENSE_APPROVAL',
-      relatedEntityId: exp.id
-    })
-    notifySuccess(`"${exp.title}" resmi yevmiye defterine ONAYLANDI ve kesinleşti.`, 'Resmi Deftere İşlendi ✓')
   }
 
-  // Mali Müşavir Gideri Reddetme İşlemi (Reject -> NEEDS_CORRECTION)
-  const handleRejectLedger = async () => {
+  // Mali Müşavir Gideri Reddetme İşlemi (Reject -> REJECTED)
+  const handleRejectLedger = () => {
     if (!expenseToReject) return
     if (!rejectReasonText.trim()) {
       notifyError('Lütfen ret gerekçesini açıklayınız (örn: Fatura/dekont eksik, vergi numarası hatalı).')
@@ -234,70 +247,63 @@ export default function AccountingPage({ viewMode }) {
     const reason = rejectReasonText.trim()
     const exp = expenseToReject
 
-    await updateExpense(exp.id, {
-      recordedInLedger: false,
-      status: 'NEEDS_CORRECTION',
-      rejectionReason: reason
+    rejectExpenseMutation.mutate({ id: exp.id, reason }, {
+      onSuccess: () => {
+        sendNotification({
+          title: '⚠️ Gider Düzeltme Bekliyor (Ret)',
+          message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' kaydı reddedildi ve düzeltme istendi. Gerekçe: "${reason}"`,
+          targetRole: 'ACCOUNTANT',
+          senderName: user?.name || 'Mali Müşavir',
+          type: 'EXPENSE_REJECTED',
+          relatedEntityId: exp.id
+        })
+      }
     })
 
-    sendNotification({
-      title: '⚠️ Gider Düzeltme Bekliyor (Ret)',
-      message: `${user?.name || 'Mali Müşavir'} tarafından '${exp.title} (${exp.amount?.toLocaleString('tr-TR')} ₺)' kaydı reddedildi ve düzeltme istendi. Gerekçe: "${reason}"`,
-      targetRole: 'ACCOUNTANT',
-      senderName: user?.name || 'Mali Müşavir',
-      type: 'EXPENSE_REJECTED',
-      relatedEntityId: exp.id
-    })
-
-    notifySuccess(`"${exp.title}" için düzeltme talebi muhasebeye bildirildi.`, 'Düzeltme İstendi ⚠️')
     setExpenseToReject(null)
     setRejectReasonText('')
   }
 
-  // Muhasebeci / Kasa fiili borç ödeme işlemi (Geri alınamaz, kilitli işlem)
-  const handlePayDebtNow = async (exp) => {
-    if (exp.paymentStatus === 'PAID') {
+  // Muhasebeci / Kasa fiili borç ödeme işlemi (Geri alınamaz, kilitli işlem -> APPROVED)
+  const handlePayDebtNow = (exp) => {
+    if (exp.paymentStatus === 'PAID' || exp.status === 'APPROVED' || exp.status === 'FINALIZED') {
       notifyError('Bu gider kalemi kasadan zaten fiilen ödenmiştir.')
       return
     }
 
-    await updateExpense(exp.id, {
-      paymentStatus: 'PAID',
-      paidByCashier: true,
-      note: `${exp.note ? exp.note + ' | ' : ''}Kasa tarafından ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} itibarıyla ödendi.`
-    })
+    approveExpenseMutation.mutate(exp.id, {
+      onSuccess: () => {
+        // Eğer hammadde/sarf alımı veya sipariş ise depoya anlık bildirim ve telsiz mesajı ilet
+        const isMaterialOrProcurement = exp.subType === 'CONSUMABLES' || exp.category === 'VARIABLE' || exp.counterparty?.includes('Hal') || exp.counterparty?.includes('Tedarik')
+        if (isMaterialOrProcurement) {
+          sendNotification({
+            title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
+            message: `Kasa tarafından "${exp.title}" (${exp.amount?.toLocaleString('tr-TR')} ₺) toptancıya ödendi. Depo terminalinden tek dokunuşla mal kabul edebilirsiniz.`,
+            targetRole: 'WAREHOUSE',
+            senderName: user?.name || 'Kasa / Muhasebe',
+            type: 'PROCUREMENT_PAID',
+            relatedEntityId: exp.id
+          })
 
-    // Eğer hammadde/sarf alımı veya sipariş ise depoya anlık bildirim ve telsiz mesajı ilet
-    const isMaterialOrProcurement = exp.subType === 'CONSUMABLES' || exp.category === 'VARIABLE' || exp.counterparty?.includes('Hal') || exp.counterparty?.includes('Tedarik')
-    if (isMaterialOrProcurement) {
-      sendNotification({
-        title: '🚚 Tedarik Bedeli Ödendi — Mal Kabul Bekleniyor',
-        message: `Kasa tarafından "${exp.title}" (${exp.amount?.toLocaleString('tr-TR')} ₺) toptancıya ödendi. Depo terminalinden tek dokunuşla mal kabul edebilirsiniz.`,
-        targetRole: 'WAREHOUSE',
-        senderName: user?.name || 'Kasa / Muhasebe',
-        type: 'PROCUREMENT_PAID',
-        relatedEntityId: exp.id
-      })
-
-      // Ekip telsizine Canan Kasa'dan otomatik mesaj
-      try {
-        const savedChat = localStorage.getItem('gastrosync_team_chat')
-        const chatList = savedChat ? JSON.parse(savedChat) : []
-        const newChatMessage = {
-          id: Date.now(),
-          channelId: 'kitchen',
-          sender: user?.name || 'Canan Kasa',
-          role: 'accountant',
-          text: `"${exp.title}" için toptancıya ${exp.amount?.toLocaleString('tr-TR')} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Depocumuz geldiğinde terminalden onaylayabilir.`,
-          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          avatar: user?.avatar || 'CK',
-          priority: 'normal'
+          // Ekip telsizine Canan Kasa'dan otomatik mesaj
+          try {
+            const savedChat = localStorage.getItem('gastrosync_team_chat')
+            const chatList = savedChat ? JSON.parse(savedChat) : []
+            const newChatMessage = {
+              id: Date.now(),
+              channelId: 'kitchen',
+              sender: user?.name || 'Canan Kasa',
+              role: 'accountant',
+              text: `"${exp.title}" için toptancıya ${exp.amount?.toLocaleString('tr-TR')} ₺ nakit kasa çıkışı yapıldı ve fiilen ödendi. Depocumuz geldiğinde terminalden onaylayabilir.`,
+              time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+              avatar: user?.avatar || 'CK',
+              priority: 'normal'
+            }
+            localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
+          } catch (_) { }
         }
-        localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
-      } catch (_) { }
-    }
-
-    notifySuccess(`"${exp.title}" kasadan fiilen ödendi ve kaydı kesinleşti.`, 'Ödeme Yapıldı ✓')
+      }
+    })
   }
 
   const handleExportAccountingExcel = () => {
@@ -1244,6 +1250,22 @@ export default function AccountingPage({ viewMode }) {
       {/* EXPENSE TABLE (Eğer 'DAILY_SALES', 'TDHP_ERP' veya 'Z_REPORT' sekmelerinde değilsek) */}
       {activeTab !== 'DAILY_SALES' && activeTab !== 'TDHP_ERP' && activeTab !== 'Z_REPORT' && (
         <div className="table-card" style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #dbe7df', overflow: 'hidden' }}>
+          {isLoading ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#059669' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔄</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Gider Kayıtları Veritabanından Yükleniyor...</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>PostgreSQL ve Spring Boot REST API ile senkronize ediliyor</div>
+            </div>
+          ) : isError ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#dc2626' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800 }}>Veritabanı Senkronizasyon Hatası</div>
+              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>{error?.message || 'Sunucuya ulaşılamıyor'}</div>
+              <button className="action-btn action-btn--primary" onClick={() => refetch()} style={{ marginTop: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <FiRefreshCw size={14} /> Tekrar Dene
+              </button>
+            </div>
+          ) : (
           <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8faf9', borderBottom: '1px solid #dbe7df' }}>
@@ -1598,6 +1620,7 @@ export default function AccountingPage({ viewMode }) {
               })}
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -2301,14 +2324,17 @@ export default function AccountingPage({ viewMode }) {
                 Vazgeç
               </button>
               <button
-                onClick={async () => {
-                  await deleteExpense(expenseToDelete.id)
-                  notifySuccess('Gider kaydı silindi', 'Silindi')
-                  setExpenseToDelete(null)
+                onClick={() => {
+                  deleteExpenseMutation.mutate(expenseToDelete.id, {
+                    onSuccess: () => {
+                      setExpenseToDelete(null)
+                    }
+                  })
                 }}
-                style={{ flex: 1, padding: '10px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                disabled={deleteExpenseMutation.isPending}
+                style={{ flex: 1, padding: '10px', backgroundColor: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', opacity: deleteExpenseMutation.isPending ? 0.7 : 1 }}
               >
-                Evet, Sil
+                {deleteExpenseMutation.isPending ? 'Siliniyor...' : 'Evet, Sil'}
               </button>
             </div>
           </div>

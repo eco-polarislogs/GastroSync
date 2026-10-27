@@ -21,15 +21,18 @@ public class DataSeeder implements CommandLineRunner {
     private final InventoryItemRepository inventoryRepository;
     private final RecipeRepository recipeRepository;
     private final SalesRecordRepository salesRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public DataSeeder(AppUserRepository userRepository, 
                       InventoryItemRepository inventoryRepository,
                       RecipeRepository recipeRepository,
-                      SalesRecordRepository salesRepository) {
+                      SalesRecordRepository salesRepository,
+                      org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.inventoryRepository = inventoryRepository;
         this.recipeRepository = recipeRepository;
         this.salesRepository = salesRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -41,16 +44,46 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedUsers() {
+        String defaultPasswordHash = passwordEncoder.encode("123456");
+
         if (userRepository.count() == 0) {
             userRepository.saveAll(List.of(
-                new AppUser("admin", "123456", "Ahmet Yılmaz", "ADMIN", "admin@gastrosync.com"),
-                new AppUser("manager", "123456", "Zeynep Kaya", "MANAGER", "manager@gastrosync.com"),
-                new AppUser("chef", "123456", "Mehmet Şef", "CHEF", "chef@gastrosync.com"),
-                new AppUser("warehouse", "123456", "Ali Depocu", "WAREHOUSE", "warehouse@gastrosync.com"),
-                new AppUser("accountant", "123456", "Canan Kasa", "ACCOUNTANT", "accountant@gastrosync.com"),
-                new AppUser("advisor", "123456", "Selahattin Müşavir", "FINANCIAL_ADVISOR", "advisor@gastrosync.com")
+                new AppUser("admin", defaultPasswordHash, "Ahmet Yılmaz", "ADMIN", "admin@gastrosync.com"),
+                new AppUser("manager", defaultPasswordHash, "Zeynep Kaya", "MANAGER", "manager@gastrosync.com"),
+                new AppUser("chef", defaultPasswordHash, "Mehmet Şef", "CHEF", "chef@gastrosync.com"),
+                new AppUser("warehouse", defaultPasswordHash, "Ali Depocu", "WAREHOUSE", "warehouse@gastrosync.com"),
+                new AppUser("accountant", defaultPasswordHash, "Canan Kasa", "ACCOUNTANT", "accountant@gastrosync.com"),
+                new AppUser("advisor", defaultPasswordHash, "Selahattin Müşavir", "FINANCIAL_ADVISOR", "advisor@gastrosync.com"),
+                new AppUser("muhasebe", passwordEncoder.encode("muhasebe123"), "Canan Öztürk (Kasa & Muhasebe)", "ACCOUNTANT", "muhasebe@gastrosync.com"),
+                new AppUser("malimusavir", passwordEncoder.encode("musavir123"), "SMMM Selim Aydın (Mali Müşavir)", "FINANCIAL_ADVISOR", "malimusavir@gastrosync.com")
             ));
-            System.out.println("✅ Mock Users seeded successfully.");
+            System.out.println("✅ Mock Users seeded successfully with BCrypt password hashes.");
+        } else {
+            // Enterprise Auto-Migration: If any existing users have plain text passwords, hash them with BCrypt
+            List<AppUser> existingUsers = userRepository.findAll();
+            boolean migratedAny = false;
+            for (AppUser u : existingUsers) {
+                if (u.getPassword() != null && !u.getPassword().startsWith("$2a$") && !u.getPassword().startsWith("$2b$")) {
+                    u.setPassword(passwordEncoder.encode(u.getPassword()));
+                    userRepository.save(u);
+                    migratedAny = true;
+                }
+            }
+            if (migratedAny) {
+                System.out.println("🔒 Migrated legacy plain-text user passwords to BCrypt.");
+            }
+
+            // Ensure accounting accounts exist
+            try {
+                if (userRepository.findByUsernameIgnoreCase("muhasebe").isEmpty()) {
+                    userRepository.save(new AppUser("muhasebe", passwordEncoder.encode("muhasebe123"), "Canan Öztürk (Kasa & Muhasebe)", "ACCOUNTANT", "muhasebe@gastrosync.com"));
+                }
+            } catch (Exception ignored) {}
+            try {
+                if (userRepository.findByUsernameIgnoreCase("malimusavir").isEmpty()) {
+                    userRepository.save(new AppUser("malimusavir", passwordEncoder.encode("musavir123"), "SMMM Selim Aydın (Mali Müşavir)", "FINANCIAL_ADVISOR", "malimusavir@gastrosync.com"));
+                }
+            } catch (Exception ignored) {}
         }
     }
 

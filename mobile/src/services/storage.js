@@ -12,7 +12,7 @@ let memoryExpenses = null;
 let memoryNotifications = null;
 
 // Tarayıcı / React Native Web localStorage kontrolü
-const getLocalStorage = () => {
+export const getLocalStorage = () => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       return window.localStorage;

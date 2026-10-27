@@ -15,49 +15,63 @@ import {
   getStoredChatMessages,
   saveStoredChatMessages,
 } from './storage';
+import { getMobileAuthToken, setMobileAuthToken, getMobileApiBaseUrl } from './mobileAxiosClient';
 
-// Dinamik Host Belirleme (Expo Host, Wi-Fi LAN IP veya USB 127.0.0.1)
-const getApiBaseUrl = () => {
-  try {
-    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || '';
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        return `http://${ip}:8080/api`;
-      }
-    }
-  } catch (_) {}
-  // Wi-Fi ağı üzerindeki doğrudan IP adresi
-  return 'http://192.168.1.53:8080/api';
+export const API_BASE_URL = getMobileApiBaseUrl();
+
+// ── AUTHENTICATED FETCH HELPER (Injects RFC 6750 JWT Bearer Token) ──
+export const authFetch = async (url, options = {}) => {
+  const token = getMobileAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(options.headers || {})
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return fetch(url, { ...options, headers });
 };
 
-export const API_BASE_URL = getApiBaseUrl();
-
-// Sessiz hata loglayıcı (Backend kapalıyken veya offline iken terminali kirletmez)
+// Sessiz hata loglayıcı
 const logDebug = (...args) => {
-  // Canlı demo sırasında gereksiz terminal kirliliğini önlemek için sessiz çalışır
   if (__DEV__ && false) {
     console.log(...args);
   }
 };
 
-// 1. Kullanıcı Girişi
+// 1. Kullanıcı Girişi (Spring Boot JWT /api/auth/login)
 export const apiLogin = async (username, password) => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-    const res = await fetch(`${API_BASE_URL}/users/login`, {
+    let res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ identifier: username, username, password }),
       signal: controller.signal,
     });
+
+    if (!res.ok) {
+      res = await fetch(`${API_BASE_URL}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+        signal: controller.signal,
+      });
+    }
+
     clearTimeout(timeoutId);
 
     if (res.ok) {
-      const data = await res.json();
-      return { success: true, user: data };
+      const payload = await res.json();
+      const user = payload.data || payload;
+      const token = payload.data?.token || payload.token;
+      if (token) {
+        setMobileAuthToken(token);
+      }
+      return { success: true, user };
     }
   } catch (err) {
     logDebug('[Mobile API] Backend erişilemedi, yerel demo kullanıcıları kullanılıyor:', err.message);
@@ -73,13 +87,13 @@ export const apiLogin = async (username, password) => {
   return { success: false, message: 'Kullanıcı adı veya şifre hatalı' };
 };
 
-// 2. Stok Listesi Çekme
+// 2. Stok Listesi Çekme (PostgreSQL /api/inventory)
 export const apiFetchInventory = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-    const res = await fetch(`${API_BASE_URL}/inventory`, { signal: controller.signal });
+    const res = await authFetch(`${API_BASE_URL}/inventory`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
@@ -99,17 +113,16 @@ export const apiFetchInventory = async () => {
       }
     }
   } catch (err) {
-    // Mobil cihaz tünel/Wi-Fi erişemediğinde sorunsuz yerel hafızaya döner (offline fallback)
+    // Fallback if offline
   }
   return INITIAL_INVENTORY;
 };
 
-// 3. Mal Kabul (Stoğa Ekleme)
+// 3. Mal Kabul (Stoğa Ekleme - PostgreSQL Mutation)
 export const apiReceiveStock = async (itemId, quantity, recordedBy = 'Mobil Depo') => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory/${itemId}/receive`, {
+    const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}/receive`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity, recordedBy }),
     });
     if (res.ok) {
@@ -122,12 +135,11 @@ export const apiReceiveStock = async (itemId, quantity, recordedBy = 'Mobil Depo
   return { success: false };
 };
 
-// 4. Zayiat / Fire Bildirimi (Stoktan Düşme)
+// 4. Zayiat / Fire Bildirimi (Stoktan Düşme - PostgreSQL Mutation)
 export const apiRecordWaste = async (itemId, quantity, reason = 'Mobil Zayiat', recordedBy = 'Mobil Depo') => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory/${itemId}/waste`, {
+    const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}/waste`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quantity, reason, recordedBy }),
     });
     if (res.ok) {
@@ -146,7 +158,7 @@ export const apiFetchUsers = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-    const res = await fetch(`${API_BASE_URL}/users`, { signal: controller.signal });
+    const res = await authFetch(`${API_BASE_URL}/users`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
@@ -172,9 +184,8 @@ export const apiFetchUsers = async () => {
 // 6. Kullanıcı Rolü Güncelleme
 export const apiUpdateUserRole = async (userId, newRole) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+    const res = await authFetch(`${API_BASE_URL}/users/${userId}/role`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: newRole.toUpperCase() }),
     });
     if (res.ok) {
@@ -189,9 +200,8 @@ export const apiUpdateUserRole = async (userId, newRole) => {
 // 7. Yeni Kullanıcı / Personel Oluşturma
 export const apiCreateUser = async (userPayload) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/users`, {
+    const res = await authFetch(`${API_BASE_URL}/users`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: userPayload.name,
         username: userPayload.username,
@@ -213,7 +223,7 @@ export const apiCreateUser = async (userPayload) => {
 // 8. Kullanıcı / Personel Silme
 export const apiDeleteUser = async (userId) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    const res = await authFetch(`${API_BASE_URL}/users/${userId}`, {
       method: 'DELETE',
     });
     if (res.ok) {
@@ -225,13 +235,13 @@ export const apiDeleteUser = async (userId) => {
   return { success: false };
 };
 
-// 9. Reçete Listesini Çekme
+// 9. Reçete Listesini Çekme (PostgreSQL /api/recipes)
 export const apiFetchRecipes = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-    const res = await fetch(`${API_BASE_URL}/recipes`, { signal: controller.signal });
+    const res = await authFetch(`${API_BASE_URL}/recipes`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
@@ -295,9 +305,8 @@ export const apiFetchRecipes = async () => {
 // 10. Yeni Reçete Ekleme
 export const apiCreateRecipe = async (recipePayload) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/recipes`, {
+    const res = await authFetch(`${API_BASE_URL}/recipes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: recipePayload.name,
         category: recipePayload.category || 'Ana Yemek',
@@ -320,9 +329,8 @@ export const apiCreateRecipe = async (recipePayload) => {
 // 10.1 Reçete Güncelleme (Düzenleme)
 export const apiUpdateRecipe = async (recipeId, recipePayload) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}`, {
+    const res = await authFetch(`${API_BASE_URL}/recipes/${recipeId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: recipePayload.name,
         category: recipePayload.category || 'Ana Yemek',
@@ -345,7 +353,7 @@ export const apiUpdateRecipe = async (recipeId, recipePayload) => {
 // 11. Reçete Silme
 export const apiDeleteRecipe = async (recipeId) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}`, {
+    const res = await authFetch(`${API_BASE_URL}/recipes/${recipeId}`, {
       method: 'DELETE',
     });
     if (res.ok) {
@@ -360,9 +368,8 @@ export const apiDeleteRecipe = async (recipeId) => {
 // 12. Yeni Stok / Hammadde Ekleme
 export const apiCreateInventoryItem = async (itemPayload) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory`, {
+    const res = await authFetch(`${API_BASE_URL}/inventory`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: itemPayload.name,
         category: itemPayload.cat || itemPayload.category || 'Genel',
@@ -388,7 +395,7 @@ export const apiCreateInventoryItem = async (itemPayload) => {
 // 13. Stok Kalemi Silme
 export const apiDeleteInventoryItem = async (itemId) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory/${itemId}`, {
+    const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}`, {
       method: 'DELETE',
     });
     if (res.ok) {
@@ -403,9 +410,8 @@ export const apiDeleteInventoryItem = async (itemId) => {
 // 14. Stok Kalemi Güncelleme (Düzenleme)
 export const apiUpdateInventoryItem = async (itemId, itemPayload) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory/${itemId}`, {
+    const res = await authFetch(`${API_BASE_URL}/inventory/${itemId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: itemPayload.name,
         category: itemPayload.cat || itemPayload.category || 'Genel',
@@ -431,7 +437,7 @@ export const apiUpdateInventoryItem = async (itemId, itemPayload) => {
 // 15. Son Depo Hareketleri (İşlem Geçmişi)
 export const apiFetchTransactions = async () => {
   try {
-    const res = await fetch(`${API_BASE_URL}/inventory/transactions/recent`);
+    const res = await authFetch(`${API_BASE_URL}/inventory/transactions/recent`);
     if (res.ok) {
       const json = await res.json();
       const rawList = json.data || json || [];
@@ -458,12 +464,12 @@ export const apiFetchTransactions = async () => {
   ];
 };
 
-// 16. Muhasebe Giderlerini Getir (Kalıcı ve Canlı Senkronize)
+// 16. Muhasebe Giderlerini Getir (PostgreSQL & Canlı Senkronize)
 export const apiFetchExpenses = async () => {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const res = await fetch(`${API_BASE_URL}/expenses`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await authFetch(`${API_BASE_URL}/expenses`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
@@ -498,11 +504,10 @@ export const apiFetchExpenses = async () => {
   } catch (err) {
     logDebug('[Mobile API] Giderler backendden çekilemedi, kalıcı depodan okunuyor:', err.message);
   }
-  // Backend kapalıysa veya offline iken yerel kalıcı veriyi döner
   return getStoredExpenses();
 };
 
-// 17. Yeni Gider Ekle (Anında Yerel Kalıcı + Arka Plan Backend)
+// 17. Yeni Gider Ekle (PostgreSQL Database Mutation)
 export const apiCreateExpense = async (payload) => {
   const newItem = {
     id: payload.id || Date.now(),
@@ -526,16 +531,13 @@ export const apiCreateExpense = async (payload) => {
     status: payload.status || (payload.recordedInLedger ? 'FINALIZED' : 'PENDING_APPROVAL'),
   };
 
-  // 1. Önce yerel kalıcı depoya kaydeder (asla kaybolmaz)
   const currentExpenses = getStoredExpenses();
   const nextExpenses = [newItem, ...currentExpenses.filter((e) => e.id !== newItem.id)];
   saveStoredExpenses(nextExpenses);
 
-  // 2. Arka planda backend'e de POST atar
   try {
-    const res = await fetch(`${API_BASE_URL}/expenses`, {
+    const res = await authFetch(`${API_BASE_URL}/expenses`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newItem),
     });
     if (res.ok) {
@@ -550,18 +552,15 @@ export const apiCreateExpense = async (payload) => {
 
 // 18. Gider Güncelle (Borç Ödendi / Deftere İşlendi / Reddedildi)
 export const apiUpdateExpense = async (id, payload) => {
-  // 1. Önce yerel kalıcı depoda kaydı anında günceller
   const currentExpenses = getStoredExpenses();
   const nextExpenses = currentExpenses.map((e) =>
     e.id === id ? { ...e, ...payload } : e
   );
   saveStoredExpenses(nextExpenses);
 
-  // 2. Arka planda backend'e PUT gönderir
   try {
-    const res = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+    const res = await authFetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (res.ok) {
@@ -576,14 +575,12 @@ export const apiUpdateExpense = async (id, payload) => {
 
 // 19. Gider Sil
 export const apiDeleteExpense = async (id) => {
-  // 1. Önce yerel kalıcı depodan anında siler
   const currentExpenses = getStoredExpenses();
   const nextExpenses = currentExpenses.filter((e) => e.id !== id);
   saveStoredExpenses(nextExpenses);
 
-  // 2. Arka planda backend'e DELETE gönderir
   try {
-    const res = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+    const res = await authFetch(`${API_BASE_URL}/expenses/${id}`, {
       method: 'DELETE',
     });
     if (res.ok) {
@@ -591,6 +588,36 @@ export const apiDeleteExpense = async (id) => {
     }
   } catch (err) {
     logDebug('[Mobile API] Gider silme backend senkronizasyonu ertelendi:', err.message);
+  }
+  return { success: true };
+};
+
+export const apiApproveExpense = async (id) => {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/expenses/${id}/approve`, {
+      method: 'PUT',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { success: true, data: json.data || json };
+    }
+  } catch (err) {
+    logDebug('[Mobile API] Gider onaylama backend senkronizasyonu ertelendi:', err.message);
+  }
+  return { success: true };
+};
+
+export const apiFinalizeExpense = async (id) => {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/expenses/${id}/finalize`, {
+      method: 'PUT',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { success: true, data: json.data || json };
+    }
+  } catch (err) {
+    logDebug('[Mobile API] Gider kesinleştirme backend senkronizasyonu ertelendi:', err.message);
   }
   return { success: true };
 };
@@ -603,7 +630,7 @@ export const apiFetchNotifications = async (role) => {
     const url = role
       ? `${API_BASE_URL}/notifications?role=${role.toUpperCase()}`
       : `${API_BASE_URL}/notifications`;
-    const res = await fetch(url);
+    const res = await authFetch(url);
     if (res.ok) {
       const json = await res.json();
       const raw = json.data || json || [];
@@ -648,7 +675,7 @@ export const apiCreateNotification = async (payload) => {
 
   // 2. Arka planda backend'e POST atar
   try {
-    const res = await fetch(`${API_BASE_URL}/notifications`, {
+    const res = await authFetch(`${API_BASE_URL}/notifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newNotif),
@@ -669,7 +696,7 @@ export const apiMarkNotificationRead = async (id) => {
   saveStoredNotifications(updated);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+    const res = await authFetch(`${API_BASE_URL}/notifications/${id}/read`, {
       method: 'PUT',
     });
     if (res.ok) return { success: true };
@@ -691,7 +718,7 @@ export const apiMarkAllNotificationsRead = async (role) => {
   saveStoredNotifications(updated);
 
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${API_BASE_URL}/notifications/mark-all-read?role=${role || ''}`,
       { method: 'PUT' }
     );
@@ -707,15 +734,11 @@ export const apiMarkAllNotificationsRead = async (role) => {
 // ==========================================
 export const apiFetchChatMessages = async (channelId) => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
     const url = channelId
       ? `${API_BASE_URL}/chat/messages?channelId=${encodeURIComponent(channelId)}`
       : `${API_BASE_URL}/chat/messages`;
 
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const res = await authFetch(url);
 
     if (res.ok) {
       const json = await res.json();
@@ -742,7 +765,7 @@ export const apiSendChatMessage = async (msgData) => {
   saveStoredChatMessages([...existing, newMsg]);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/chat/messages`, {
+    const res = await authFetch(`${API_BASE_URL}/chat/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msgData),
@@ -765,11 +788,7 @@ export const apiSendChatMessage = async (msgData) => {
 // ==========================================
 export const apiFetchSales = async () => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const res = await fetch(`${API_BASE_URL}/sales/today`, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const res = await authFetch(`${API_BASE_URL}/sales/today`);
 
     if (res.ok) {
       const json = await res.json();
@@ -786,11 +805,7 @@ export const apiFetchSales = async () => {
 
 export const apiFetchSalesSummary = async () => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-    const res = await fetch(`${API_BASE_URL}/sales/summary`, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const res = await authFetch(`${API_BASE_URL}/sales/summary`);
 
     if (res.ok) {
       const json = await res.json();

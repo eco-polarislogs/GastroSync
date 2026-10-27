@@ -20,13 +20,16 @@ public class AnalyticsService {
     private final PosOrderRepository posOrderRepository;
     private final SalesRecordRepository salesRecordRepository;
     private final InventoryItemRepository inventoryItemRepository;
+    private final com.gastrosync.repository.StockTransactionRepository stockTransactionRepository;
 
     public AnalyticsService(PosOrderRepository posOrderRepository, 
                             SalesRecordRepository salesRecordRepository,
-                            InventoryItemRepository inventoryItemRepository) {
+                            InventoryItemRepository inventoryItemRepository,
+                            com.gastrosync.repository.StockTransactionRepository stockTransactionRepository) {
         this.posOrderRepository = posOrderRepository;
         this.salesRecordRepository = salesRecordRepository;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.stockTransactionRepository = stockTransactionRepository;
     }
 
     /**
@@ -37,10 +40,13 @@ public class AnalyticsService {
         BigDecimal totalCost = posOrderRepository.calculateTotalCost();
 
         if (totalRevenue == null || totalRevenue.compareTo(BigDecimal.ZERO) == 0) {
-            // Fallback to mock / initial sales table if pos_orders not closed
+            // Fallback to sales table if pos_orders not closed
             List<SalesRecord> sales = salesRecordRepository.findAll();
-            totalRevenue = sales.stream().map(SalesRecord::getTotalPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
-            totalCost = totalRevenue.multiply(new BigDecimal("0.285")); // ~%28.5 food cost
+            totalRevenue = sales.stream().map(s -> s.getTotalPrice() != null ? s.getTotalPrice() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+            totalCost = stockTransactionRepository.calculateTotalCogs();
+            if (totalCost == null) {
+                totalCost = BigDecimal.ZERO;
+            }
         }
 
         BigDecimal netProfit = totalRevenue.subtract(totalCost);

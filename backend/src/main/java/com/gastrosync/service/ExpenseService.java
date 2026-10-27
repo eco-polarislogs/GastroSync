@@ -1,5 +1,9 @@
 package com.gastrosync.service;
 
+import com.gastrosync.dto.expense.ExpenseCreateRequest;
+import com.gastrosync.dto.expense.ExpenseResponse;
+import com.gastrosync.exception.ResourceNotFoundException;
+import com.gastrosync.mapper.ExpenseMapper;
 import com.gastrosync.model.Expense;
 import com.gastrosync.repository.ExpenseRepository;
 import org.springframework.stereotype.Service;
@@ -9,14 +13,36 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 
+/**
+ * Service Layer for Expense management and financial accounting transactions.
+ *
+ * ═══════════════════════════════════════════════════════════════
+ * ARCHITECTURAL DESIGN & DEFENSE NOTES (Thesis Defense)
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * 1. STRICT LAYER DECOUPLING & MAPPER INTEGRATION:
+ *    Uses MapStruct (ExpenseMapper) to ensure entities NEVER leak outside the service
+ *    boundary. Controllers and HTTP clients only see ExpenseResponse and ExpenseCreateRequest.
+ *
+ * 2. TRANSACTION MANAGEMENT (@Transactional):
+ *    - readOnly = true on queries skips Hibernate dirty checking, optimizes connection
+ *      pool throughput, and allows reading from replica databases in scaled architectures.
+ *    - rollbackFor = Exception.class on writes guarantees atomic database writes.
+ *
+ * 3. TRANSPARENT SOFT DELETE:
+ *    When deleteExpense(id) is called, expenseRepository.deleteById(id) executes
+ *    Hibernate's @SQLDelete query, setting `is_deleted = true` without physical row deletion.
+ */
 @Service
-@Transactional
+@Transactional(readOnly = true)
 public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
+    private final ExpenseMapper expenseMapper;
 
-    public ExpenseService(ExpenseRepository expenseRepository) {
+    public ExpenseService(ExpenseRepository expenseRepository, ExpenseMapper expenseMapper) {
         this.expenseRepository = expenseRepository;
+        this.expenseMapper = expenseMapper;
         initDefaultExpensesIfEmpty();
     }
 
@@ -25,50 +51,134 @@ public class ExpenseService {
             String currentPeriod = LocalDate.now().getYear() + "-" + String.format("%02d", LocalDate.now().getMonthValue());
             LocalDate today = LocalDate.now();
 
-            // 1. Sabit Giderler (Kira, İşçilik, Mali Müşavir)
+            // 1. Sabit Giderler
             expenseRepository.save(new Expense("Merkez Restoran Kirası", "FIXED", "RENT", new BigDecimal("45000.00"), currentPeriod, today, "Sistem / Muhasebe", "Ana cadde şube aylık kira bedeli"));
             expenseRepository.save(new Expense("Mutfak & Servis Personel Maaşları", "FIXED", "LABOR", new BigDecimal("85000.00"), currentPeriod, today, "Sistem / Muhasebe", "1 Şef, 2 Aşçı, 3 Garson net maaş bordrosu"));
             expenseRepository.save(new Expense("Mali Müşavirlik & Danışmanlık Ücreti", "FIXED", "ACCOUNTANT", new BigDecimal("8500.00"), currentPeriod, today, "Sistem / Muhasebe", "Aylık defter tutma ve vergi beyan danışmanlığı"));
 
-            // 2. Değişken Giderler (Elektrik, Su, Doğalgaz, Telefon, İnternet, Vergi, Sigorta SGK, Sarf Malzeme, Lojistik, Reklam, Tadilat)
+            // 2. Değişken Giderler
             expenseRepository.save(new Expense("Sanayi Tipi Mutfak Elektrik Faturası", "VARIABLE", "ELECTRICITY", new BigDecimal("14200.00"), currentPeriod, today, "Sistem / Muhasebe", "Soğuk hava depoları ve pişirme fırınları", false, true, true));
             expenseRepository.save(new Expense("Şebeke Su Faturası & Arıtma", "VARIABLE", "WATER", new BigDecimal("3800.00"), currentPeriod, today, "Sistem / Muhasebe", "Bulaşıkhane ve genel su tüketimi", false, true, true));
             expenseRepository.save(new Expense("Endüstriyel Ocak Doğalgaz Tüketimi", "VARIABLE", "GAS", new BigDecimal("9600.00"), currentPeriod, today, "Sistem / Muhasebe", "Kuzine ve fırın hattı", false, true, true));
-            expenseRepository.save(new Expense("Restoran Sabit Hat & Rezervasyon Telefonları", "VARIABLE", "PHONE", new BigDecimal("850.00"), currentPeriod, today, "Sistem / Muhasebe", "Müşteri iletişim hattı", false, true, true));
-            expenseRepository.save(new Expense("Fiber İnternet & POS Terminal Hattı", "VARIABLE", "INTERNET", new BigDecimal("1250.00"), currentPeriod, today, "Sistem / Muhasebe", "POS ve restoran içi Wi-Fi", false, true, true));
-            expenseRepository.save(new Expense("KDV & Geçici Kurumlar Vergisi", "VARIABLE", "TAX", new BigDecimal("18500.00"), currentPeriod, today, "Sistem / Muhasebe", "Dönemsel vergi tahakkukları", false, true, true));
-            expenseRepository.save(new Expense("Personel SGK & Prim Ödemeleri", "VARIABLE", "SGK", new BigDecimal("27500.00"), currentPeriod, today, "Sistem / Muhasebe", "Aylık SGK işveren ve çalışan primi", false, true, true));
-            expenseRepository.save(new Expense("Ambalaj, Peçete & Temizlik Sarf Malzemeleri", "VARIABLE", "CONSUMABLES", new BigDecimal("6400.00"), currentPeriod, today, "Sistem / Muhasebe", "Paket servis kutuları, deterjan ve hijyen ürünleri", false, true, true));
-            expenseRepository.save(new Expense("Soğuk Zincir Et & Sebze Lojistik Nakliyesi", "VARIABLE", "LOGISTICS", new BigDecimal("7500.00"), currentPeriod, today, "Sistem / Muhasebe", "Toptancı hali ve mezbaha lojistik nakliye bedeli", false, true, true));
-            expenseRepository.save(new Expense("Instagram & Yerel Yemek Rehberi Reklamı", "VARIABLE", "MARKETING", new BigDecimal("5000.00"), currentPeriod, today, "Sistem / Muhasebe", "Menü lansmanı ve sosyal medya reklam bütçesi", false, true, false));
-            expenseRepository.save(new Expense("Mutfak Havalandırma & Davlumbaz Bakım/Tadilat", "VARIABLE", "RENOVATION", new BigDecimal("8500.00"), currentPeriod, today, "Sistem / Muhasebe", "Periyodik baca ve davlumbaz filtre yenilemesi", false, true, true));
+            expenseRepository.save(new Expense("Ambalaj & Sarf Malzemeleri", "VARIABLE", "CONSUMABLES", new BigDecimal("6400.00"), currentPeriod, today, "Sistem / Muhasebe", "Paket servis kutuları ve hijyen ürünleri", false, true, true));
         }
     }
 
-    public List<Expense> getAllExpenses() {
-        return expenseRepository.findAllByOrderByExpenseDateDescIdDesc();
+    public List<ExpenseResponse> getAllExpenses() {
+        List<Expense> expenses = expenseRepository.findAllByOrderByExpenseDateDescIdDesc();
+        return expenseMapper.toDtoList(expenses);
     }
 
-    public List<Expense> getExpensesByCategory(String category) {
-        return expenseRepository.findByCategory(category.toUpperCase());
+    public List<ExpenseResponse> getExpensesByCategory(String category) {
+        List<Expense> expenses = expenseRepository.findByCategory(category.toUpperCase());
+        return expenseMapper.toDtoList(expenses);
     }
 
-    public Optional<Expense> getExpenseById(Long id) {
-        return expenseRepository.findById(id);
+    public ExpenseResponse getExpenseById(Long id) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Gider kaydı bulunamadı: ID " + id));
+        return expenseMapper.toDto(expense);
     }
 
-    public Expense saveExpense(Expense expense) {
-        if (expense.getExpenseDate() == null) {
-            expense.setExpenseDate(LocalDate.now());
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseResponse createExpense(ExpenseCreateRequest request) {
+        Expense entity = expenseMapper.toEntity(request);
+
+        if (entity.getExpenseDate() == null) {
+            entity.setExpenseDate(LocalDate.now());
         }
-        if (expense.getPeriod() == null || expense.getPeriod().isBlank()) {
-            expense.setPeriod(expense.getExpenseDate().getYear() + "-" + String.format("%02d", expense.getExpenseDate().getMonthValue()));
+        if (entity.getPeriod() == null || entity.getPeriod().isBlank()) {
+            entity.setPeriod(entity.getExpenseDate().getYear() + "-" + String.format("%02d", entity.getExpenseDate().getMonthValue()));
         }
-        return expenseRepository.save(expense);
+
+        Expense saved = expenseRepository.save(entity);
+        return expenseMapper.toDto(saved);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseResponse updateExpense(Long id, ExpenseCreateRequest request) {
+        Expense existing = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Güncellenecek gider bulunamadı: ID " + id));
+
+        // State Machine Guard: Finalized records cannot be modified
+        if ("FINALIZED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Resmi deftere işlenmiş ve kesinleşmiş bir gider kaydı (FINALIZED) güncellenemez!");
+        }
+
+        expenseMapper.updateEntityFromDto(request, existing);
+        Expense updated = expenseRepository.save(existing);
+        return expenseMapper.toDto(updated);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public void deleteExpense(Long id) {
-        expenseRepository.deleteById(id);
+        Expense existing = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Silinecek gider bulunamadı: ID " + id));
+
+        // State Machine Guard: Finalized official ledger records cannot be deleted
+        if ("FINALIZED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Resmi deftere işlenmiş ve kesinleşmiş bir gider kaydı (FINALIZED) silinemez!");
+        }
+
+        // Triggers Hibernate @SQLDelete for soft deletion
+        expenseRepository.delete(existing);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseResponse approveExpense(Long id) {
+        Expense existing = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Onaylanacak gider bulunamadı: ID " + id));
+
+        // State Machine Guard: Finalized records cannot be modified/approved again
+        if ("FINALIZED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Resmi deftere işlenmiş ve kesinleşmiş gider (FINALIZED) yeniden onaylanamaz.");
+        }
+
+        existing.setStatus("APPROVED");
+        existing.setPaidByCashier(true);
+        existing.setPaymentStatus("PAID");
+        existing.setSentToAdvisor(true);
+        existing.setRejectionReason(null);
+        Expense updated = expenseRepository.save(existing);
+        return expenseMapper.toDto(updated);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseResponse finalizeExpense(Long id) {
+        Expense existing = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deftere işlenecek gider bulunamadı: ID " + id));
+
+        // State Machine Guard: Only APPROVED expenses can transition to FINALIZED
+        if ("FINALIZED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Bu gider zaten resmi deftere işlenmiş ve kesinleşmiştir.");
+        }
+        if (!"APPROVED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Sadece onaylanmış (APPROVED) giderler Mali Müşavir tarafından resmi deftere kesinleştirilebilir. Mevcut durum: " + existing.getStatus());
+        }
+
+        existing.setStatus("FINALIZED");
+        existing.setRecordedInLedger(true);
+        existing.setSentToAdvisor(true);
+        existing.setRejectionReason(null);
+        Expense updated = expenseRepository.save(existing);
+        return expenseMapper.toDto(updated);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExpenseResponse rejectExpense(Long id, String reason) {
+        Expense existing = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reddedilecek gider bulunamadı: ID " + id));
+
+        // State Machine Guard: Once officially recorded in the fiscal ledger, it cannot be rejected without formal cancellation
+        if ("FINALIZED".equalsIgnoreCase(existing.getStatus())) {
+            throw new IllegalStateException("Resmi deftere kesinleştirilmiş gider (FINALIZED) doğrudan reddedilemez.");
+        }
+
+        existing.setStatus("REJECTED");
+        existing.setRecordedInLedger(false);
+        existing.setRejectionReason(reason != null && !reason.isBlank() ? reason : "Mali Müşavir / Yönetim tarafından reddedildi.");
+        Expense updated = expenseRepository.save(existing);
+        return expenseMapper.toDto(updated);
     }
 
     public Map<String, Object> getExpenseSummary() {
