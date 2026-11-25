@@ -5,11 +5,11 @@
 #
 # Bu dosya ÜCRETSİZ DEMO planıyla gelir (kredi kartı gerekmez):
 #  - Sunucu 15 dk kullanılmazsa uyur; ilk istekte ~1 dk içinde uyanır (sunuma başlamadan önce
-#    https://gastrosync-api.onrender.com/actuator/health adresini bir kez açın).
+#    https://gastrosync-api-moo5.onrender.com/actuator/health adresini bir kez açın).
 #  - Ücretsiz veritabanı 30 gün sonra silinir. Gerçek restoran için plan: starter / basic-256mb seçin
 #    ve GASTROSYNC_SEED_DEMO_DATA=false yapın.
 #
-# Mobil uygulamanın sunucu adresi: https://gastrosync-api.onrender.com/api
+# Mobil uygulamanın sunucu adresi: https://gastrosync-api-moo5.onrender.com/api
 # Web paneli: https://gastrosync-web.onrender.com
 
 databases:
@@ -78,6 +78,11 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
     envVars:
-      # Web arayüzü /api ve /ws isteklerini özel ağ üzerinden arka uca iletir
-      - key: BACKEND_HOSTPORT
-        fromService: { type: web, name: gastrosync-api, property: hostport }
+      # nginx 80 numaralı portta dinler
+      - key: PORT
+        value: "80"
+      # Ücretsiz planda servisler özel ağdan birbirine ulaşamaz: web paneli API'ye herkese açık HTTPS adresinden bağlanır
+      - key: BACKEND_URL
+        value: https://gastrosync-api-moo5.onrender.com
+      - key: BACKEND_HOST
+        value: gastrosync-api-moo5.onrender.com

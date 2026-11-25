@@ -24,7 +24,8 @@ RUN rm -rf /usr/share/nginx/html/*
 COPY --from=build /app/dist /usr/share/nginx/html
 # Arka uç adresi ortam değişkeninden: docker compose'da http://backend:8080, Render vb. platformda servis adresi
 COPY nginx.conf /etc/nginx/templates/default.conf.template
-ENV BACKEND_HOSTPORT=backend:8080
+ENV BACKEND_URL=http://backend:8080 \
+    BACKEND_HOST=\$host
 
 EXPOSE 80
 HEALTHCHECK --interval=15s --timeout=5s --retries=5 CMD wget -qO- http://localhost/ > /dev/null || exit 1
