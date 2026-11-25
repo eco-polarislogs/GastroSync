@@ -37,5 +37,8 @@ public enum Role {
     ACCOUNTANT,
 
     /** External financial advisor — read-only access to financial reports, tax summaries */
-    FINANCIAL_ADVISOR
+    FINANCIAL_ADVISOR,
+
+    /** Kasa sorumlusu — masalar, adisyon, tahsilat ve gun sonu kasa sayimi */
+    CASHIER
 }

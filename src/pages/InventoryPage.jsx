@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { useAuthStore, useExpenseStore, useNotificationStore, ROLES } from '../store'
-import { useInventoryItems } from '../hooks/useInventoryQuery'
+import { Pagination, usePaged, Modal, Button, Field, Notice } from '../components/ui'
+import { useAuthStore, hasPermission } from '../store'
+import { inventoryApi } from '../api'
+import { useQueryClient } from '@tanstack/react-query'
+import { useInventoryItems, usePurchaseRequest } from '../hooks/useInventoryQuery'
 import { FiSearch, FiAlertCircle, FiArrowUp, FiArrowDown, FiFilter, FiDownload, FiFileText, FiShoppingCart, FiPlus, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { exportToExcel, exportToCSV } from '../utils/exportUtils'
@@ -16,6 +19,7 @@ export default function InventoryPage() {
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [stockFilter, setStockFilter] = useState('all')
   const [sortBy, setSortBy] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
 
@@ -66,15 +70,22 @@ export default function InventoryPage() {
         item.barcode.includes(search)
       const matchCategory =
         categoryFilter === 'all' || item.category === categoryFilter
-      return matchSearch && matchCategory
+      const critical = item.stock <= item.minStock
+      const matchStock = stockFilter === 'all' || (stockFilter === 'critical' ? critical : !critical)
+      return matchSearch && matchCategory && matchStock
     })
     .sort((a, b) => {
       let cmp = 0
       if (sortBy === 'name') cmp = a.name.localeCompare(b.name, 'tr')
       else if (sortBy === 'stock') cmp = a.stock - b.stock
       else if (sortBy === 'price') cmp = a.price - b.price
+      else if (sortBy === 'category') cmp = a.category.localeCompare(b.category, 'tr')
+      else if (sortBy === 'minStock') cmp = a.minStock - b.minStock
+      else if (sortBy === 'value') cmp = a.stock * a.price - b.stock * b.price
+      else if (sortBy === 'coverage') cmp = (a.minStock ? a.stock / a.minStock : 99) - (b.minStock ? b.stock / b.minStock : 99)
       return sortDir === 'asc' ? cmp : -cmp
     })
+  const inventoryPage = usePaged(filtered, 20)
 
   const toggleSort = (field) => {
     if (sortBy === field) {
@@ -91,176 +102,123 @@ export default function InventoryPage() {
     ) : null
 
   const { user } = useAuthStore()
-  const { addExpense } = useExpenseStore()
-  const { sendNotification } = useNotificationStore()
+  const purchaseM = usePurchaseRequest()
+  // Yetkiler sunucudan gelir (sunucu her işlemde ayrıca zorunlu kılar)
+  const canRequest = hasPermission(user, 'PURCHASE_REQUEST')
+  const canEditCost = hasPermission(user, 'INVENTORY_COST_EDIT')
+  const hasActions = canRequest || canEditCost
+  const qc = useQueryClient()
+  const [costTarget, setCostTarget] = useState(null)
+  const [costSaving, setCostSaving] = useState(false)
+  const saveCost = async () => {
+    const value = parseFloat(String(costTarget.cost).replace(',', '.'))
+    if (!(value >= 0)) { notifyError('Geçerli bir birim maliyet girin.'); return }
+    setCostSaving(true)
+    try {
+      const it = costTarget.item
+      await inventoryApi.update(it.id, {
+        name: it.name, category: it.category, minStock: it.minStock, unit: it.unit,
+        supplier: it.supplier, barcode: it.barcode || undefined, unitCost: value,
+      })
+      notifySuccess(`${it.name} birim maliyeti güncellendi; reçete maliyetleri yeniden hesaplandı.`)
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+      setCostTarget(null)
+    } catch (err) {
+      notifyError(err.message, 'İşlem reddedildi')
+    } finally {
+      setCostSaving(false)
+    }
+  }
 
   const [orderModalItem, setOrderModalItem] = useState(null)
   const [orderQuantity, setOrderQuantity] = useState('15')
   const [orderUrgent, setOrderUrgent] = useState(false)
   const [orderNote, setOrderNote] = useState('')
 
-  const handleCreateOrder = async (e) => {
+  // Talep sunucuda açılır: muhasebe onayına tahmini tutarlı gider kaydı + ilgili rollere bildirim + depo kanalına mesaj
+  const handleCreateOrder = (e) => {
     e.preventDefault()
     if (!orderModalItem) return
-    const qty = parseFloat(orderQuantity) || 0
+    const qty = parseFloat(String(orderQuantity).replace(',', '.')) || 0
     if (qty <= 0) {
       notifyError('Lütfen geçerli bir sipariş miktarı giriniz.')
       return
     }
-
-    const estimatedCost = Math.round(qty * orderModalItem.price)
-    const orderTitle = `${orderModalItem.name} Malzeme Alımı (${qty} ${orderModalItem.unit})`
-
-    // 1. Kasa / Muhasebe ekranına bekleyen ödeme/harcama talebi olarak otomatik işle
-    await addExpense({
-      title: orderTitle,
-      category: 'VARIABLE',
-      subType: 'CONSUMABLES',
-      amount: estimatedCost,
-      period: new Date().toISOString().substring(0, 7),
-      expenseDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
-      recordedBy: user?.name || 'Mutfak Şefi',
-      note: `${orderUrgent ? '⚡ [ACİL TALEP] ' : ''}${user?.name || 'Mutfak'} tarafından sipariş talebi açıldı. Mevcut stok: ${orderModalItem.stock} ${orderModalItem.unit}. ${orderNote ? 'Not: ' + orderNote : ''}`,
-      counterparty: 'Toptancı Hal / Gıda Tedarik',
-      invoiceNumber: `SIP-${Date.now().toString().slice(-6)}`,
-      paymentStatus: 'UNPAID', // Muhasebe kasasından ödenmeyi bekliyor
-      paidByCashier: false,
-      recordedInLedger: false,
-      sentToAdvisor: true,
-      status: 'SENT_TO_ADVISOR'
-    })
-
-    // 2. Canlı Telsiz Mesajı oluştur (Tüm departmanlar anlık görsün)
-    try {
-      const savedChat = localStorage.getItem('gastrosync_team_chat')
-      const chatList = savedChat ? JSON.parse(savedChat) : []
-      const newChatMessage = {
-        id: Date.now(),
-        channelId: 'kitchen',
-        sender: user?.name || 'Mehmet Şef',
-        role: user?.role || 'chef',
-        text: `Depoda ${orderModalItem.name} stoğu ${orderModalItem.stock} ${orderModalItem.unit} kaldı! ${qty} ${orderModalItem.unit} acil sipariş talebi açtım, muhasebeden ${estimatedCost.toLocaleString('tr-TR')} ₺ kasa onayı bekleniyor.`,
-        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        avatar: user?.avatar || 'MŞ',
-        priority: orderUrgent ? 'urgent' : 'high'
-      }
-      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
-    } catch (_) { }
-
-    // 3. Muhasebeci ve Kasaya anlık sistem bildirimi gönder
-    sendNotification({
-      title: orderUrgent ? '⚡ Acil Malzeme Tedarik Talebi' : '📦 Yeni Malzeme Sipariş Talebi',
-      message: `${user?.name || 'Mutfak Şefi'}, ${orderModalItem.name} (${qty} ${orderModalItem.unit}) için sipariş talebi açtı. Tahmini tutar: ${estimatedCost.toLocaleString('tr-TR')} ₺. Kasa onayı bekliyor.`,
-      targetRole: 'ACCOUNTANT',
-      senderName: user?.name || 'Mutfak Şefi',
-      type: 'EXPENSE_APPROVAL',
-      relatedEntityId: null
-    })
-
-    // 4. Depo Sorumlusuna anlık bildirim düşür (Depo haberdar olsun)
-    sendNotification({
-      title: orderUrgent ? '⚡ Depo: Acil Malzeme Siparişi Açıldı' : '📦 Depo: Yeni Malzeme Siparişi Açıldı',
-      message: `Mutfak tarafından ${orderModalItem.name} için ${qty} ${orderModalItem.unit} tedarik talebi açıldı. Kasa ödemesi ardından sevkiyat masanızda listelenecektir.`,
-      targetRole: 'WAREHOUSE',
-      senderName: user?.name || 'Mutfak Şefi',
-      type: 'PROCUREMENT_REQUESTED',
-      relatedEntityId: orderModalItem.id
-    })
-
-    notifySuccess(
-      `${orderModalItem.name} için ${qty} ${orderModalItem.unit} sipariş talebi oluşturuldu. Kasa, Muhasebe ve Depo ekranına iletildi!`,
-      'Tedarik Talebi Açıldı 🚀'
+    purchaseM.mutate(
+      { id: orderModalItem.id, quantity: qty, urgent: orderUrgent, note: orderNote.trim() },
+      {
+        onSuccess: () => {
+          setOrderModalItem(null)
+          setOrderQuantity('15')
+          setOrderUrgent(false)
+          setOrderNote('')
+        },
+      },
     )
-
-    setOrderModalItem(null)
-    setOrderQuantity('15')
-    setOrderUrgent(false)
-    setOrderNote('')
   }
 
+  const criticalCount = items.filter((i) => i.stock <= i.minStock).length
+  const totalValue = items.reduce((sum, i) => sum + i.stock * i.price, 0)
+  const activeFilters = (search ? 1 : 0) + (categoryFilter !== 'all' ? 1 : 0) + (stockFilter !== 'all' ? 1 : 0)
+  const clearFilters = () => { setSearch(''); setCategoryFilter('all'); setStockFilter('all') }
+
   return (
-    <div className="page-container">
-      {/* Actions Row */}
-      <div className="page-header-row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '-8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            Kritik stoktaki ürünler için anında <strong>Sipariş Talebi</strong> açabilir, Kasa ve Depo birimlerini eş zamanlı tetikleyebilirsiniz.
-          </span>
+    <div className="page-container inv-page">
+      {/* Özet: kritik kutucuğu listeyi kritik ürünlere süzer */}
+      <div className="inv-stats">
+        <button type="button" className={`inv-stat ${stockFilter === 'all' && !search && categoryFilter === 'all' ? 'is-active' : ''}`} onClick={clearFilters}>
+          <span className="inv-stat-value">{items.length}</span>
+          <span className="inv-stat-label">{t.totalProductsStat}</span>
+        </button>
+        <button type="button" className={`inv-stat inv-stat--warn ${stockFilter === 'critical' ? 'is-active' : ''}`}
+          onClick={() => setStockFilter(stockFilter === 'critical' ? 'all' : 'critical')}>
+          <span className="inv-stat-value">{criticalCount}</span>
+          <span className="inv-stat-label">{t.criticalStockStat}</span>
+        </button>
+        <div className="inv-stat inv-stat--static">
+          <span className="inv-stat-value">{totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺</span>
+          <span className="inv-stat-label">{t.totalInventoryValueStat}</span>
         </div>
-        <div className="export-btn-group">
-          <button 
-            className="export-tile-btn export-tile-btn--excel" 
-            onClick={handleExportExcel}
-            title={t.exportExcel}
-          >
-            <FiDownload className="export-tile-icon" /> {t.exportExcel}
-          </button>
-          <button 
-            className="export-tile-btn export-tile-btn--csv" 
-            onClick={handleExportCSV}
-            title={t.exportCsv}
-          >
-            <FiFileText className="export-tile-icon" /> {t.exportCsv}
-          </button>
-          <button 
-            className="export-tile-btn" 
-            onClick={() => refetch()}
-            title="Veritabanından Yenile"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FiRefreshCw className="export-tile-icon" /> Yenile
-          </button>
+        <div className="inv-stat inv-stat--static">
+          <span className="inv-stat-value">{categories.length - 1}</span>
+          <span className="inv-stat-label">Kategori</span>
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="filters-bar">
-        <div className="search-wrapper">
-          <FiSearch className="search-icon" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t.searchInventoryPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="filter-group">
-          <FiFilter className="filter-icon" />
-          <select
-            className="filter-select"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
+      <div className="inv-panel">
+        {/* Araç çubuğu: sayfayla birlikte kaymaz, tek satır; dar ekranda alt alta */}
+        <div className="inv-toolbar">
+          <div className="inv-search">
+            <FiSearch className="inv-search-icon" />
+            <input
+              type="text"
+              placeholder={t.searchInventoryPlaceholder}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label={t.searchInventoryPlaceholder}
+            />
+            {search && <button type="button" className="inv-clear" onClick={() => setSearch('')} aria-label="Temizle"><FiX size={14} /></button>}
+          </div>
+          <select className="inv-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label={t.categoryCol}>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat === 'all' ? t.allCategories : getCategoryLabel(cat, currentLanguage)}
-              </option>
+              <option key={cat} value={cat}>{cat === 'all' ? t.allCategories : getCategoryLabel(cat, currentLanguage)}</option>
             ))}
           </select>
+          <select className="inv-select" value={stockFilter} onChange={(e) => setStockFilter(e.target.value)} aria-label="Stok durumu">
+            <option value="all">Tüm stok durumları</option>
+            <option value="critical">Yalnızca kritik</option>
+            <option value="ok">Yeterli</option>
+          </select>
+          <div className="inv-toolbar-end">
+            <span className="inv-count">{filtered.length} / {items.length} ürün</span>
+            {activeFilters > 0 && (
+              <button type="button" className="inv-icon-btn" onClick={clearFilters} title="Filtreleri temizle"><FiX size={15} /> Temizle</button>
+            )}
+            <button type="button" className="inv-icon-btn" onClick={handleExportExcel} title={t.exportExcel}><FiDownload size={15} /> Excel</button>
+            <button type="button" className="inv-icon-btn" onClick={handleExportCSV} title={t.exportCsv}><FiFileText size={15} /> CSV</button>
+            <button type="button" className="inv-icon-btn" onClick={() => refetch()} title="Veritabanından yenile" aria-label="Yenile"><FiRefreshCw size={15} /></button>
+          </div>
         </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="mini-stats">
-        <div className="mini-stat">
-          <span className="mini-stat-value">{items.length}</span>
-          <span className="mini-stat-label">{t.totalProductsStat}</span>
-        </div>
-        <div className="mini-stat">
-          <span className="mini-stat-value mini-stat-value--warning">
-            {items.filter((i) => i.stock <= i.minStock).length}
-          </span>
-          <span className="mini-stat-label">{t.criticalStockStat}</span>
-        </div>
-        <div className="mini-stat">
-          <span className="mini-stat-value">
-            {items.reduce((sum, i) => sum + i.stock * i.price, 0).toLocaleString('tr-TR')} ₺
-          </span>
-          <span className="mini-stat-label">{t.totalInventoryValueStat}</span>
-        </div>
-      </div>
 
       {/* Loading & Error States */}
       {isLoading ? (
@@ -283,31 +241,39 @@ export default function InventoryPage() {
           </button>
         </div>
       ) : (
-      /* Table */
-      <div className="table-card">
-        <div className="table-wrapper">
-          <table className="data-table-main">
+      /* Tablo: kendi içinde kayar, başlık sabit kalır */
+      <>
+        <div className="inv-table-scroll">
+          <table className="data-table-main inv-table">
             <thead>
               <tr>
                 <th onClick={() => toggleSort('name')} className="th-sortable">
                   {t.productNameCol} <SortIcon field="name" />
                 </th>
-                <th>{t.categoryCol}</th>
+                <th onClick={() => toggleSort('category')} className="th-sortable">
+                  {t.categoryCol} <SortIcon field="category" />
+                </th>
                 <th>{t.barcodeCol}</th>
                 <th onClick={() => toggleSort('stock')} className="th-sortable">
                   {t.stockCol} <SortIcon field="stock" />
                 </th>
-                <th>{t.minStockCol}</th>
+                <th onClick={() => toggleSort('minStock')} className="th-sortable">
+                  {t.minStockCol} <SortIcon field="minStock" />
+                </th>
                 <th onClick={() => toggleSort('price')} className="th-sortable">
                   {t.unitPriceCol} <SortIcon field="price" />
                 </th>
-                <th>{t.totalValueCol}</th>
-                <th>{t.statusTh}</th>
-                <th style={{ textAlign: 'center' }}>Hızlı İşlem</th>
+                <th onClick={() => toggleSort('value')} className="th-sortable">
+                  {t.totalValueCol} <SortIcon field="value" />
+                </th>
+                <th onClick={() => toggleSort('coverage')} className="th-sortable">
+                  {t.statusTh} <SortIcon field="coverage" />
+                </th>
+                {hasActions && <th style={{ textAlign: 'center' }}>İşlem</th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
+              {inventoryPage.items.map((item) => (
                 <tr key={item.id} className={item.stock <= item.minStock ? 'row-warning' : ''}>
                   <td className="td-bold">{item.name}</td>
                   <td>
@@ -318,8 +284,8 @@ export default function InventoryPage() {
                     {item.stock} {item.unit}
                   </td>
                   <td>{item.minStock} {item.unit}</td>
-                  <td>{item.price.toFixed(2)} ₺</td>
-                  <td className="td-bold">{(item.stock * item.price).toLocaleString('tr-TR')} ₺</td>
+                  <td>{item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</td>
+                  <td className="td-bold">{(item.stock * item.price).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺</td>
                   <td>
                     {item.stock <= item.minStock ? (
                       <span className="status-badge status-badge--warning">
@@ -331,7 +297,15 @@ export default function InventoryPage() {
                       </span>
                     )}
                   </td>
+                  {hasActions && (
                   <td style={{ textAlign: 'center' }}>
+                    {canEditCost && (
+                      <button type="button" className="export-tile-btn" style={{ padding: '6px 10px', fontSize: 12, marginRight: canRequest ? 6 : 0 }}
+                        onClick={() => setCostTarget({ item, cost: String(item.price) })}>
+                        Maliyet Düzelt
+                      </button>
+                    )}
+                    {canRequest && (
                     <button
                       type="button"
                       onClick={() => {
@@ -352,18 +326,49 @@ export default function InventoryPage() {
                         alignItems: 'center',
                         gap: '6px'
                       }}
-                      title="Bu malzeme için satın alma talebi aç"
                     >
                       <FiShoppingCart size={13} /> Sipariş Talebi Aç
                     </button>
+                    )}
                   </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+          {filtered.length === 0 && (
+            <div className="inv-empty">
+              Bu filtrelerle eşleşen ürün yok.{' '}
+              {activeFilters > 0 && <button type="button" className="inv-link" onClick={clearFilters}>Filtreleri temizle</button>}
+            </div>
+          )}
         </div>
-      </div>
+        {filtered.length > 0 && <div className="inv-pager"><Pagination {...inventoryPage.pager} /></div>}
+      </>
       )}
+      </div>
+
+      <Modal
+        open={!!costTarget}
+        onClose={() => setCostTarget(null)}
+        title={`Birim maliyet düzeltmesi · ${costTarget?.item?.name || ''}`}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setCostTarget(null)}>Vazgeç</Button>
+            <Button loading={costSaving} onClick={saveCost}>Kaydet</Button>
+          </>
+        )}
+      >
+        {costTarget && (
+          <div className="gs-form">
+            <Field label={`Birim maliyet (₺ / ${costTarget.item.unit})`} required>
+              <input className="gs-input" type="number" min="0" step="0.01" value={costTarget.cost}
+                onChange={(e) => setCostTarget({ ...costTarget, cost: e.target.value })} />
+            </Field>
+            <Notice tone="info">Ağırlıklı ortalama maliyet mal kabulde otomatik hesaplanır. Elle düzeltme yalnızca Muhasebe yapar ve denetim izine yazılır.</Notice>
+          </div>
+        )}
+      </Modal>
 
       {/* SİPARİŞ / SATIN ALMA TALEP MODALI */}
       {orderModalItem && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import axiosClient from '../api/axiosClient'
-import { useRecipeStore, useInventoryStore, useAuthStore, useNotificationStore } from '../store'
+import { Pagination, usePaged } from '../components/ui'
+import { useRecipeStore, useInventoryStore, useAuthStore, hasPermission } from '../store'
 import { FiPlus, FiEdit3, FiTrash2, FiChevronDown, FiChevronUp, FiSearch, FiFilter, FiAlertTriangle, FiX, FiCheck } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
@@ -13,11 +13,13 @@ export default function RecipesPage() {
 
   const { recipes, addRecipe, updateRecipe, deleteRecipe, fetchRecipes } = useRecipeStore()
   const { items, fetchItems } = useInventoryStore()
-  const { sendNotification } = useNotificationStore()
+  // Şef reçete ve gramajı tasarlar (RECIPE_EDIT); menü fiyatı / KDV ve menüden kaldırma Müdür kararıdır (MENU_PRICE_SET)
+  const canEditRecipe = hasPermission(currentUser, 'RECIPE_EDIT')
+  const canManageMenu = hasPermission(currentUser, 'MENU_PRICE_SET')
+  const [sortBy, setSortBy] = useState('name')
 
   useEffect(() => {
-    if (fetchRecipes) fetchRecipes()
-    if (fetchItems) fetchItems()
+    fetchItems().then(fetchRecipes)
   }, [fetchRecipes, fetchItems])
 
   const [expandedId, setExpandedId] = useState(null)
@@ -38,6 +40,17 @@ export default function RecipesPage() {
     const matchCat = categoryFilter === 'all' || r.category === categoryFilter
     return matchSearch && matchCat
   })
+  const SORTERS = {
+    name: (a, b) => a.name.localeCompare(b.name, 'tr'),
+    priceDesc: (a, b) => b.salePrice - a.salePrice,
+    priceAsc: (a, b) => a.salePrice - b.salePrice,
+    costDesc: (a, b) => b.cost - a.cost,
+    foodCostDesc: (a, b) => b.foodCostPercent - a.foodCostPercent,
+    pending: (a, b) => Number(a.priceApproved) - Number(b.priceApproved) || a.name.localeCompare(b.name, 'tr'),
+  }
+  const sortedRecipes = [...filteredRecipes].sort(SORTERS[sortBy] || SORTERS.name)
+  const pendingCount = recipes.filter((r) => !r.priceApproved).length
+  const recipePage = usePaged(sortedRecipes, 12)
 
   // New recipe form state
   const [newRecipe, setNewRecipe] = useState({
@@ -102,137 +115,79 @@ export default function RecipesPage() {
     setEditingRecipe(recipe)
   }
 
+  const toIngredients = (rows) => rows
+    .filter((ing) => ing.itemId && ing.amount)
+    .map((ing) => {
+      const item = items.find((i) => i.id === parseInt(ing.itemId))
+      return { itemId: parseInt(ing.itemId), name: item?.name || '', amount: parseFloat(String(ing.amount).replace(',', '.')) || 0, unit: item?.unit || '' }
+    })
+
   const handleUpdateRecipeSubmit = async (e) => {
     e.preventDefault()
-    const ingredients = editForm.ingredients
-      .filter((ing) => ing.itemId && ing.amount)
-      .map((ing) => {
-        const item = items.find((i) => i.id === parseInt(ing.itemId))
-        const rawAmount = parseFloat(ing.amount) || 0
-        const unitCost = item ? item.price : 0
-        return {
-          itemId: parseInt(ing.itemId),
-          name: item?.name || '',
-          amount: rawAmount,
-          quantity: rawAmount,
-          unit: item?.unit || '',
-          unitCost: unitCost,
-          cost: Math.round(rawAmount * unitCost * 100) / 100
-        }
-      })
-
-    const cost = ingredients.reduce((sum, ing) => sum + ing.cost, 0)
-    const salePrice = parseFloat(editForm.salePrice) || 0
-    const foodCostPercent = salePrice > 0 ? (cost / salePrice) * 100 : 0
-
-    const updatedData = {
+    const original = recipes.find((r) => r.id === editForm.id)
+    const res = await updateRecipe(editForm.id, {
       name: editForm.name,
       category: editForm.category,
-      salePrice,
-      ingredients,
-      cost: Math.round(cost * 100) / 100,
-      foodCostPercent: Math.round(foodCostPercent * 10) / 10,
+      salePrice: canManageMenu ? parseFloat(editForm.salePrice) || 0 : original?.salePrice,
+      vatRate: original?.vatRate,
+      portions: original?.portions || 1,
+      description: original?.description,
+      ingredients: toIngredients(editForm.ingredients),
+    })
+    if (res.success) {
+      notifySuccess(`${editForm.name} güncellendi. Porsiyon maliyeti güncel stok maliyetinden yeniden hesaplandı.`, 'Reçete Güncellendi')
+      setEditingRecipe(null)
+    } else {
+      notifyError(res.message, 'Reçete güncellenemedi')
     }
-
-    await updateRecipe(editForm.id, updatedData)
-
-    notifySuccess(`${editForm.name} başarıyla güncellendi!`, 'Reçete Güncellendi')
-    setEditingRecipe(null)
   }
 
   const executeDeleteRecipe = async () => {
     if (!recipeToDelete) return
     setDeleting(true)
-
-    // Backend silme isteği
-    try {
-      await axiosClient.delete(`/recipes/${recipeToDelete.id}`)
-    } catch (_) { }
-
-    deleteRecipe(recipeToDelete.id)
-    notifySuccess(`${recipeToDelete.name} menüden kalıcı olarak silindi.`, 'Reçete Silindi')
-    setRecipeToDelete(null)
+    const res = await deleteRecipe(recipeToDelete.id)
     setDeleting(false)
+    if (res.success) {
+      notifySuccess(`${recipeToDelete.name} menüden kaldırıldı (arşivlendi).`, 'Reçete')
+      setRecipeToDelete(null)
+    } else {
+      notifyError(res.message, 'Silinemedi')
+    }
   }
 
   const handleSubmitRecipe = async (e) => {
     e.preventDefault()
-    const ingredients = newRecipe.ingredients
-      .filter((ing) => ing.itemId && ing.amount)
-      .map((ing) => {
-        const item = items.find((i) => i.id === parseInt(ing.itemId))
-        const rawAmount = parseFloat(ing.amount) || 0
-        const unitCost = item ? item.price : 0
-        return {
-          itemId: parseInt(ing.itemId),
-          name: item?.name || '',
-          amount: rawAmount,
-          quantity: rawAmount,
-          unit: item?.unit || '',
-          unitCost: unitCost,
-          cost: Math.round(rawAmount * unitCost * 100) / 100
-        }
-      })
-
-    const cost = ingredients.reduce((sum, ing) => sum + ing.cost, 0)
-    const salePrice = parseFloat(newRecipe.salePrice) || 0
-    const foodCostPercent = salePrice > 0 ? (cost / salePrice) * 100 : 0
-
-    await addRecipe({
+    const res = await addRecipe({
       name: newRecipe.name,
       category: newRecipe.category,
       portions: 1,
-      salePrice,
-      ingredients,
-      cost: Math.round(cost * 100) / 100,
-      foodCostPercent: Math.round(foodCostPercent * 10) / 10,
+      vatRate: 10,
+      salePrice: parseFloat(newRecipe.salePrice) || 0,
+      ingredients: toIngredients(newRecipe.ingredients),
     })
-
-    // Piyasa standardı: Şef yeni bir reçete tanımladığında Yönetici ve Kasiyere bildirim
-    sendNotification({
-      title: '🍽️ Yeni Menü Reçetesi Tanımlandı',
-      message: `${currentUser?.name || 'Mutfak Şefi'} tarafından "${newRecipe.name}" reçetesi eklendi (Porsiyon Maliyeti: ${Math.round(cost).toLocaleString('tr-TR')} ₺, Satış: ${salePrice.toLocaleString('tr-TR')} ₺, Food Cost: %${foodCostPercent.toFixed(1)}).`,
-      targetRole: 'MANAGER',
-      senderName: currentUser?.name || 'Mutfak Şefi',
-      type: 'RECIPE_CREATED',
-      relatedEntityId: null
-    })
-
-    // Telsiz kanalına mesaj düşür
-    try {
-      const savedChat = localStorage.getItem('gastrosync_team_chat')
-      const chatList = savedChat ? JSON.parse(savedChat) : []
-      const newChatMessage = {
-        id: Date.now(),
-        channelId: 'kitchen',
-        sender: currentUser?.name || 'Fatma Şef',
-        role: 'chef',
-        text: `Yeni "${newRecipe.name}" reçetesini menüye ekledim! Food Cost oranı: %${foodCostPercent.toFixed(1)}. Satışa hazır.`,
-        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        avatar: currentUser?.avatar || 'FŞ',
-        priority: 'normal'
-      }
-      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
-    } catch (_) { }
-
-    notifySuccess(`${newRecipe.name} başarıyla eklendi`, 'Yeni Reçete Eklendi')
-
-    setNewRecipe({
-      name: '',
-      category: 'Ana Yemek',
-      salePrice: '',
-      ingredients: [{ itemId: '', amount: '' }],
-    })
+    if (!res.success) {
+      notifyError(res.message, 'Reçete kaydedilemedi')
+      return
+    }
+    notifySuccess(`${newRecipe.name} menüye eklendi. Maliyet sunucuda güncel stok fiyatlarından hesaplandı.`, 'Yeni Reçete')
+    setNewRecipe({ name: '', category: 'Ana Yemek', salePrice: '', ingredients: [{ itemId: '', amount: '' }] })
     setShowAddModal(false)
   }
 
   return (
     <div className="page-container">
       {/* Action Row */}
-      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <FiPlus /> {t.addNewRecipe}
-        </button>
+      <div className="page-header-row" style={{ justifyContent: 'space-between', marginBottom: '-8px', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+          {pendingCount > 0
+            ? <><strong style={{ color: '#b45309' }}>{pendingCount} reçete</strong> İşletme Müdürünün fiyat onayını bekliyor; onaylanana kadar kasada satışa açılmaz.</>
+            : 'Reçete ve gramajı Mutfak Şefi, menü satış fiyatını İşletme Müdürü belirler.'}
+        </span>
+        {canEditRecipe && (
+          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+            <FiPlus /> {t.addNewRecipe}
+          </button>
+        )}
       </div>
 
       {/* Filters Bar */}
@@ -261,19 +216,35 @@ export default function RecipesPage() {
             ))}
           </select>
         </div>
+        <div className="filter-group">
+          <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sıralama">
+            <option value="name">Ada göre (A → Z)</option>
+            <option value="priceDesc">Satış fiyatı (yüksek → düşük)</option>
+            <option value="priceAsc">Satış fiyatı (düşük → yüksek)</option>
+            <option value="costDesc">Porsiyon maliyeti (yüksek → düşük)</option>
+            <option value="foodCostDesc">Food cost % (yüksek → düşük)</option>
+            <option value="pending">Fiyat onayı bekleyenler önce</option>
+          </select>
+        </div>
         <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginLeft: 'auto' }}>
           <strong>{filteredRecipes.length}</strong> / {recipes.length} {t.recordsListed}
         </span>
       </div>
 
+
       {/* Recipe Cards */}
       <div className="recipe-grid">
-        {filteredRecipes.map((recipe) => (
+        {recipePage.items.map((recipe) => (
           <div key={recipe.id} className="recipe-card animate-fade-in">
             <div className="recipe-card-top" onClick={() => toggleExpand(recipe.id)} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px' }}>
               <div className="recipe-card-info" style={{ flex: '1 1 0%', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
                   <span className="recipe-card-category">{getCategoryLabel(recipe.category, currentLanguage)}</span>
+                  {!recipe.priceApproved && (
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 800, background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}>
+                      Fiyat onayı bekliyor
+                    </span>
+                  )}
                   {(() => {
                     const hasLowStockIng = recipe.ingredients?.some(ing => {
                       const item = items.find(i => i.id === ing.itemId || (ing.name && i.name.toLowerCase().includes(ing.name.toLowerCase())))
@@ -418,7 +389,7 @@ export default function RecipesPage() {
                 </table>
 
                 <div className="recipe-card-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
-                  <button
+                  {canEditRecipe && <button
                     type="button"
                     style={{
                       display: 'inline-flex',
@@ -439,8 +410,8 @@ export default function RecipesPage() {
                     onClick={(e) => handleOpenEdit(recipe, e)}
                   >
                     <FiEdit3 size={15} /> {t.editRecipeBtn}
-                  </button>
-                  <button
+                  </button>}
+                  {canManageMenu && <button
                     type="button"
                     style={{
                       display: 'inline-flex',
@@ -465,13 +436,14 @@ export default function RecipesPage() {
                     title={t.deleteRecipeBtn}
                   >
                     <FiTrash2 size={15} /> {t.deleteRecipeBtn}
-                  </button>
+                  </button>}
                 </div>
               </div>
             )}
           </div>
         ))}
       </div>
+      <Pagination {...recipePage.pager} sizes={[12, 24, 48]} />
 
       {/* Edit Recipe Modal - Geniş ve Kaydırma Çubuğu Olmadan Tam Açılan Görünüm */}
       {editingRecipe && (
@@ -536,6 +508,8 @@ export default function RecipesPage() {
                     className="form-input"
                     style={{ background: '#f8fafc', border: '1px solid #dbe7df', padding: '10px 14px', borderRadius: '8px' }}
                     value={editForm.salePrice}
+                    disabled={!canManageMenu}
+                    title={canManageMenu ? '' : 'Satış fiyatı değişikliği İşletme Müdürü yetkisindedir (Menü & Maliyet ekranı)'}
                     onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
                     placeholder="350"
                     min="0"

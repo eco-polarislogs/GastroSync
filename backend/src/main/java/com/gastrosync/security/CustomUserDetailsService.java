@@ -1,7 +1,7 @@
 package com.gastrosync.security;
 
-import com.gastrosync.model.AppUser;
-import com.gastrosync.repository.AppUserRepository;
+import java.util.Collections;
+
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,23 +9,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import com.gastrosync.model.AppUser;
+import com.gastrosync.repository.AppUserRepository;
 
 /**
- * Custom UserDetailsService implementation bridging Spring Security with GastroSync's AppUser entity.
- *
- * ═══════════════════════════════════════════════════════════════
- * ARCHITECTURAL JUSTIFICATION (Thesis Defense Note)
- * ═══════════════════════════════════════════════════════════════
- *
- * Spring Security's AuthenticationManager delegates authentication to an
- * AuthenticationProvider (DaoAuthenticationProvider by default). That provider
- * requires a UserDetailsService to load user credentials and granted authorities.
- *
- * FEATURES:
- * 1. DUAL LOOKUP: Users can log in using either their username or email address.
- * 2. ROLE NORMALIZATION: Ensures Spring Security's "ROLE_" prefix convention is respected.
- * 3. IMMUTABILITY: Converts domain entity into Spring's standard UserDetails contract.
+ * Giris sirasinda kullanici adini VEYA e-postayi kabul eder.
+ * Pasif hesaplar "disabled" olarak doner ve giris yapamaz.
  */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -38,27 +27,18 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-        String cleanId = identifier.trim();
-
-        // 1. Search by username first, fallback to email
+        String cleanId = identifier == null ? "" : identifier.trim();
         AppUser user = userRepository.findByUsernameIgnoreCase(cleanId)
                 .orElseGet(() -> userRepository.findByEmailIgnoreCase(cleanId)
                         .stream()
                         .findFirst()
-                        .orElseThrow(() -> new UsernameNotFoundException("Kullanıcı bulunamadı: " + cleanId)));
+                        .orElseThrow(() -> new UsernameNotFoundException("Kullanici bulunamadi")));
 
-        // 2. Normalize role authority: "ADMIN" -> "ROLE_ADMIN"
-        String role = user.getRole();
-        if (role != null && !role.startsWith("ROLE_")) {
-            role = "ROLE_" + role.toUpperCase();
-        } else if (role == null) {
-            role = "ROLE_WAITER";
-        }
-
-        return new User(
-                user.getUsername(),
-                user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(role))
-        );
+        String role = AppRoles.normalize(user.getRole());
+        return User.withUsername(user.getUsername())
+                .password(user.getPassword())
+                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)))
+                .disabled(!user.isActive())
+                .build();
     }
 }

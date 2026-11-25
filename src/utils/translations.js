@@ -40,10 +40,11 @@ export const TRANSLATIONS = {
     recordsListed: 'kayıt listelendi',
 
     // Roller
-    roleAdmin: 'Yönetici (Super Admin)',
-    roleManager: 'Restoran Müdürü',
-    roleAccountant: 'Muhasebeci (Kasa)',
+    roleAdmin: 'Yönetici',
+    roleManager: 'İşletme Müdürü',
+    roleAccountant: 'Muhasebe',
     roleAdvisor: 'Mali Müşavir (SMMM)',
+    roleCashier: 'Kasiyer',
     roleChef: 'Mutfak Şefi',
     roleWarehouse: 'Depo Sorumlusu',
 
@@ -126,7 +127,7 @@ export const TRANSLATIONS = {
     unitPriceCol: 'Birim Fiyat',
     totalValueCol: 'Toplam Değer',
     statusCritical: 'Kritik',
-    statusSufficient: 'Tier A • Yeterli',
+    statusSufficient: 'Yeterli',
     orderModalItem: 'Sipariş Talebi Aç',
     orderQuantityLabel: 'Sipariş Miktarı',
     urgentOrderLabel: 'Acil İkmal Talebi',
@@ -476,6 +477,7 @@ export const TRANSLATIONS = {
     roleManager: 'General Manager',
     roleAccountant: 'Accountant (Cashier)',
     roleAdvisor: 'CPA (Financial Advisor)',
+    roleCashier: 'Cashier',
     roleChef: 'Executive Chef',
     roleWarehouse: 'Warehouse Specialist',
 
@@ -558,7 +560,7 @@ export const TRANSLATIONS = {
     unitPriceCol: 'Unit Cost',
     totalValueCol: 'Asset Value',
     statusCritical: 'Critical',
-    statusSufficient: 'Tier A • Optimal',
+    statusSufficient: 'Sufficient',
     orderModalItem: 'Create Order Request',
     orderQuantityLabel: 'Order Quantity',
     urgentOrderLabel: 'Urgent Supply Request',
@@ -908,6 +910,7 @@ export const TRANSLATIONS = {
     roleManager: 'Restaurantleiter',
     roleAccountant: 'Buchhalter (Kassierer)',
     roleAdvisor: 'Steuerberater',
+    roleCashier: 'Kassierer',
     roleChef: 'Küchenchef',
     roleWarehouse: 'Lagerverwalter',
 
@@ -990,7 +993,7 @@ export const TRANSLATIONS = {
     unitPriceCol: 'Stückpreis',
     totalValueCol: 'Gesamtwert',
     statusCritical: 'Kritisch',
-    statusSufficient: 'Tier A • Optimal',
+    statusSufficient: 'Ausreichend',
     orderModalItem: 'Bestellauftrag erstellen',
     orderQuantityLabel: 'Bestellmenge',
     urgentOrderLabel: 'Dringende Nachschubbestellung',
@@ -1337,6 +1340,7 @@ export const TRANSLATIONS = {
     roleManager: 'مدير المطعم',
     roleAccountant: 'محاسب (أمين الصندوق)',
     roleAdvisor: 'مستشار مالي معتمد',
+    roleCashier: 'أمين الصندوق',
     roleChef: 'رئيس الطهاة',
     roleWarehouse: 'أمين المستودع',
 
@@ -1419,7 +1423,7 @@ export const TRANSLATIONS = {
     unitPriceCol: 'سعر الوحدة',
     totalValueCol: 'القيمة الإجمالية',
     statusCritical: 'حرج',
-    statusSufficient: 'الفئة A • كافٍ',
+    statusSufficient: 'كافٍ',
     orderModalItem: 'إنشاء طلب توريد ومواد',
     orderQuantityLabel: 'الكمية المطلوبة',
     urgentOrderLabel: 'طلب توريد عاجل',
@@ -1743,6 +1747,7 @@ export const getRoleLabel = (role, lang = 'tr') => {
     case 'financial_advisor': return t.roleAdvisor
     case 'chef': return t.roleChef
     case 'warehouse': return t.roleWarehouse
+    case 'cashier': return t.roleCashier
     default: return role
   }
 }
@@ -1818,6 +1823,23 @@ export const getCategoryLabel = (categoryName, lang = 'tr') => {
 
 // Bildirim Metinlerini Seçilen Dile Çevirme Helper'ı
 const NOTIF_MAP = {
+  // Roller arası onay talepleri: başlık çevrilir; ayrıntı (masa, ürün, gerekçe) kullanıcı içeriği olduğundan özgün kalır
+  APPROVAL_REQUEST: {
+    title: { tr: 'Onay talebi', en: 'Approval request', de: 'Genehmigungsantrag', ar: 'طلب موافقة' },
+    message: {},
+  },
+  APPROVAL_DECIDED: {
+    title: { tr: 'Talebiniz sonuçlandı', en: 'Your request was decided', de: 'Über Ihren Antrag wurde entschieden', ar: 'تم البت في طلبك' },
+    message: {},
+  },
+  ACCOUNT_DELETION_REQUEST: {
+    title: { tr: 'Hesap silme talebi', en: 'Account deletion request', de: 'Kontolöschungsantrag', ar: 'طلب حذف حساب' },
+    message: {},
+  },
+  INVENTORY_ADJUSTMENT: {
+    title: { tr: 'Sayım farkı', en: 'Count variance', de: 'Inventurdifferenz', ar: 'فرق الجرد' },
+    message: {},
+  },
   EXPENSE_APPROVAL: {
     title: {
       tr: '🚀 Yeni Gider Defter Onayı Bekliyor',

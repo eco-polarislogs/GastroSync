@@ -1,41 +1,23 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { FiMessageSquare, FiSend, FiX, FiUsers, FiClock, FiAlertCircle, FiCheck, FiTag, FiSearch } from 'react-icons/fi'
-import { useAuthStore, useNotificationStore, ROLES } from '../store'
+import { useAuthStore, ROLES } from '../store'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
-import { useChatMessages, useSendChatMessage, CHAT_KEYS } from '../hooks/useChatQuery'
+import { useChatMessages, useSendChatMessage, CHAT_KEYS, useChatChannels } from '../hooks/useChatQuery'
 import { useQueryClient } from '@tanstack/react-query'
 import websocketService from '../services/websocketService'
+import { notifyError } from '../utils/notify'
+import { chatApi } from '../api'
 
-// Kanal tanımları – her kanalın hangi rollere açık olduğunu belirler
+// Kanal tanımları. Hangi rolün hangi kanalı göreceğini sunucu belirler (GET /api/chat/channels);
+// allowedRoles yalnızca sunucu yanıtı gelene kadar kullanılan yedektir (AppRoles.CHAT_CHANNELS ile aynı).
+const { ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, FINANCIAL_ADVISOR, CASHIER } = ROLES
 const CHANNEL_DEFS = [
-  {
-    id: 'general',
-    nameKey: 'chGeneral',
-    targetKey: 'chGeneralTarget',
-    icon: '📢',
-    allowedRoles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.WAREHOUSE, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR],
-  },
-  {
-    id: 'kitchen',
-    nameKey: 'chKitchen',
-    targetKey: 'chKitchenTarget',
-    icon: '🍳',
-    allowedRoles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.WAREHOUSE],
-  },
-  {
-    id: 'cashier',
-    nameKey: 'chCashier',
-    targetKey: 'chCashierTarget',
-    icon: '💰',
-    allowedRoles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR],
-  },
-  {
-    id: 'shift',
-    nameKey: 'chShift',
-    targetKey: 'chShiftTarget',
-    icon: '📋',
-    allowedRoles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.WAREHOUSE, ROLES.ACCOUNTANT],
-  },
+  { id: 'general', nameKey: 'chGeneral', icon: '📢', allowedRoles: [ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, FINANCIAL_ADVISOR, CASHIER] },
+  { id: 'shift', nameKey: 'chShift', icon: '📋', allowedRoles: [ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, CASHIER] },
+  { id: 'kitchen', nameKey: 'chKitchen', icon: '🍳', allowedRoles: [ADMIN, MANAGER, CHEF, WAREHOUSE, CASHIER] },
+  { id: 'warehouse', nameKey: 'Depo & Tedarik', icon: '📦', allowedRoles: [ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT] },
+  { id: 'cashier', nameKey: 'chCashier', icon: '💰', allowedRoles: [ADMIN, MANAGER, ACCOUNTANT, FINANCIAL_ADVISOR, CASHIER] },
+  { id: 'management', nameKey: 'Yönetim', icon: '🏛️', allowedRoles: [ADMIN, MANAGER, ACCOUNTANT, FINANCIAL_ADVISOR] },
 ]
 
 export default function RestaurantTeamChat() {
@@ -50,16 +32,24 @@ export default function RestaurantTeamChat() {
   const [inputMsg, setInputMsg] = useState('')
   const [isUrgent, setIsUrgent] = useState(false)
   const [chatSearch, setChatSearch] = useState('')
+  // Kanal bazlı okunmamış sayıları sunucuda tutulur; web ve mobil aynı durumu görür
+  const [unread, setUnread] = useState({})
+  const openRef = useRef(isOpen)
+  const activeRef = useRef(activeChannel)
+  openRef.current = isOpen
+  activeRef.current = activeChannel
 
   // ── TANSTACK QUERY: PostgreSQL Persisted Team Chat ─────────────
-  const { data: messages = [], isLoading: isChatLoading } = useChatMessages(activeChannel)
+  const { data: messages = [], isLoading: isChatLoading } = useChatMessages(activeChannel, isOpen)
   const sendMessageMutation = useSendChatMessage()
 
   // Kullanıcının rolüne göre erişebildiği kanalları filtrele
+  const { data: serverChannels } = useChatChannels(isOpen)
   const accessibleChannels = useMemo(() => {
-    const userRole = user?.role || ROLES.ADMIN
-    return CHANNEL_DEFS.filter(ch => ch.allowedRoles.includes(userRole))
-  }, [user?.role])
+    if (Array.isArray(serverChannels)) return CHANNEL_DEFS.filter((ch) => serverChannels.includes(ch.id))
+    const userRole = user?.role
+    return CHANNEL_DEFS.filter((ch) => ch.allowedRoles.includes(userRole))
+  }, [user?.role, serverChannels])
 
   // Aktif kanal kullanıcının erişimine kapalıysa ilk erişebildiği kanala geçir
   useEffect(() => {
@@ -68,33 +58,49 @@ export default function RestaurantTeamChat() {
     }
   }, [accessibleChannels, activeChannel])
 
-  // ── WEBSOCKET / STOMP REAL-TIME SUBSCRIPTION ──────────────────
+  const refreshUnread = useCallback(() => {
+    chatApi.unread().then((data) => { if (data && typeof data === 'object') setUnread(data) }).catch(() => {})
+  }, [])
+
+  const markRead = useCallback((channelId) => {
+    if (!channelId) return
+    setUnread((prev) => (prev[channelId] ? { ...prev, [channelId]: 0 } : prev))
+    chatApi.markRead(channelId).catch(() => {})
+  }, [])
+
+  // ── Canlı akış: yetkili olunan tüm kanallar dinlenir (okunmamış sayacı için) ──
   useEffect(() => {
-    if (!activeChannel) return
-
-    const handleIncomingMessage = (incomingMsg) => {
-      if (!incomingMsg || !incomingMsg.id) return
-
-      queryClient.setQueryData(CHAT_KEYS.messages(activeChannel), (old = []) => {
-        const exists = old.some(m => m.id === incomingMsg.id)
-        if (exists) return old
-        return [...old, incomingMsg]
-      })
-
-      // Bildirim listesini güncelle
-      if (useNotificationStore?.getState()?.fetchNotifications && user?.role) {
-        useNotificationStore.getState().fetchNotifications(user.role)
-      }
-    }
-
-    const unsubChannel = websocketService.subscribe(`/topic/chat/${activeChannel}`, handleIncomingMessage)
-    const unsubAll = websocketService.subscribe('/topic/chat/all', handleIncomingMessage)
-
+    if (!user?.username) return undefined
+    refreshUnread()
+    const unsubs = accessibleChannels.map((ch) => websocketService.subscribe(`/topic/chat/${ch.id}`, (incoming) => {
+      if (!incoming?.id) return
+      queryClient.setQueryData(CHAT_KEYS.messages(ch.id), (old) =>
+        (!old ? old : old.some((m) => m.id === incoming.id) ? old : [...old, incoming]))
+      const own = incoming.senderUsername && incoming.senderUsername === user.username
+      if (own) return
+      if (openRef.current && activeRef.current === ch.id) markRead(ch.id)
+      else setUnread((prev) => ({ ...prev, [ch.id]: (prev[ch.id] || 0) + 1 }))
+    }))
+    // Başka cihazda (mobil / diğer sekme) okunan kanal burada da okunmuş görünür
+    const unsubRead = websocketService.subscribe('/user/queue/chat-read', (evt) => {
+      if (evt?.channelId) setUnread((prev) => ({ ...prev, [evt.channelId]: Number(evt.unread) || 0 }))
+    })
+    const timer = setInterval(refreshUnread, 60000)
+    window.addEventListener('focus', refreshUnread)
     return () => {
-      unsubChannel()
-      unsubAll()
+      unsubs.forEach((u) => u && u())
+      if (unsubRead) unsubRead()
+      clearInterval(timer)
+      window.removeEventListener('focus', refreshUnread)
     }
-  }, [activeChannel, queryClient, user?.role])
+  }, [accessibleChannels, queryClient, user?.username, refreshUnread, markRead])
+
+  // Açık olan kanal okunmuş sayılır
+  useEffect(() => {
+    if (isOpen && activeChannel && accessibleChannels.some((c) => c.id === activeChannel)) markRead(activeChannel)
+  }, [isOpen, activeChannel, accessibleChannels, markRead])
+
+  const totalUnread = Object.values(unread).reduce((sum, n) => sum + (Number(n) || 0), 0)
 
   // Yeni mesaj geldiğinde veya chat açıldığında otomatik aşağı kaydır
   useEffect(() => {
@@ -103,36 +109,18 @@ export default function RestaurantTeamChat() {
     }
   }, [messages, isOpen, activeChannel])
 
-  const handleSend = async (e) => {
+  const handleSend = (e) => {
     e.preventDefault()
-    if (!inputMsg.trim()) return
-
-    const newMsg = {
-      channelId: activeChannel,
-      sender: user?.name || 'Personel',
-      role: user?.role || 'admin',
-      text: inputMsg.trim(),
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      avatar: user?.avatar || 'GS',
-      priority: isUrgent ? 'urgent' : 'normal'
-    }
-
-    setInputMsg('')
-    setIsUrgent(false)
-
-    // STOMP üzerinden de doğrudan gönder
-    try {
-      websocketService.send('/app/chat.sendMessage', newMsg)
-    } catch (_) {}
-
-    // Send to PostgreSQL via Spring Boot ChatController
-    sendMessageMutation.mutate(newMsg, {
-      onSuccess: () => {
-        if (useNotificationStore?.getState()?.fetchNotifications) {
-          useNotificationStore.getState().fetchNotifications(user?.role)
-        }
-      }
-    })
+    const text = inputMsg.trim()
+    if (!text) return
+    // Gönderen kimliği sunucuda oturumdan belirlenir; mesaj yalnızca REST ile bir kez kaydedilir
+    sendMessageMutation.mutate(
+      { channelId: activeChannel, text, priority: isUrgent ? 'urgent' : 'normal' },
+      {
+        onSuccess: () => { setInputMsg(''); setIsUrgent(false) },
+        onError: (err) => notifyError(err.message, 'Mesaj gönderilemedi'),
+      },
+    )
   }
 
   const currentChannelMessages = useMemo(() => {
@@ -172,9 +160,11 @@ export default function RestaurantTeamChat() {
       >
         <FiMessageSquare size={18} />
         <span>{t.teamChat}</span>
-        <span style={{ backgroundColor: '#ffffff', color: '#059669', borderRadius: '12px', padding: '2px 7px', fontSize: '11px', fontWeight: 900 }}>
-          {messages.length}
-        </span>
+        {totalUnread > 0 && (
+          <span title="Okunmamış mesaj" style={{ backgroundColor: '#dc2626', color: '#ffffff', borderRadius: '12px', padding: '2px 7px', fontSize: '11px', fontWeight: 900 }}>
+            {totalUnread > 99 ? '99+' : totalUnread}
+          </span>
+        )}
       </button>
 
       {/* Chat Window Modal */}
@@ -271,6 +261,11 @@ export default function RestaurantTeamChat() {
                 }}
               >
                 {ch.icon} {t[ch.nameKey] || ch.nameKey}
+                {unread[ch.id] > 0 && activeChannel !== ch.id && (
+                  <span style={{ marginLeft: 6, backgroundColor: '#dc2626', color: '#ffffff', borderRadius: 10, padding: '0 6px', fontSize: '10px', fontWeight: 900 }}>
+                    {unread[ch.id] > 99 ? '99+' : unread[ch.id]}
+                  </span>
+                )}
               </button>
             ))}
           </div>

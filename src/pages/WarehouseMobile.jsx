@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
+import { Pagination, usePaged } from '../components/ui'
 import { useNavigate } from 'react-router-dom'
-import axiosClient from '../api/axiosClient'
-import { useAuthStore, useInventoryStore, useExpenseStore, useNotificationStore, ROLE_COLORS } from '../store'
+import { inventoryApi } from '../api'
+import { useAuthStore, useInventoryStore, mapInventoryItem, ROLE_COLORS } from '../store'
 import { FiAlertTriangle, FiSearch, FiFilter, FiLogOut, FiPackage, FiBarChart2, FiSettings, FiCheck, FiX, FiArrowLeft, FiCamera, FiTruck, FiClock, FiCheckCircle } from 'react-icons/fi'
 import { notifySuccess, notifyError } from '../utils/notify'
 import { TRANSLATIONS, getCategoryLabel } from '../utils/translations'
 import RestaurantTeamChat from '../components/RestaurantTeamChat'
+import StockCountPanel from './StockCountPanel'
+import { hasPermission } from '../store'
+import { FiClipboard } from 'react-icons/fi'
 import '../styles/warehouse.css'
 
 export default function WarehouseMobile({ isEmbedded = false }) {
@@ -13,15 +17,23 @@ export default function WarehouseMobile({ isEmbedded = false }) {
   const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
   const { user, logout } = useAuthStore()
-  const { items, recentActions, addStock, reportWaste, fetchItems, fetchTransactions } = useInventoryStore()
-  const { expenses, updateExpense, fetchExpenses } = useExpenseStore()
-  const { sendNotification } = useNotificationStore()
+  const { items, recentActions, receive, waste, fetchItems, fetchTransactions } = useInventoryStore()
+  const [deliveries, setDeliveries] = useState([])
+
+  // Bekleyen teslimatlar sunucudan gelir: depo personeli yalnızca operasyon için gereken alanları görür
+  const loadDeliveries = async () => {
+    try {
+      setDeliveries(await inventoryApi.pendingDeliveries())
+    } catch (err) {
+      notifyError(err.message, 'Teslimat listesi alınamadı')
+    }
+  }
 
   useEffect(() => {
-    if (fetchItems) fetchItems()
-    if (fetchTransactions) fetchTransactions()
-    if (fetchExpenses) fetchExpenses()
-  }, [fetchItems, fetchTransactions, fetchExpenses])
+    fetchItems()
+    fetchTransactions()
+    loadDeliveries()
+  }, [fetchItems, fetchTransactions])
 
   const [activeTab, setActiveTab] = useState('operations') // 'operations', 'deliveries', 'stock', 'settings'
   const [showBarcodeModal, setShowBarcodeModal] = useState(false)
@@ -63,7 +75,6 @@ export default function WarehouseMobile({ isEmbedded = false }) {
   const handleCreateNewItem = async (e) => {
     e.preventDefault()
     if (!newItemForm.name.trim()) return
-
     const payload = {
       name: newItemForm.name.trim(),
       category: newItemForm.category || 'Genel',
@@ -72,187 +83,57 @@ export default function WarehouseMobile({ isEmbedded = false }) {
       unit: newItemForm.unit || 'adet',
       unitCost: parseFloat(newItemForm.unitCost) || 0,
       supplier: newItemForm.supplier || '',
-      barcode: newItemForm.barcode ? newItemForm.barcode.trim() : `GS-${Date.now().toString().slice(-8)}`,
-      lastUpdated: 'Bugün'
+      barcode: newItemForm.barcode ? newItemForm.barcode.trim() : '',
     }
-
     try {
-      const data = await axiosClient.post('/inventory', payload)
-      if (data && data.success) {
-        notifySuccess(`"${payload.name}" ürünü depoya eklendi! (Barkod: ${payload.barcode})`, 'Ürün Oluşturuldu')
-      }
-    } catch (_) {
-      notifySuccess(`"${payload.name}" ürünü depoya eklendi!`, 'Ürün Oluşturuldu')
+      await inventoryApi.create(payload)
+      notifySuccess(`"${payload.name}" stok kartı oluşturuldu${payload.currentStock > 0 ? ' (açılış stoğu hareket olarak kaydedildi)' : ''}.`, 'Ürün Oluşturuldu')
+      fetchItems()
+      fetchTransactions()
+      setShowNewItemModal(false)
+      setNewItemForm({ name: '', category: 'Kuru Gıda', unit: 'kg', currentStock: '', minStock: '', unitCost: '', supplier: '', barcode: '' })
+    } catch (err) {
+      notifyError(err.message, 'Ürün oluşturulamadı')
     }
-
-    if (fetchItems) fetchItems()
-    setShowNewItemModal(false)
-    setNewItemForm({
-      name: '',
-      category: 'Kuru Gıda',
-      unit: 'kg',
-      currentStock: '',
-      minStock: '',
-      unitCost: '',
-      supplier: '',
-      barcode: ''
-    })
-  }
-
-  const notifyChefStockRestored = (item, newStock) => {
-    // Şef ve Yöneticiye bildirim
-    sendNotification({
-      title: '✓ Stok Tehlikesi Kalktı — Ürün Depoya Ulaştı',
-      message: `Depo sorumlusu "${item.name}" için mal kabulü tamamladı. Yeni stok: ${newStock} ${item.unit} (Min: ${item.minStock}). Reçeteler ve mutfak servisi güvenle devam edebilir.`,
-      targetRole: 'CHEF',
-      senderName: user?.name || 'Depo Sorumlusu',
-      type: 'STOCK_RESTORED',
-      relatedEntityId: item.id
-    })
-
-    // Ekip telsizine mesaj
-    try {
-      const savedChat = localStorage.getItem('gastrosync_team_chat')
-      const chatList = savedChat ? JSON.parse(savedChat) : []
-      const newChatMessage = {
-        id: Date.now(),
-        channelId: 'kitchen',
-        sender: user?.name || 'Ali Depocu',
-        role: 'warehouse',
-        text: `Şefim, ${item.name} depoya ulaştı ve sisteme işlendi. Güncel stok: ${newStock} ${item.unit}. Tehlike geçti, akşam menüsü için hazır!`,
-        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        avatar: user?.avatar || 'AD',
-        priority: 'normal'
-      }
-      localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
-    } catch (_) { }
   }
 
   const handleReceive = async () => {
-    if (selectedItem && quantity > 0) {
-      const parsedQty = parseFloat(quantity)
-      try {
-        const data = await axiosClient.post(`/inventory/${selectedItem.id}/receive`, {
-          quantity: parsedQty,
-          recordedBy: user?.name || 'Depo Sorumlusu'
-        })
-        if (data && data.success) {
-          notifySuccess(data.message || `${selectedItem.name} stoğa işlendi (+${parsedQty} ${selectedItem.unit})`, 'Mal Kabul Onaylandı')
-        }
-      } catch (err) {
-        notifySuccess(`${selectedItem.name} stoğa eklendi (+${parsedQty} ${selectedItem.unit})`, 'Mal Kabul Onaylandı')
-      }
-      addStock(selectedItem.id, parsedQty)
-
-      const finalStock = Math.round(((selectedItem.stock || 0) + parsedQty) * 100) / 100
-      if (finalStock >= selectedItem.minStock) {
-        notifyChefStockRestored(selectedItem, finalStock)
-      }
-
-      if (fetchItems) fetchItems()
-      if (fetchTransactions) fetchTransactions()
+    if (!selectedItem || !(parseFloat(quantity) > 0)) return
+    const parsedQty = parseFloat(quantity)
+    try {
+      await receive(selectedItem.id, parsedQty)
+      notifySuccess(`${selectedItem.name} stoğa işlendi (+${parsedQty} ${selectedItem.unit})`, 'Mal Kabul Onaylandı')
       setShowBarcodeModal(false)
       setSelectedItem(null)
       setQuantity('')
+    } catch (err) {
+      notifyError(err.message, 'Mal kabul yapılamadı')
     }
   }
 
-  // Toptancı / Şef siparişini depocunun miktar girmesine gerek kalmadan tek dokunuşla otomatik depoya alması
+  // Onaylanan tedarik talebini tek dokunuşla teslim al: sipariş kaydına bağlanır, kalan miktar stoğa girer
   const handleAutoReceiveDelivery = async (delivery) => {
-    const matchedItem = items.find(i =>
-      (delivery.inventoryItemId && i.id === delivery.inventoryItemId) ||
-      i.name.toLowerCase().includes(delivery.itemName.toLowerCase()) ||
-      delivery.itemName.toLowerCase().includes(i.name.toLowerCase())
-    )
-
-    const qty = delivery.quantity
-    const unit = delivery.unit || (matchedItem ? matchedItem.unit : 'kg')
-
-    if (matchedItem) {
-      try {
-        await axiosClient.post(`/inventory/${matchedItem.id}/receive`, {
-          quantity: qty,
-          recordedBy: user?.name || 'Depo Sorumlusu'
-        })
-      } catch (_) { }
-      addStock(matchedItem.id, qty)
-      const finalStock = Math.round(((matchedItem.stock || 0) + qty) * 100) / 100
-      if (finalStock >= matchedItem.minStock) {
-        notifyChefStockRestored(matchedItem, finalStock)
-      }
-    } else {
-      notifySuccess(`${delivery.itemName} (${qty} ${unit}) depoya teslim alındı.`, 'Mal Kabul Tamamlandı ✓')
+    try {
+      await receive(delivery.inventoryItemId, delivery.quantity, { expenseId: delivery.expenseId })
+      notifySuccess(`${delivery.quantity} ${delivery.unit} "${delivery.itemName}" teslim alındı ve tedarik kaydına işlendi.`, 'Mal Kabul Tamamlandı')
+      loadDeliveries()
+    } catch (err) {
+      notifyError(err.message, 'Mal kabul yapılamadı')
     }
-
-    // İlgili gider kaydı varsa notunu teslim alındı olarak güncelle
-    if (delivery.expenseId) {
-      await updateExpense(delivery.expenseId, {
-        note: `${delivery.originalNote || ''} | [Depo: ${qty} ${unit} fiilen teslim alındı ve stoğa işlendi ✓]`
-      })
-    }
-
-    notifySuccess(
-      `Sistem tarafından hesaplanan ${qty} ${unit} "${delivery.itemName}" hatasız olarak depoya kabul edildi ve mutfak şefine bildirildi!`,
-      'Otomatik Mal Kabul Onaylandı 📦✓'
-    )
-
-    if (fetchItems) fetchItems()
-    if (fetchTransactions) fetchTransactions()
   }
 
   const handleWaste = async () => {
-    if (selectedItem && quantity > 0 && wasteReason) {
-      const parsedQty = parseFloat(quantity)
-      try {
-        const data = await axiosClient.post(`/inventory/${selectedItem.id}/waste`, {
-          quantity: parsedQty,
-          reason: wasteReason,
-          recordedBy: user?.name || 'Depo Sorumlusu'
-        })
-        if (data && data.success) {
-          notifySuccess(data.message || `${selectedItem.name} için -${parsedQty} ${selectedItem.unit} fire kaydedildi`, 'Zayiat Kaydedildi')
-        } else {
-          notifySuccess(`${selectedItem.name} için -${parsedQty} ${selectedItem.unit} zayiat kaydedildi`, 'Zayiat Kaydedildi')
-        }
-      } catch (err) {
-        notifySuccess(`${selectedItem.name} için -${parsedQty} ${selectedItem.unit} zayiat kaydedildi`, 'Zayiat Kaydedildi')
-      }
-      reportWaste(selectedItem.id, parsedQty, wasteReason)
-
-      // Piyasa standardı: Zayiat bildirildiğinde Mutfak Şefi, Muhasebe ve İşletme Müdürüne anlık alarm
-      const wasteAmountTL = Math.round(parsedQty * (selectedItem.price || 0))
-      sendNotification({
-        title: '⚠️ Kritik Zayiat / Fire Bildirildi',
-        message: `${user?.name || 'Depo Sorumlusu'} tarafından "${selectedItem.name}" için ${parsedQty} ${selectedItem.unit} fire kaydedildi (${wasteAmountTL > 0 ? wasteAmountTL.toLocaleString('tr-TR') + ' ₺' : ''}). Neden: ${wasteReason}. Stok düştü.`,
-        targetRole: 'ALL',
-        senderName: user?.name || 'Depo Sorumlusu',
-        type: 'STOCK_WASTE',
-        relatedEntityId: selectedItem.id
-      })
-
-      // Ekip telsiz kanalına anlık telsiz mesajı
-      try {
-        const savedChat = localStorage.getItem('gastrosync_team_chat')
-        const chatList = savedChat ? JSON.parse(savedChat) : []
-        const newChatMessage = {
-          id: Date.now(),
-          channelId: 'kitchen',
-          sender: user?.name || 'Ali Depocu',
-          role: 'warehouse',
-          text: `⚠️ DİKKAT: ${selectedItem.name} için ${parsedQty} ${selectedItem.unit} zayiat/fire ayrıldı. Gerekçe: ${wasteReason}. Kalan stok: ${Math.max(0, (selectedItem.stock || 0) - parsedQty)} ${selectedItem.unit}.`,
-          time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-          avatar: user?.avatar || 'AD',
-          priority: 'urgent'
-        }
-        localStorage.setItem('gastrosync_team_chat', JSON.stringify([...chatList, newChatMessage]))
-      } catch (_) { }
-
-      if (fetchItems) fetchItems()
-      if (fetchTransactions) fetchTransactions()
+    if (!selectedItem || !(parseFloat(quantity) > 0) || !wasteReason) return
+    const parsedQty = parseFloat(quantity)
+    try {
+      await waste(selectedItem.id, parsedQty, wasteReason)
+      notifySuccess(`${selectedItem.name} için -${parsedQty} ${selectedItem.unit} fire kaydedildi`, 'Zayiat Kaydedildi')
       setShowWasteModal(false)
       setSelectedItem(null)
       setQuantity('')
       setWasteReason('')
+    } catch (err) {
+      notifyError(err.message, 'Fire kaydedilemedi')
     }
   }
 
@@ -279,57 +160,27 @@ export default function WarehouseMobile({ isEmbedded = false }) {
     const matchCat = wasteCategoryFilter === 'all' || item.category === wasteCategoryFilter
     return matchSearch && matchCat
   })
+  const stockPage = usePaged(filteredStockItems, 20)
 
-  const todayActions = recentActions.filter((a) => a.date === new Date().toISOString().split('T')[0] || a.date === '2026-10-13')
+  const todayActions = recentActions.filter((a) => a.date === new Date().toLocaleDateString('tr-TR'))
 
-  // Depoya düşen bekleyen hammadde ve mutfak siparişleri (Elektrik, su, doğalgaz, SGK vb. faturalar depoya DÜŞMEZ; yalnızca toptancı/hal/mutfak alımları düşer)
-  const pendingDeliveries = expenses
-    .filter(e => {
-      // Elektrik, su, gaz, telefon, internet, vergi, sgk, kira, reklam, tadilat gibi işletme faturalarını kesinlikle ele
-      const nonWarehouseSubTypes = ['RENT', 'LABOR', 'ACCOUNTANT', 'ELECTRICITY', 'WATER', 'GAS', 'PHONE', 'INTERNET', 'TAX', 'SGK', 'MARKETING', 'RENOVATION']
-      if (nonWarehouseSubTypes.includes(e.subType)) return false
-      
-      // Sadece mutfak tedarik, toptancı, hal veya sarf malzeme siparişleri
-      const isFoodOrMaterial = e.subType === 'FOOD_SUPPLY' || 
-        e.title?.toLowerCase().includes('sipariş') ||
-        e.title?.toLowerCase().includes('alım') ||
-        e.title?.toLowerCase().includes('tedarik') ||
-        e.counterparty?.toLowerCase().includes('hal') ||
-        e.counterparty?.toLowerCase().includes('tedarik') ||
-        e.counterparty?.toLowerCase().includes('toptan') ||
-        items.some(i => e.title?.toLowerCase().includes(i.name.toLowerCase()))
-
-      const notDeliveredYet = !e.note?.includes('[Depo:')
-      return isFoodOrMaterial && notDeliveredYet
-    })
-    .map(exp => {
-      // Başlıktan miktar ve ürün adını otomatik ayrıştır (örn: "Kırmızı Pancar (Taze Tarla) Malzeme Alımı (15 kg)")
-      const match = exp.title.match(/(.*?)(?:Malzeme Alımı|\(Sipariş\)|Alımı)?\s*(?:\((\d+(?:\.\d+)?)\s*([a-zA-ZğüşıöçĞÜŞİÖÇ]+)\))?/)
-      const rawName = match && match[1] ? match[1].replace('Malzeme Alımı', '').trim() : exp.title
-      const parsedQty = match && match[2] ? parseFloat(match[2]) : 15
-      const parsedUnit = match && match[3] ? match[3] : 'kg'
-
-      // İlgili envanter ürününü bul
-      const matchedItem = items.find(i =>
-        i.name.toLowerCase().includes(rawName.toLowerCase()) ||
-        rawName.toLowerCase().includes(i.name.toLowerCase())
-      )
-
-      return {
-        expenseId: exp.id,
-        inventoryItemId: matchedItem?.id || null,
-        itemName: matchedItem?.name || rawName,
-        barcode: matchedItem?.barcode || '—',
-        quantity: parsedQty,
-        unit: matchedItem?.unit || parsedUnit,
-        unitCost: matchedItem?.price || (exp.amount / (parsedQty || 1)),
-        totalCost: exp.amount,
-        isPaid: exp.paymentStatus === 'PAID' || exp.paidByCashier,
-        supplier: exp.counterparty || 'Toptancı Hal Tedarik',
-        originalNote: exp.note || '',
-        orderDate: exp.expenseDate || 'Bugün'
-      }
-    })
+  // Depoya beklenen tedarikler (sunucudan): onaylanmış / bekleyen hammadde alım talepleri
+  const pendingDeliveries = deliveries.map((d) => {
+    const item = items.find((i) => i.id === d.itemId)
+    return {
+      expenseId: d.expenseId,
+      inventoryItemId: d.itemId,
+      itemName: d.itemName,
+      barcode: item?.barcode || '—',
+      quantity: Number(d.remainingQuantity),
+      unit: d.unit,
+      totalCost: 0,
+      isPaid: d.paymentStatus === 'PAID',
+      supplier: d.supplier || '-',
+      originalNote: `${d.approvalStatus === 'PENDING_APPROVAL' ? 'Muhasebe onayı bekleniyor' : 'Onaylandı'} · Talep eden: ${d.requestedBy || '-'}${Number(d.deliveredQuantity) > 0 ? ` · Teslim alınan: ${d.deliveredQuantity} ${d.unit}` : ''}`,
+      orderDate: d.dueDate || '',
+    }
+  })
 
   return (
     <div className="wh-page">
@@ -372,7 +223,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
         </header>
       )}
 
-      {isEmbedded && (
+      {isEmbedded && (user?.role === 'admin' || user?.role === 'manager') && (
         <div className="wh-embedded-bar">
           <button
             className="wh-back-btn"
@@ -381,7 +232,6 @@ export default function WarehouseMobile({ isEmbedded = false }) {
           >
             <FiArrowLeft /> {t.backToFinancialSummary}
           </button>
-          <span className="wh-embedded-title">{t.warehouseTerminalModule}</span>
         </div>
       )}
 
@@ -554,7 +404,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
               </div>
               {searchQuery && (
                 <div className="wh-search-results">
-                  {filteredItems.map((item) => (
+                  {filteredItems.slice(0, 30).map((item) => (
                     <button
                       key={item.id}
                       className="wh-search-result"
@@ -580,7 +430,7 @@ export default function WarehouseMobile({ isEmbedded = false }) {
             {/* Recent Actions */}
             <div className="wh-recent-card">
               <div className="wh-recent-header">{t.todayTransactions}</div>
-              {todayActions.map((action) => (
+              {todayActions.slice(0, 30).map((action) => (
                 <div
                   key={action.id}
                   className={`wh-recent-item ${action.type === 'waste' ? 'wh-recent-item--waste' : ''}`}
@@ -674,7 +524,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                 </div>
               </div>
             </div>
-            {filteredStockItems.map((item) => (
+            <Pagination {...stockPage.pager} />
+            {stockPage.items.map((item) => (
               <div key={item.id} className={`wh-stock-item ${item.stock <= item.minStock ? 'wh-stock-item--low' : ''}`}>
                 <div className="wh-stock-item-top">
                   <span className="wh-stock-item-name">{item.name}</span>
@@ -693,6 +544,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
             ))}
           </div>
         )}
+
+        {activeTab === 'count' && hasPermission(user, 'INVENTORY_COUNT') && <StockCountPanel />}
 
         {activeTab === 'settings' && user?.role === 'warehouse' && (
           <div className="wh-settings">
@@ -727,6 +580,15 @@ export default function WarehouseMobile({ isEmbedded = false }) {
           <FiBarChart2 />
           <span>{t.tabWarehouseStatus}</span>
         </button>
+        {hasPermission(user, 'INVENTORY_COUNT') && (
+          <button
+            className={`wh-nav-item ${activeTab === 'count' ? 'wh-nav-item--active' : ''}`}
+            onClick={() => setActiveTab('count')}
+          >
+            <FiClipboard />
+            <span>Sayım</span>
+          </button>
+        )}
         {user?.role === 'warehouse' && (
           <button
             className={`wh-nav-item ${activeTab === 'settings' ? 'wh-nav-item--active' : ''}`}
@@ -808,9 +670,15 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           onClick={async () => {
                             try {
                               // Backend'e barkodu bu ürüne kalıcı ata
-                              await axiosClient.put(`/inventory/${item.id}`, { ...item, barcode: unrecognizedBarcode })
-                              if (fetchItems) fetchItems()
-                            } catch (_) { }
+                              await inventoryApi.update(item.id, {
+                                name: item.name, category: item.category, minStock: item.minStock, unit: item.unit,
+                                unitCost: item.price, supplier: item.supplier, barcode: unrecognizedBarcode,
+                              })
+                              fetchItems()
+                            } catch (err) {
+                              notifyError(err.message, 'Barkod atanamadı')
+                              return
+                            }
 
                             const updatedItem = { ...item, barcode: unrecognizedBarcode }
                             setSelectedItem(updatedItem)
@@ -909,21 +777,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                             let found = items.find(i => i.barcode === cleanCode || (i.barcode && i.barcode.replace(/\s+/g, '') === cleanCode))
                             if (!found) {
                               try {
-                                const json = await axiosClient.get(`/inventory/barcode/${encodeURIComponent(cleanCode)}`)
-                                if (json && json.success && json.data) {
-                                  found = {
-                                    id: json.data.id,
-                                    name: json.data.name,
-                                    category: json.data.category,
-                                    stock: parseFloat(json.data.currentStock) || 0,
-                                    minStock: parseFloat(json.data.minStock) || 0,
-                                    unit: json.data.unit,
-                                    price: parseFloat(json.data.unitCost) || 0,
-                                    supplier: json.data.supplier || '',
-                                    barcode: json.data.barcode || cleanCode,
-                                    lastUpdated: json.data.lastUpdated || 'Bugün'
-                                  }
-                                }
+                                const data = await inventoryApi.getByBarcode(cleanCode)
+                                if (data) found = mapInventoryItem(data)
                               } catch (_) { }
                             }
                             if (found) {
@@ -948,21 +803,8 @@ export default function WarehouseMobile({ isEmbedded = false }) {
                           let found = items.find(i => i.barcode === cleanCode || (i.barcode && i.barcode.replace(/\s+/g, '') === cleanCode))
                           if (!found) {
                             try {
-                              const json = await axiosClient.get(`/inventory/barcode/${encodeURIComponent(cleanCode)}`)
-                              if (json && json.success && json.data) {
-                                found = {
-                                  id: json.data.id,
-                                  name: json.data.name,
-                                  category: json.data.category,
-                                  stock: parseFloat(json.data.currentStock) || 0,
-                                  minStock: parseFloat(json.data.minStock) || 0,
-                                  unit: json.data.unit,
-                                  price: parseFloat(json.data.unitCost) || 0,
-                                  supplier: json.data.supplier || '',
-                                  barcode: json.data.barcode || cleanCode,
-                                  lastUpdated: json.data.lastUpdated || 'Bugün'
-                                }
-                              }
+                              const data = await inventoryApi.getByBarcode(cleanCode)
+                              if (data) found = mapInventoryItem(data)
                             } catch (_) { }
                           }
                           if (found) {

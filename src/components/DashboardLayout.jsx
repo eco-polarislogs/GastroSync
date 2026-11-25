@@ -1,63 +1,94 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, useNotificationStore, ROLES, ROLE_LABELS, ROLE_COLORS } from '../store'
-import { FiHome, FiPackage, FiBook, FiBarChart2, FiUsers, FiDollarSign, FiLogOut, FiMenu, FiX, FiChevronLeft, FiBell, FiCheck, FiCheckCircle, FiGlobe } from 'react-icons/fi'
+import { FiHome, FiPackage, FiBook, FiBarChart2, FiUsers, FiDollarSign, FiLogOut, FiMenu, FiX, FiChevronLeft, FiBell, FiCheckCircle, FiGlobe, FiShield, FiTruck, FiKey, FiTrendingUp, FiCheckSquare, FiGrid, FiCoffee } from 'react-icons/fi'
+import { SCREENS, resolveLink } from '../utils/routes'
 import { TRANSLATIONS, SUPPORTED_LANGUAGES, getRoleLabel, getLocalizedNotification } from '../utils/translations'
 import RestaurantTeamChat from './RestaurantTeamChat'
+import websocketService from '../services/websocketService'
+import useLiveSync from '../hooks/useLiveSync'
+import { notifySuccess } from '../utils/notify'
 import '../styles/layout.css'
+import '../styles/listbars.css'
 
 export default function DashboardLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout, currentLanguage, setLanguage } = useAuthStore()
-  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, initWebSocket } = useNotificationStore()
+  // Diğer kullanıcıların / mobil uygulamanın değişiklikleri sayfa yenilemeden yansır
+  useLiveSync(user)
+  const { notifications, unreadCount, isWsConnected, fetchNotifications, markAsRead, markAllAsRead, initWebSocket } = useNotificationStore()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showLangMenu, setShowLangMenu] = useState(false)
+  const [notifLimit, setNotifLimit] = useState(15)
 
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
 
-  const NAV_ITEMS = [
-    { path: '/dashboard', label: t.dashboard, icon: FiHome, roles: [ROLES.ADMIN, ROLES.MANAGER] },
-    { path: '/cashier', label: t.cashierAccounting, icon: FiDollarSign, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT] },
-    { path: '/advisor-ledger', label: t.advisorLedger, icon: FiBook, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.FINANCIAL_ADVISOR] },
-    { path: '/inventory', label: t.inventory, icon: FiPackage, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR] },
-    { path: '/recipes', label: t.recipes, icon: FiBook, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF] },
-    { path: '/sales', label: t.sales, icon: FiBarChart2, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.FINANCIAL_ADVISOR] },
-    { path: '/warehouse', label: t.warehouse, icon: FiPackage, roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.WAREHOUSE] },
-    { path: '/users', label: t.users, icon: FiUsers, roles: [ROLES.ADMIN] },
-  ]
+  // Menü sırası ve içeriği sunucudan gelir (user.screens): her rol yalnızca kendi ekranlarını görür
+  const SCREEN_ICONS = {
+    dashboard: FiHome, approvals: FiCheckSquare, accounting: FiDollarSign, 'advisor-ledger': FiBook,
+    pos: FiGrid, kitchen: FiCoffee, sales: FiBarChart2, inventory: FiPackage, recipes: FiBook,
+    pricing: FiTrendingUp, warehouse: FiTruck, users: FiUsers, audit: FiShield,
+  }
+  const SCREEN_LABELS = {
+    dashboard: t.dashboard, 'advisor-ledger': t.advisorLedger, sales: t.sales, inventory: t.inventory,
+    recipes: t.recipes, warehouse: t.warehouse, users: t.users,
+  }
+  const NAV_ITEMS = (Array.isArray(user?.screens) ? user.screens : [])
+    .filter((id) => SCREENS[id])
+    .map((id) => ({ id, path: SCREENS[id].path, label: SCREEN_LABELS[id] || SCREENS[id].label, icon: SCREEN_ICONS[id] || FiHome }))
 
-  // Rol bazlı bildirimleri mount anında çek ve STOMP WebSocket aboneliklerini kur
+  // Bildirimler sunucudan (role göre kapsamlı) çekilir; canlı akış WebSocket ile gelir.
+  // Periyodik yenileme yalnızca bağlantı kopmasına karşı yedektir.
   useEffect(() => {
-    if (user?.role) {
-      fetchNotifications(user.role)
-      if (initWebSocket) {
-        initWebSocket(user.role)
+    if (!user?.role) return undefined
+    fetchNotifications()
+    initWebSocket(user.role)
+    const timer = setInterval(fetchNotifications, 60000)
+    return () => clearInterval(timer)
+  }, [user?.role, fetchNotifications, initWebSocket])
+
+  // Oturum senkronu: rol / hesap değişiklikleri web ve mobilde anında yansır
+  const refreshSession = useAuthStore((s) => s.refreshSession)
+  useEffect(() => {
+    const sync = async () => {
+      const res = await refreshSession()
+      if (res?.roleChanged) {
+        notifySuccess(`Yetkiniz güncellendi: ${getRoleLabel(res.user.role, currentLanguage)}`, 'Oturum')
       }
-      const timer = setInterval(() => {
-        fetchNotifications(user.role)
-      }, 10000)
-      return () => clearInterval(timer)
     }
-  }, [user?.role])
+    const offStatus = websocketService.onStatusChange((connected) => { if (connected) sync() })
+    const offError = websocketService.onServerError(() => sync())
+    const onFocus = () => sync()
+    window.addEventListener('focus', onFocus)
+    const timer = setInterval(sync, 120000)
+    return () => {
+      offStatus()
+      offError()
+      window.removeEventListener('focus', onFocus)
+      clearInterval(timer)
+    }
+  }, [refreshSession, currentLanguage])
+
+  // Bildirim bağlantısı kullanıcının yetkili ekranına çevrilir (ör. kasa sayımı: muhasebede /accounting, müdürde /approvals)
+  const canOpen = (route) => !!resolveLink(user, route)
 
   const handleNotificationClick = (notif) => {
-    markAsRead(notif.id)
-    if (notif.route) {
-      navigate(notif.route)
+    if (!notif.isRead) markAsRead(notif.id)
+    const target = resolveLink(user, notif.route)
+    if (target) {
+      navigate(target)
       setShowNotifications(false)
     }
   }
 
-  // Kullanıcıya yönelik filtrelenmiş bildirimler
-  const userNotifications = notifications.filter(
-    (n) => n.targetRole === 'ALL' || n.targetRole === user?.role?.toUpperCase() || user?.role === ROLES.ADMIN || user?.role === ROLES.MANAGER
-  )
-  const userUnreadCount = userNotifications.filter((n) => !n.isRead).length
+  // Sunucu bildirimleri kullanıcının rolüne göre zaten kapsamlandırır
+  const userNotifications = notifications
+  const userUnreadCount = unreadCount
 
-  const filteredNav = NAV_ITEMS.filter((item) => item.roles.includes(user?.role))
+  const filteredNav = NAV_ITEMS
 
   const handleLogout = () => {
     logout()
@@ -82,7 +113,7 @@ export default function DashboardLayout({ children }) {
           <div className="sidebar-brand" onClick={() => navigate('/')}>
             <div className="sidebar-logo">
               <img
-                src="/logo.jpg"
+                src="/logo.svg"
                 alt="GastroSync Logo"
                 style={{
                   width: '38px',
@@ -146,6 +177,14 @@ export default function DashboardLayout({ children }) {
               </div>
             )}
           </div>
+          <button
+            className="sidebar-logout"
+            onClick={() => navigate('/change-password')}
+            title="Şifre Değiştir"
+          >
+            <FiKey />
+            {!sidebarCollapsed && <span>Şifre Değiştir</span>}
+          </button>
           <button
             className="sidebar-logout"
             onClick={handleLogout}
@@ -248,6 +287,10 @@ export default function DashboardLayout({ children }) {
               )}
             </div>
 
+            <span
+              title={isWsConnected ? 'Canlı bağlantı aktif' : 'Canlı bağlantı yok — veriler periyodik yenileniyor'}
+              style={{ width: 10, height: 10, borderRadius: '50%', background: isWsConnected ? '#10b981' : '#f59e0b', display: 'inline-block' }}
+            />
             <div className="layout-header-date">
               {new Date().toLocaleDateString(currentLanguage === 'en' ? 'en-US' : currentLanguage === 'de' ? 'de-DE' : currentLanguage === 'ar' ? 'ar-SA' : 'tr-TR', {
                 weekday: 'long',
@@ -349,7 +392,7 @@ export default function DashboardLayout({ children }) {
                     </div>
                     {userUnreadCount > 0 && (
                       <button
-                        onClick={() => markAllAsRead(user?.role)}
+                        onClick={() => markAllAsRead()}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -367,13 +410,22 @@ export default function DashboardLayout({ children }) {
                     )}
                   </div>
 
-                  <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    {userNotifications.length > notifLimit && (
+                      <button
+                        type="button"
+                        onClick={() => setNotifLimit((n) => n + 15)}
+                        style={{ order: 99, width: '100%', padding: '10px', border: 'none', borderTop: '1px solid #f1f5f9', background: '#f8fafc', color: '#059669', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Daha fazla göster ({userNotifications.length - notifLimit})
+                      </button>
+                    )}
                     {userNotifications.length === 0 ? (
                       <div style={{ padding: '30px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
                         📭 {t.noNotifications}
                       </div>
                     ) : (
-                      userNotifications.map((notif) => {
+                      userNotifications.slice(0, notifLimit).map((notif) => {
                         const localized = getLocalizedNotification(notif, currentLanguage)
                         const severity = notif.severity || 'INFO'
                         const badgeStyle = severity === 'CRITICAL'
@@ -425,7 +477,7 @@ export default function DashboardLayout({ children }) {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: '#64748b' }}>
                               <span>👤 {notif.senderName || 'Sistem'}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {notif.route && (
+                                {canOpen(notif.route) && (
                                   <span style={{ color: '#059669', fontWeight: 800, textDecoration: 'underline' }}>
                                     İncele →
                                   </span>

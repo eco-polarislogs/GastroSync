@@ -1,7 +1,7 @@
 {
   "name": "gastrosync",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,14 @@
     "mobile": "npm --prefix mobile start",
     "mobile:tunnel": "npm --prefix mobile run tunnel",
     "mobile:web": "npm --prefix mobile run web",
-    "mobile:android": "npm --prefix mobile run android"
+    "mobile:android": "npm --prefix mobile run android",
+    "test:backend": "cd backend && mvn -B test",
+    "smoke": "node scripts/smoke-test.mjs",
+    "seed:advisor": "node scripts/seed-advisor-review.mjs",
+    "i18n:report": "node scripts/i18n-extract.mjs",
+    "i18n:missing": "node scripts/i18n-extract.mjs --missing",
+    "i18n:merge": "node scripts/i18n-merge.mjs",
+    "i18n:check": "node scripts/i18n-extract.mjs --check"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
@@ -19,7 +26,6 @@
     "vite": "^6.4.5"
   },
   "dependencies": {
-    "@cline/sdk": "^0.0.95",
     "@tanstack/react-query": "^5.105.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "~19.2.3",

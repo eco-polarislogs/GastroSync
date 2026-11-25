@@ -1,6 +1,7 @@
 package com.gastrosync.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,113 +15,99 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gastrosync.dto.ApiResponse;
+import com.gastrosync.dto.NotificationDto;
 import com.gastrosync.model.Notification;
+import com.gastrosync.security.AppRoles;
+import com.gastrosync.security.AuthenticatedUser;
+import com.gastrosync.security.CurrentUserService;
 import com.gastrosync.service.NotificationService;
+import com.gastrosync.service.SecurityAlertService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/notifications")
-@Tag(name = "Bildirimler & Rol İletişimi", description = "Rol tabanlı onay, ret, kasa ve yevmiye bildirimleri")
+@Tag(name = "Bildirimler", description = "Rol hedefli bildirimler ve kullanici bazli okundu bilgisi")
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final SecurityAlertService securityAlertService;
+    private final CurrentUserService currentUserService;
+    private final com.gastrosync.service.push.PushService pushService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService, SecurityAlertService securityAlertService,
+                                  CurrentUserService currentUserService, com.gastrosync.service.push.PushService pushService) {
         this.notificationService = notificationService;
+        this.securityAlertService = securityAlertService;
+        this.currentUserService = currentUserService;
+        this.pushService = pushService;
+    }
+
+    /** Mobil cihazin push adresini (Expo push token) oturum acan kullaniciya baglar */
+    @PostMapping("/devices")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> registerDevice(@RequestBody Map<String, String> body) {
+        var d = pushService.register(currentUserService.require().username(), body.get("token"), body.get("platform"));
+        return ResponseEntity.ok(ApiResponse.ok("Cihaz bildirimlere kaydedildi", Map.of("id", d.getId(), "platform", String.valueOf(d.getPlatform()))));
+    }
+
+    /** Cikista cihaz kaydini siler (yalnizca kendi cihazi) */
+    @PostMapping("/devices/unregister")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> unregisterDevice(@RequestBody Map<String, String> body) {
+        pushService.unregister(currentUserService.require().username(), body.get("token"));
+        return ResponseEntity.ok(ApiResponse.ok("Cihaz kaydi silindi", null));
     }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Tüm bildirimleri veya role göre bildirimleri getir")
-    public ResponseEntity<ApiResponse<List<Notification>>> getNotifications(@RequestParam(name = "role", required = false) String role) {
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        boolean isElevated = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
-
-        String effectiveRole;
-        if (isElevated) {
-            // Admin and Manager can filter by specific role or view all
-            effectiveRole = (role != null && !role.isBlank()) ? role : null;
-        } else {
-            // Strict IDOR Prevention: non-admin users can ONLY fetch notifications for their own authenticated role!
-            effectiveRole = auth.getAuthorities().stream()
-                    .map(a -> a.getAuthority().replace("ROLE_", ""))
-                    .findFirst()
-                    .orElse("ALL");
-        }
-
-        List<Notification> list = (effectiveRole != null && !effectiveRole.isBlank())
-                ? notificationService.getNotificationsForRole(effectiveRole)
-                : notificationService.getAllNotifications();
-        return ResponseEntity.ok(ApiResponse.ok("Bildirimler başarıyla getirildi", list));
+    @Operation(summary = "Kullanicinin gorebildigi bildirimler (role parametresi yalnizca ADMIN/MANAGER icin filtredir)")
+    public ResponseEntity<ApiResponse<List<NotificationDto>>> getNotifications(@RequestParam(name = "role", required = false) String role) {
+        return ResponseEntity.ok(ApiResponse.ok("Bildirimler", notificationService.getForUser(currentUserService.require(), role)));
     }
 
+    /** Yonetim duyurusu (yalnizca ADMIN / MANAGER). Is akisi bildirimleri sunucuda otomatik uretilir. */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ACCOUNTANT', 'FINANCIAL_ADVISOR', 'CHEF', 'WAREHOUSE')")
-    @Operation(summary = "Yeni bildirim oluştur")
-    public ResponseEntity<ApiResponse<Notification>> createNotification(@RequestBody Notification notification) {
-        Notification created = notificationService.createNotification(notification);
-        return ResponseEntity.ok(ApiResponse.ok("Bildirim başarıyla kaydedildi", created));
+    @PreAuthorize("@perm.can('ANNOUNCE')")
+    @Operation(summary = "Yonetim duyurusu olustur")
+    public ResponseEntity<ApiResponse<Notification>> createNotification(@RequestBody Map<String, Object> body) {
+        AuthenticatedUser me = currentUserService.require();
+        String target = body.get("targetRole") != null ? body.get("targetRole").toString() : "ALL";
+        for (String t : target.split(",")) {
+            if (!"ALL".equalsIgnoreCase(t.trim()) && !AppRoles.isValid(t)) {
+                throw new IllegalArgumentException("Gecersiz hedef rol: " + t);
+            }
+        }
+        String severity = body.get("severity") != null ? body.get("severity").toString().toUpperCase() : "INFO";
+        if (!List.of("INFO", "WARNING", "CRITICAL").contains(severity)) severity = "INFO";
+        Notification n = new Notification(
+                String.valueOf(body.getOrDefault("title", "Duyuru")),
+                String.valueOf(body.getOrDefault("message", "")),
+                target.toUpperCase(), me.displayName(), "ANNOUNCEMENT", null, "GENERAL", null, severity);
+        return ResponseEntity.ok(ApiResponse.ok("Duyuru yayinlandi", notificationService.createNotification(n)));
     }
 
     @PostMapping("/security-alert")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Yetkisiz erişim teşebbüsünü Manager ve Admin paneline ilet")
-    public ResponseEntity<ApiResponse<Void>> reportSecurityAlert(@RequestBody(required = false) java.util.Map<String, String> payload) {
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        String username = auth != null ? auth.getName() : "Bilinmeyen Kullanıcı";
-        String role = auth != null
-                ? auth.getAuthorities().stream().map(org.springframework.security.core.GrantedAuthority::getAuthority).findFirst().orElse("YETKİSİZ").replace("ROLE_", "")
-                : "YETKİSİZ";
-
-        String screen = (payload != null && payload.containsKey("screen")) ? payload.get("screen") : "Kısıtlı Ekran";
-        String action = (payload != null && payload.containsKey("action")) ? payload.get("action") : "Yetkisiz Erişim";
-
-        String title = "🚨 Yetkisiz Erişim Engeli: " + username;
-        String message = String.format("%s (%s) kullanıcısı yetkisiz olarak '%s' ekranına erişmeye (%s) çalıştı ve sistem tarafından engellendi.",
-                username, role, screen, action);
-
-        Notification managerAlert = new Notification(title, message, "MANAGER", "Mobil/Web Güvenlik Koruyucusu", "SECURITY_ALERT", null);
-        Notification adminAlert = new Notification(title, message, "ADMIN", "Mobil/Web Güvenlik Koruyucusu", "SECURITY_ALERT", null);
-
-        notificationService.createNotification(managerAlert);
-        notificationService.createNotification(adminAlert);
-
-        return ResponseEntity.ok(ApiResponse.ok("Güvenlik alarmı yöneticilere başarıyla iletildi", null));
+    @Operation(summary = "Istemci tarafinda engellenen yetkisiz ekran erisimini bildir")
+    public ResponseEntity<ApiResponse<Void>> reportSecurityAlert(@RequestBody(required = false) Map<String, String> payload) {
+        String screen = payload != null && payload.get("screen") != null ? payload.get("screen") : "Kisitli Ekran";
+        String action = payload != null && payload.get("action") != null ? payload.get("action") : "Yetkisiz Erisim";
+        securityAlertService.report("Ekran: " + screen, action, "ISTEMCI");
+        return ResponseEntity.ok(ApiResponse.ok("Guvenlik olayi kaydedildi", null));
     }
 
     @PutMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Bildirimi okundu olarak işaretle")
-    public ResponseEntity<ApiResponse<Notification>> markAsRead(@PathVariable("id") Long id) {
-        Notification updated = notificationService.markAsRead(id);
-        if (updated != null) {
-            return ResponseEntity.ok(ApiResponse.ok("Bildirim okundu olarak işaretlendi", updated));
-        }
-        return ResponseEntity.status(404).body(ApiResponse.error("Bildirim bulunamadı"));
+    public ResponseEntity<ApiResponse<NotificationDto>> markAsRead(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Bildirim okundu", notificationService.markAsRead(id, currentUserService.require())));
     }
 
     @PutMapping("/mark-all-read")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Belirli bir role ait tüm bildirimleri okundu yap")
-    public ResponseEntity<ApiResponse<Void>> markAllAsRead(@RequestParam(name = "role", required = false) String role) {
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        boolean isElevated = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_MANAGER"));
-
-        String targetRole;
-        if (isElevated) {
-            targetRole = (role != null && !role.isBlank()) ? role : "ALL";
-        } else {
-            targetRole = auth.getAuthorities().stream()
-                    .map(a -> a.getAuthority().replace("ROLE_", ""))
-                    .findFirst()
-                    .orElse("ALL");
-        }
-
-        notificationService.markAllAsReadForRole(targetRole);
-        return ResponseEntity.ok(ApiResponse.ok("Tüm bildirimler okundu olarak işaretlendi", null));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead() {
+        int count = notificationService.markAllAsRead(currentUserService.require());
+        return ResponseEntity.ok(ApiResponse.ok("Tum bildirimler okundu", Map.of("count", count)));
     }
 }

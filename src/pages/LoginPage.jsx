@@ -1,80 +1,63 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, ROLE_LABELS, ROLE_COLORS, ROLES } from '../store'
+import { canOpenPath, getDefaultRoute } from '../utils/routes'
+import { authApi } from '../api'
 import '../styles/login.css'
+
+// Demo hızlı giriş hesaplarını sunucu belirler: yalnızca demo modu açıkken (GASTROSYNC_SEED_DEMO_DATA=true)
+// ve veritabanında gerçekten var olan, çalışan hesaplar listelenir. Canlı ortamda liste boştur.
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const login = useAuthStore((s) => s.login)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(
+    new URLSearchParams(location.search).get('expired') ? 'Oturumunuz sona erdi veya geçersiz hale geldi. Lütfen tekrar giriş yapın.' : ''
+  )
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [demoAccounts, setDemoAccounts] = useState([])
 
-  const handleRoleNavigation = (role) => {
-    switch (role) {
-      case ROLES.ADMIN:
-      case ROLES.MANAGER:
-        navigate('/dashboard')
-        break
-      case ROLES.ACCOUNTANT:
-      case ROLES.FINANCIAL_ADVISOR:
-        navigate('/accounting')
-        break
-      case ROLES.CHEF:
-        navigate('/recipes')
-        break
-      case ROLES.WAREHOUSE:
-        navigate('/warehouse')
-        break
-      default:
-        navigate('/dashboard')
+  useEffect(() => {
+    let alive = true
+    authApi.demoAccounts()
+      .then((d) => { if (alive) setDemoAccounts(Array.isArray(d?.accounts) ? d.accounts : []) })
+      .catch(() => { if (alive) setDemoAccounts([]) })
+    return () => { alive = false }
+  }, [])
+
+  const goAfterLogin = (user) => {
+    if (user.mustChangePassword) {
+      navigate('/change-password', { replace: true })
+      return
     }
+    const from = location.state?.from
+    const allowed = from && canOpenPath(user, from)
+    navigate(allowed ? from : getDefaultRoute(user), { replace: true })
   }
 
-  const handleSubmit = async (e) => {
+  const doLogin = async (id, pass) => {
+    setError('')
+    setLoading(true)
+    const result = await login(id, pass)
+    setLoading(false)
+    if (result.success) goAfterLogin(result.user)
+    else setError(result.message)
+  }
+
+  const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    // Simulate light network latency
-    await new Promise((r) => setTimeout(r, 400))
-
-    const result = await login(username, password)
-    setLoading(false)
-
-    if (result.success) {
-      handleRoleNavigation(result.user.role)
-    } else {
-      setError(result.message)
-    }
+    doLogin(username, password)
   }
 
-  const handleQuickLogin = async (acc) => {
+  const handleQuickLogin = (acc) => {
     setUsername(acc.username)
-    setPassword(acc.realPass)
-    setError('')
-    setLoading(true)
-
-    const result = await login(acc.username, acc.realPass)
-    setLoading(false)
-
-    if (result.success) {
-      handleRoleNavigation(result.user.role)
-    } else {
-      setError(result.message)
-    }
+    setPassword(acc.password)
+    doLogin(acc.username, acc.password)
   }
-
-  const demoAccounts = [
-    { username: 'admin', label: 'admin', role: ROLES.ADMIN, realPass: '123456' },
-    { username: 'manager', label: 'müdür', role: ROLES.MANAGER, realPass: '123456' },
-    { username: 'chef', label: 'şef', role: ROLES.CHEF, realPass: '123456' },
-    { username: 'warehouse', label: 'depocu', role: ROLES.WAREHOUSE, realPass: '123456' },
-    { username: 'muhasebe', label: 'muhasebe', role: ROLES.ACCOUNTANT, realPass: 'muhasebe123' },
-    { username: 'advisor', label: 'mali müşavir', role: ROLES.FINANCIAL_ADVISOR, realPass: '123456' },
-  ]
 
   const featureBadges = [
     {
@@ -168,7 +151,7 @@ export default function LoginPage() {
             <div className="tein-card-header" style={{ textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
                 <img
-                  src="/logo.jpg"
+                  src="/logo.svg"
                   alt="GastroSync Restaurant Management"
                   style={{
                     width: '74px',
@@ -252,9 +235,10 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Quick Demo Accounts Selection */}
+            {/* Demo hesapları (yalnızca geliştirme / demo derlemesi) */}
+            {demoAccounts.length > 0 && (
             <div className="tein-demo-section">
-              <span className="tein-demo-hint">Hızlı Demo Erişimi (Tek Tıkla Giriş):</span>
+              <span className="tein-demo-hint">Demo Modu — Tek Tıkla Giriş:</span>
               <div className="tein-demo-chips">
                 {demoAccounts.map((acc) => (
                   <button
@@ -263,14 +247,15 @@ export default function LoginPage() {
                     className="tein-demo-chip"
                     disabled={loading}
                     onClick={() => handleQuickLogin(acc)}
-                    title={`${acc.label} olarak hızlı giriş yap`}
+                    title={`${acc.name || acc.username} olarak giriş yap`}
                   >
-                    <span className="tein-chip-dot" style={{ backgroundColor: ROLE_COLORS[acc.role] }}></span>
-                    <span className="tein-chip-name">{acc.label || acc.username}</span>
+                    <span className="tein-chip-dot" style={{ backgroundColor: ROLE_COLORS[String(acc.role).toLowerCase()] }}></span>
+                    <span className="tein-chip-name">{ROLE_LABELS[String(acc.role).toLowerCase()] || acc.username} · {acc.username}</span>
                   </button>
                 ))}
               </div>
             </div>
+            )}
 
             <div className="tein-card-footer">
               <p>Hesap erişimi için restoran yöneticinizle iletişime geçin.</p>

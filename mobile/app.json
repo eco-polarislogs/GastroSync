@@ -6,15 +6,19 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "gastrosync",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gastrosync.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "GastroSync depo mal kabul ve barkod okuma işlemleri için kamera izni gereklidir."
+        "NSCameraUsageDescription": "GastroSync depo mal kabul ve barkod okuma işlemleri için kamera izni gereklidir.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.gastrosync.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,14 +26,30 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },
     "plugins": [
       [
         "expo-camera",
         {
-          "cameraPermission": "GastroSync mal kabul ve stok takibi için kamera izni gereklidir."
+          "cameraPermission": "GastroSync mal kabul ve stok takibi için kamera izni gereklidir.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#10B981",
+          "defaultChannel": "gastrosync"
         }
       ],
       "expo-status-bar"

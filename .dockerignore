@@ -1,0 +1,16 @@
+# Web imajına yalnızca web kaynakları girer; sırlar ve büyük dosyalar dışarıda kalır
+.env
+.env.*
+!.env.example
+node_modules
+dist
+dist-test
+backend
+mobile
+cypress
+.git
+.expo
+.vscode
+*.mp4
+*.log
+phone_dump.xml

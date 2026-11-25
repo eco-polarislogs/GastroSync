@@ -46,6 +46,10 @@ public class ChatMessage {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    /** Gonderenin kullanici adi (okunmamis sayiminda kendi mesajlarini haric tutmak icin) */
+    @Column(length = 100)
+    private String senderUsername;
+
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
@@ -142,4 +146,7 @@ public class ChatMessage {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    public String getSenderUsername() { return senderUsername; }
+    public void setSenderUsername(String senderUsername) { this.senderUsername = senderUsername; }
 }

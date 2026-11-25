@@ -1,25 +1,37 @@
-import React, { useState } from 'react';
-import { Platform, View, StyleSheet, TouchableOpacity, Text, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Platform,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
+import { Text } from './src/i18n';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import IOSApp from './src/ios/IOSApp';
 import AndroidApp from './src/android/AndroidApp';
 import MobileLogin from './src/components/MobileLogin';
 import { THEME } from './src/theme/tokens';
 
-import { DEMO_USERS } from './src/data/inventoryData';
+import { apiLogout } from './src/services/api';
+import { onSessionExpired } from './src/services/mobileAxiosClient';
 
 function MainApp() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
 
   const handleLogout = () => {
+    apiLogout();
     setAuthenticatedUser(null);
   };
+
+  // Sunucu oturumu geçersiz kıldığında (401: süre doldu, hesap pasif, şifre değişti) girişe dön
+  useEffect(() => onSessionExpired(() => setAuthenticatedUser(null)), []);
 
   const handleLoginSuccess = (user) => {
     if (!user) return;
     const normalizedUser = {
       ...user,
-      role: (user.role || 'manager').toLowerCase(),
+      role: (user.role || '').toLowerCase(),
     };
     setAuthenticatedUser(normalizedUser);
   };

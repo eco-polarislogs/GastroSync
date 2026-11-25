@@ -1,36 +1,34 @@
 # ═══════════════════════════════════════════════════════════════
-# STAGE 1: Build Stage using Java 21 & Maven
+# 1. Derleme: resmi Maven + Java 21 imajı (depoda Maven dağıtımı gerekmez)
 # ═══════════════════════════════════════════════════════════════
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 WORKDIR /workspace
 
-# Copy maven wrapper & pom.xml first for layer caching
 COPY pom.xml .
-COPY maven ./maven
+RUN mvn -B -q dependency:go-offline
+
 COPY src ./src
-
-# Build production jar skipping tests
-RUN chmod +x ./maven/apache-maven-3.9.9/bin/mvn && ./maven/apache-maven-3.9.9/bin/mvn clean package -DskipTests
-
+# Testler CI hattında (mvn test) çalıştırılır; imaj derlemesi yalnızca paketler
+RUN mvn -B -q package -DskipTests
 
 # ═══════════════════════════════════════════════════════════════
-# STAGE 2: Minimal Production JRE Runtime
+# 2. Çalışma: minimal JRE, yetkisiz kullanıcı, yerel saat dilimi
 # ═══════════════════════════════════════════════════════════════
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache tzdata wget \
+    && addgroup -S gastrosync && adduser -S gastrosync -G gastrosync
+
+ENV TZ=Europe/Istanbul \
+    SPRING_PROFILES_ACTIVE=prod \
+    JAVA_OPTS="-XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:MaxRAMPercentage=75.0 -Duser.timezone=Europe/Istanbul"
+
 WORKDIR /app
-
-# Create unprivileged application user for container security
-RUN addgroup -S gastrosync && adduser -S gastrosync -G gastrosync
-
-# Copy compiled artifact from builder stage
 COPY --from=builder /workspace/target/*.jar app.jar
 RUN chown -R gastrosync:gastrosync /app
-
 USER gastrosync
 
 EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
+  CMD wget -qO- http://localhost:8080/actuator/health | grep -q '"UP"' || exit 1
 
-# Production JVM flags for memory efficiency in containers
-ENV JAVA_OPTS="-XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:MaxRAMPercentage=75.0"
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

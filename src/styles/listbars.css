@@ -1,0 +1,62 @@
+/*
+ * Liste araç çubukları (arama · filtre · sıralama) ve sayfalama
+ * - Arama/filtre çubuğu ve sayfalama sayfayla birlikte kayar; içeriğin üstüne binmez
+ *   (önceden sticky idi: kaydırırken satırların üstüne biniyor, tablo başlığını örtüyordu)
+ */
+
+/* Üst başlık: yarı saydam + bulanık yerine tam opak */
+.layout-header {
+  background: #f8fafc;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.layout-content .filters-bar,
+.layout-content .gs-filterbar,
+.layout-content .gs-listbar {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #dbe7df);
+  border-radius: 12px;
+}
+
+/* Modal içindeki filtre çubukları modalın kendi kaydırmasında kalır */
+.gs-modal .gs-filterbar {
+  top: 0;
+  box-shadow: none;
+}
+
+.layout-content .gs-pagination {
+  position: static;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #dbe7df);
+  border-radius: 12px;
+}
+
+/* Etkin filtre sayısı / sonuç sayısı rozeti */
+.gs-listbar-count {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, #475569);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .layout-content .filters-bar,
+  .layout-content .gs-filterbar,
+  .layout-content .gs-listbar {
+    padding: 8px;
+  }
+  .layout-content .gs-pagination {
+    padding: 8px;
+  }
+}

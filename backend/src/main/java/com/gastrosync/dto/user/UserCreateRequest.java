@@ -27,7 +27,7 @@ public class UserCreateRequest {
     private String username;
 
     @NotBlank(message = "Şifre zorunludur")
-    @Size(min = 6, max = 100, message = "Şifre en az 6 karakter olmalıdır")
+    @Size(min = 8, max = 100, message = "Şifre en az 8 karakter olmalıdır")
     private String password;
 
     @NotBlank(message = "Ad soyad zorunludur")
@@ -35,12 +35,18 @@ public class UserCreateRequest {
     private String name;
 
     @NotBlank(message = "Rol zorunludur")
-    @Pattern(regexp = "^(ADMIN|MANAGER|CHEF|WAREHOUSE|ACCOUNTANT|FINANCIAL_ADVISOR)$",
-             message = "Geçerli roller: ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, FINANCIAL_ADVISOR")
+    @Pattern(regexp = "^(?i)(ADMIN|MANAGER|CHEF|WAREHOUSE|ACCOUNTANT|FINANCIAL_ADVISOR|CASHIER)$",
+             message = "Geçerli roller: ADMIN, MANAGER, CHEF, WAREHOUSE, ACCOUNTANT, FINANCIAL_ADVISOR, CASHIER")
     private String role;
 
     @Email(message = "Geçerli bir e-posta adresi giriniz")
     private String email;
+
+    /** true ise kullanici ilk giriste kendi sifresini belirlemek zorundadir (varsayilan: hayir) */
+    private Boolean requirePasswordChange = false;
+
+    public Boolean getRequirePasswordChange() { return requirePasswordChange; }
+    public void setRequirePasswordChange(Boolean requirePasswordChange) { this.requirePasswordChange = requirePasswordChange; }
 
     public UserCreateRequest() {}
 

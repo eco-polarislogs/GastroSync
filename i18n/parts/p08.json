@@ -1,0 +1,152 @@
+{
+"Tabak başı zarar: {0}": [
+"Loss per plate: {0}",
+"Verlust pro Teller: {0}",
+"خسارة لكل طبق: {0}"
+],
+"Fiyat güncellemesi önerilir: {0}": [
+"Price update recommended: {0}",
+"Preisanpassung empfohlen: {0}",
+"يُوصى بتحديث السعر: {0}"
+],
+"Alış fiyatı arttı: {0}": [
+"Purchase price increased: {0}",
+"Einkaufspreis gestiegen: {0}",
+"ارتفع سعر الشراء: {0}"
+],
+"Alış fiyatı düştü: {0}": [
+"Purchase price decreased: {0}",
+"Einkaufspreis gesunken: {0}",
+"انخفض سعر الشراء: {0}"
+],
+"Stok tükenmek üzere: {0}": [
+"Running out of stock: {0}",
+"Bestand fast aufgebraucht: {0}",
+"المخزون على وشك النفاد: {0}"
+],
+"Food cost %{0} (hedef %{1}). Mevcut fiyat {2} ₺, önerilen {3} ₺.": [
+"Food cost {0}% (target {1}%). Current price {2} ₺, suggested {3} ₺.",
+"Wareneinsatz {0} % (Ziel {1} %). Aktueller Preis {2} ₺, empfohlen {3} ₺.",
+"تكلفة الطعام {0}% (الهدف {1}%). السعر الحالي {2} ₺، المقترح {3} ₺."
+],
+"{0}/{1}: {2} ₺ → {3} ₺ ({4}%). {5} reçetede kullanılıyor.": [
+"{0}/{1}: {2} ₺ → {3} ₺ ({4}%). Used in {5} recipes.",
+"{0}/{1}: {2} ₺ → {3} ₺ ({4} %). In {5} Rezepten verwendet.",
+"{0}/{1}: {2} ₺ ← {3} ₺ ({4}%). مستخدم في {5} وصفات."
+],
+"Mevcut stok yaklaşık {0} günlük (günlük tüketim {1} {2}). Tedarik talebi açın.": [
+"Current stock lasts about {0} days (daily usage {1} {2}). Create a purchase request.",
+"Bestand reicht ca. {0} Tage (Tagesverbrauch {1} {2}). Bestellanforderung erstellen.",
+"المخزون الحالي يكفي نحو {0} يوم (الاستهلاك اليومي {1} {2}). أنشئ طلب توريد."
+],
+"Masa {0} | {1} | {2} x{3} ({4} TL)": [
+"Table {0} | {1} | {2} x{3} ({4} TRY)",
+"Tisch {0} | {1} | {2} x{3} ({4} TRY)",
+"الطاولة {0} | {1} | {2} x{3} ({4} ليرة)"
+],
+"Masa {0} | {1} | {2} kalem ({3} TL)": [
+"Table {0} | {1} | {2} items ({3} TRY)",
+"Tisch {0} | {1} | {2} Positionen ({3} TRY)",
+"الطاولة {0} | {1} | {2} أصناف ({3} ليرة)"
+],
+"Masa {0} | {1} | {2} indirim (adisyon {3} TL, indirim {4} TL)": [
+"Table {0} | {1} | {2} discount (check {3} TRY, discount {4} TRY)",
+"Tisch {0} | {1} | {2} Rabatt (Rechnung {3} TRY, Rabatt {4} TRY)",
+"الطاولة {0} | {1} | خصم {2} (الفاتورة {3} ليرة، الخصم {4} ليرة)"
+],
+"{0} | sistem {1} {2}, sayilan {3} {4} (fark {5} {6}, {7} TL)": [
+"{0} | system {1} {2}, counted {3} {4} (variance {5} {6}, {7} TRY)",
+"{0} | System {1} {2}, gezählt {3} {4} (Differenz {5} {6}, {7} TRY)",
+"{0} | النظام {1} {2}، المعدود {3} {4} (الفرق {5} {6}، {7} ليرة)"
+],
+"Tutar": [
+"Amount",
+"Betrag",
+"المبلغ"
+],
+"Onay Talebi: {0}": [
+"Approval Request: {0}",
+"Genehmigungsantrag: {0}",
+"طلب موافقة: {0}"
+],
+"{0} onayınızı istiyor: {1}. Gerekçe: {2}": [
+"{0} requests your approval: {1}. Reason: {2}",
+"{0} bittet um Ihre Genehmigung: {1}. Begründung: {2}",
+"يطلب {0} موافقتك: {1}. السبب: {2}"
+],
+"Talebiniz onaylandı: {0}": [
+"Your request was approved: {0}",
+"Ihr Antrag wurde genehmigt: {0}",
+"تمت الموافقة على طلبك: {0}"
+],
+"Talebiniz reddedildi: {0}": [
+"Your request was rejected: {0}",
+"Ihr Antrag wurde abgelehnt: {0}",
+"رُفض طلبك: {0}"
+],
+"Talebiniz uygulanamadı: {0}": [
+"Your request could not be applied: {0}",
+"Ihr Antrag konnte nicht ausgeführt werden: {0}",
+"تعذّر تطبيق طلبك: {0}"
+],
+"{0}, {1} talebinizi onayladı ve işlem uygulandı. {2}": [
+"{0} approved your request {1} and the action was applied. {2}",
+"{0} hat Ihren Antrag {1} genehmigt; der Vorgang wurde ausgeführt. {2}",
+"وافق {0} على طلبك {1} وطُبّق الإجراء. {2}"
+],
+"{0}, {1} talebinizi reddetti. {2}": [
+"{0} rejected your request {1}. {2}",
+"{0} hat Ihren Antrag {1} abgelehnt. {2}",
+"رفض {0} طلبك {1}. {2}"
+],
+"{0}, {1} talebinizi onayladı ancak kayıt değiştiği için uygulanamadı. {2}": [
+"{0} approved your request {1}, but it could not be applied because the record changed. {2}",
+"{0} hat Ihren Antrag {1} genehmigt, er konnte aber wegen einer Änderung nicht ausgeführt werden. {2}",
+"وافق {0} على طلبك {1} لكن تعذّر التطبيق لتغيّر السجل. {2}"
+],
+"Talep Isletme Muduru onayina gonderildi": [
+"Request sent for Manager approval",
+"Antrag zur Genehmigung an den Manager gesendet",
+"أُرسل الطلب لموافقة المدير"
+],
+"Talep onaylandi ve islem uygulandi": [
+"Request approved and action applied",
+"Antrag genehmigt und Vorgang ausgeführt",
+"تمت الموافقة على الطلب وطُبّق الإجراء"
+],
+"Talep reddedildi": [
+"Request rejected",
+"Antrag abgelehnt",
+"رُفض الطلب"
+],
+"Sayim farki onay esigini asti; Isletme Muduru onayina gonderildi": [
+"The count variance exceeded the threshold; sent for Manager approval",
+"Inventurdifferenz über Schwelle; zur Manager-Genehmigung gesendet",
+"تجاوز فرق الجرد الحد؛ وأُرسل لموافقة المدير"
+],
+"Bu adisyonda Isletme Muduru kararini bekleyen onay talebi var. Karar verilmesini bekleyin veya talebi geri cekin.": [
+"This check has a request awaiting the Manager's decision. Wait for the decision or withdraw the request.",
+"Für diese Rechnung wartet ein Antrag auf die Entscheidung des Managers. Warten oder Antrag zurückziehen.",
+"توجد على هذه الفاتورة طلبات بانتظار قرار المدير. انتظر القرار أو اسحب الطلب."
+],
+"Kendi talebinize karar veremezsiniz (gorevler ayriligi)": [
+"You cannot decide on your own request (segregation of duties)",
+"Über eigene Anträge können Sie nicht entscheiden (Funktionstrennung)",
+"لا يمكنك البت في طلبك (فصل المهام)"
+],
+"Gecersiz kullanici adi/e-posta veya sifre": [
+"Invalid username/e-mail or password",
+"Ungültiger Benutzername/E-Mail oder Passwort",
+"اسم المستخدم/البريد أو كلمة المرور غير صحيحة"
+],
+"Masa {0}": [
+"Table {0}",
+"Tisch {0}",
+"الطاولة {0}"
+],
+"{0} kişi · {1}": [
+"{0} guests · {1}",
+"{0} Personen · {1}",
+"{0} أشخاص · {1}"
+]
+}

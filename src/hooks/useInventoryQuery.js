@@ -1,134 +1,55 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import inventoryApi from '../api/inventoryApi'
+import { inventoryApi } from '../api'
+import { mapInventoryItem, mapTransaction, useInventoryStore } from '../store'
 import { notifySuccess, notifyError } from '../utils/notify'
 
-/**
- * Enterprise Query Key Constants for Inventory domain.
- * Enforces hierarchical cache segmentation.
- */
 export const INVENTORY_KEYS = {
   all: ['inventory'],
-  lists: () => [...INVENTORY_KEYS.all, 'list'],
-  list: (filters) => [...INVENTORY_KEYS.lists(), filters],
-  details: () => [...INVENTORY_KEYS.all, 'detail'],
-  detail: (id) => [...INVENTORY_KEYS.details(), id],
-  transactions: () => [...INVENTORY_KEYS.all, 'transactions']
+  list: ['inventory', 'list'],
+  transactions: ['inventory', 'transactions'],
+  valuation: ['inventory', 'valuation'],
 }
 
-/**
- * Hook to fetch all inventory items with automatic caching and background revalidation.
- */
 export function useInventoryItems() {
   return useQuery({
-    queryKey: INVENTORY_KEYS.lists(),
+    queryKey: INVENTORY_KEYS.list,
     queryFn: inventoryApi.getAll,
-    staleTime: 1000 * 60 * 3, // Cache remains fresh for 3 minutes
-    select: (data) => {
-      // Normalizes backend entity fields to frontend representation if needed
-      return data.map((item) => ({
-        id: item.id,
-        name: item.name,
-        category: item.category,
-        stock: parseFloat(item.currentStock ?? item.stock ?? 0) || 0,
-        minStock: parseFloat(item.minStock ?? item.min ?? 5) || 5,
-        unit: item.unit || 'kg',
-        price: parseFloat(item.unitCost ?? item.price ?? 0) || 0,
-        supplier: item.supplier || '',
-        barcode: item.barcode || '',
-        lastUpdated: item.lastUpdated || 'Bugün'
-      }))
-    }
+    select: (data) => (Array.isArray(data) ? data.map(mapInventoryItem) : []),
+    staleTime: 30_000,
   })
 }
 
-/**
- * Hook to fetch recent inventory audit transactions.
- */
 export function useRecentTransactions() {
   return useQuery({
-    queryKey: INVENTORY_KEYS.transactions(),
-    queryFn: inventoryApi.getRecentTransactions,
-    staleTime: 1000 * 30 // 30 seconds
+    queryKey: INVENTORY_KEYS.transactions,
+    queryFn: inventoryApi.recentTransactions,
+    select: (data) => (Array.isArray(data) ? data.map(mapTransaction) : []),
+    staleTime: 15_000,
   })
 }
 
-/**
- * Mutation hook for Mal Kabul (Stock Receipt).
- * Performs TRUE database mutation, then invalidates inventory cache.
- */
-export function useReceiveStock() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ id, quantity, recordedBy }) =>
-      inventoryApi.receiveStock(id, { quantity, recordedBy }),
-
-    onSuccess: (response, variables) => {
-      // Invalidate queries so TanStack Query immediately re-fetches authoritative DB state
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all })
-      notifySuccess(`+${variables.quantity} stok girişi veritabanına başarıyla kaydedildi!`, 'Depo Yönetimi')
-    },
-
-    onError: (error) => {
-      notifyError(error.message || 'Stok girişi başarısız oldu', 'Hata')
-    }
-  })
+export function useInventoryValuation(enabled = true) {
+  return useQuery({ queryKey: INVENTORY_KEYS.valuation, queryFn: inventoryApi.valuation, enabled })
 }
 
-/**
- * Mutation hook for Zayiat/Fire (Stock Waste).
- * Performs atomic reduction in PostgreSQL, creates audit record, and invalidates cache.
- */
-export function useRecordWaste() {
-  const queryClient = useQueryClient()
-
+function useInventoryMutation(fn, message) {
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, quantity, reason, recordedBy }) =>
-      inventoryApi.recordWaste(id, { quantity, reason, recordedBy }),
-
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all })
-      notifySuccess(`-${variables.quantity} zayiat kaydı veritabanına işlendi.`, 'Zayiat Takibi')
-    },
-
-    onError: (error) => {
-      notifyError(error.message || 'Zayiat kaydı oluşturulamadı', 'Hata')
-    }
-  })
-}
-
-/**
- * Mutation hook for creating new inventory item.
- */
-export function useCreateInventoryItem() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (newItem) => inventoryApi.create(newItem),
+    mutationFn: fn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all })
-      notifySuccess('Yeni hammadde stoğa başarıyla eklendi.', 'Envanter')
+      qc.invalidateQueries({ queryKey: INVENTORY_KEYS.all })
+      useInventoryStore.getState().refresh()
+      if (message) notifySuccess(message)
     },
-    onError: (error) => {
-      notifyError(error.message || 'Ürün ekleme başarısız', 'Hata')
-    }
+    onError: (err) => notifyError(err.message, 'İşlem reddedildi'),
   })
 }
 
-/**
- * Mutation hook for updating existing inventory item.
- */
-export function useUpdateInventoryItem() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ id, ...itemData }) => inventoryApi.update(id, itemData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all })
-      notifySuccess('Stok bilgileri güncellendi.', 'Envanter')
-    },
-    onError: (error) => {
-      notifyError(error.message || 'Güncelleme başarısız', 'Hata')
-    }
-  })
-}
+export const useCreateInventoryItem = () => useInventoryMutation((item) => inventoryApi.create(item), 'Stok kartı oluşturuldu.')
+export const useUpdateInventoryItem = () => useInventoryMutation(({ id, ...item }) => inventoryApi.update(id, item), 'Stok kartı güncellendi.')
+export const useDeleteInventoryItem = () => useInventoryMutation((id) => inventoryApi.delete(id), 'Stok kartı arşivlendi.')
+export const useReceiveStock = () => useInventoryMutation(({ id, ...body }) => inventoryApi.receive(id, body), 'Mal kabul kaydedildi.')
+export const useRecordWaste = () => useInventoryMutation(({ id, ...body }) => inventoryApi.waste(id, body), 'Fire / zayiat kaydedildi.')
+export const useAdjustStock = () => useInventoryMutation(({ id, ...body }) => inventoryApi.adjust(id, body), null)
+export const usePurchaseRequest = () => useInventoryMutation(({ id, ...body }) => inventoryApi.purchaseRequest(id, body),
+  'Tedarik talebi muhasebe onayına iletildi.')

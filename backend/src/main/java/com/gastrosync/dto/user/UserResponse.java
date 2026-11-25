@@ -2,19 +2,8 @@ package com.gastrosync.dto.user;
 
 import java.time.LocalDateTime;
 
-/**
- * Response DTO for user data — NEVER exposes the password field.
- *
- * WHY this DTO exists:
- * ────────────────────
- * The AppUser entity contains a 'password' field (BCrypt hash). If we return
- * the entity directly from the API, the hash is serialized into the JSON response.
- * Even though BCrypt is hard to reverse, exposing hashes is a security anti-pattern
- * flagged by OWASP (Sensitive Data Exposure).
- *
- * This DTO acts as a VIEW — it projects only the fields the frontend needs,
- * nothing more. This is the PROJECTION PATTERN from DDD.
- */
+import com.gastrosync.model.AppUser;
+
 public class UserResponse {
 
     private Long id;
@@ -22,46 +11,55 @@ public class UserResponse {
     private String name;
     private String role;
     private String email;
+    private boolean active;
+    private boolean mustChangePassword;
+    private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public UserResponse() {}
 
-    /**
-     * Static factory method to convert an entity to a response DTO.
-     * This is a manual mapper — in Phase 2 we will replace this with MapStruct.
-     */
-    public static UserResponse fromEntity(com.gastrosync.model.AppUser user) {
+    public static UserResponse fromEntity(AppUser user) {
         UserResponse dto = new UserResponse();
         dto.id = user.getId();
         dto.username = user.getUsername();
         dto.name = user.getName();
-        dto.role = user.getRole();
+        dto.role = com.gastrosync.security.AppRoles.normalize(user.getRole());
         dto.email = user.getEmail();
+        dto.active = user.isActive();
+        dto.mustChangePassword = user.isMustChangePassword();
+        dto.lastLoginAt = user.getLastLoginAt();
         dto.createdAt = user.getCreatedAt();
         dto.updatedAt = user.getUpdatedAt();
         return dto;
     }
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+    public LocalDateTime getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    /** Rolun izinleri ve menu ekranlari sunucudaki tek yetki tablosundan uretilir (istemci tablo tutmaz) */
+    public java.util.List<String> getPermissions() { return com.gastrosync.security.Permissions.permissionsOf(role); }
+    public java.util.List<String> getScreens() { return com.gastrosync.security.Permissions.screensOf(role); }
+    public String getRoleLabel() {
+        return com.gastrosync.security.Permissions.ROLE_LABELS.getOrDefault(
+                com.gastrosync.security.AppRoles.normalize(role), role);
+    }
 }

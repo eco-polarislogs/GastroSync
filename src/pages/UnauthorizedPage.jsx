@@ -1,57 +1,28 @@
 import React, { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore, useNotificationStore } from '../store'
+import { useAuthStore } from '../store'
 import { FiArrowLeft, FiLock, FiAlertOctagon } from 'react-icons/fi'
 import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
-import axiosClient from '../api/axiosClient'
+import { notificationApi } from '../api'
 
 export default function UnauthorizedPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, currentLanguage } = useAuthStore()
-  const { sendNotification } = useNotificationStore()
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
   const hasNotifiedRef = useRef(false)
 
   const attemptedPath = location.state?.from || window.location.pathname || 'Bilinmeyen Sayfa'
   const attemptTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-  // Yetkisiz erişim teşebbüsünü Yöneticiye (MANAGER) ve Süper Admine (ADMIN) bildirim olarak ilet
+  // Yetkisiz erişim girişimi sunucuya bildirilir; sunucu denetim izine yazar ve
+  // yöneticilere (tekrarlar filtrelenerek) güvenlik bildirimi gönderir.
   useEffect(() => {
     if (!hasNotifiedRef.current && user) {
       hasNotifiedRef.current = true
-
-      const roleDisplay = getRoleLabel(user.role, currentLanguage) || user.role
-
-      // 1. Backend güvenlik denetim uç noktasına bildir
-      try {
-        axiosClient.post('/notifications/security-alert', {
-          screen: attemptedPath,
-          action: 'WEB_SAYFA_GEÇİŞ_DENEMESİ'
-        }).catch(() => {})
-      } catch (_) {}
-
-      // 2. Müdüre anlık bildirim gönder
-      sendNotification({
-        title: t.unauthorizedAttemptAlertTitle || '🚨 Yetkisiz Sayfa Erişim Girişimi!',
-        message: `${user.name} (${roleDisplay}) adlı kullanıcı yetkisi olmayan '${attemptedPath}' sayfasına erişmeye çalıştı. İşlem zamanı: ${attemptTime}. Erişim otomatik engellendi.`,
-        targetRole: 'MANAGER',
-        senderName: `${user.name} (${roleDisplay})`,
-        type: 'SECURITY_ALERT',
-        relatedEntityId: null
-      })
-
-      // 3. Admine anlık bildirim gönder
-      sendNotification({
-        title: t.unauthorizedAttemptAlertTitle || '🚨 Yetkisiz Sayfa Erişim Girişimi!',
-        message: `${user.name} (${roleDisplay}) adlı kullanıcı yetkisi olmayan '${attemptedPath}' sayfasına erişmeye çalıştı. İşlem zamanı: ${attemptTime}. Erişim otomatik engellendi.`,
-        targetRole: 'ADMIN',
-        senderName: `${user.name} (${roleDisplay})`,
-        type: 'SECURITY_ALERT',
-        relatedEntityId: null
-      })
+      notificationApi.securityAlert(attemptedPath, 'WEB_SAYFA_GECIS_DENEMESI').catch(() => {})
     }
-  }, [user, attemptedPath, attemptTime, currentLanguage, sendNotification, t])
+  }, [user, attemptedPath])
 
   return (
     <div style={{

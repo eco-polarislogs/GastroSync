@@ -1,0 +1,83 @@
+# GastroSync — Render.com kurulum planı (Blueprint)
+#
+# Bilgisayar kapalıyken de mobil uygulama ve web paneli çalışsın diye sunucu + veritabanı bulutta barınır.
+# Kurulum: https://dashboard.render.com → New → Blueprint → bu GitHub deposunu seçin → Apply.
+#
+# Bu dosya ÜCRETSİZ DEMO planıyla gelir (kredi kartı gerekmez):
+#  - Sunucu 15 dk kullanılmazsa uyur; ilk istekte ~1 dk içinde uyanır (sunuma başlamadan önce
+#    https://gastrosync-api.onrender.com/actuator/health adresini bir kez açın).
+#  - Ücretsiz veritabanı 30 gün sonra silinir. Gerçek restoran için plan: starter / basic-256mb seçin
+#    ve GASTROSYNC_SEED_DEMO_DATA=false yapın.
+#
+# Mobil uygulamanın sunucu adresi: https://gastrosync-api.onrender.com/api
+# Web paneli: https://gastrosync-web.onrender.com
+
+databases:
+  - name: gastrosync-db
+    databaseName: gastrosync
+    user: gastrosync
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: gastrosync-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Ücretsiz plan 512 MB bellek: JVM'i bu sınıra göre ayarla
+      - key: JAVA_OPTS
+        value: "-XX:+UseSerialGC -XX:MaxRAMPercentage=60 -XX:MaxMetaspaceSize=160m -Xss512k -XX:+ExitOnOutOfMemoryError -XX:TieredStopAtLevel=1 -Duser.timezone=Europe/Istanbul"
+      - key: DB_HOST
+        fromDatabase: { name: gastrosync-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: gastrosync-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: gastrosync-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: gastrosync-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: gastrosync-db, property: password }
+      - key: GASTROSYNC_JWT_SECRET
+        generateValue: true
+      # Demo: örnek restoran verisi ve giriş ekranındaki demo hesap düğmeleri
+      - key: GASTROSYNC_SEED_DEMO_DATA
+        value: "true"
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://gastrosync-web.onrender.com
+      - key: GASTROSYNC_RESTAURANT_NAME
+        value: GastroSync Demo Restoran
+      - key: GASTROSYNC_COMPANY_TITLE
+        value: GastroSync Demo Restoran
+      - key: GASTROSYNC_COMPANY_VKN
+        value: "1234567890"
+      - key: GASTROSYNC_COMPANY_TAX_OFFICE
+        value: Demo Vergi Dairesi
+      - key: GASTROSYNC_COMPANY_ADDRESS
+        value: Demo Mah. Ornek Cad. No:1
+      - key: GASTROSYNC_COMPANY_CITY
+        value: Istanbul
+      - key: GASTROSYNC_FISCAL_PROVIDER
+        value: TEST
+      - key: TZ
+        value: Europe/Istanbul
+
+  - type: web
+    name: gastrosync-web
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      # Web arayüzü /api ve /ws isteklerini özel ağ üzerinden arka uca iletir
+      - key: BACKEND_HOSTPORT
+        fromService: { type: web, name: gastrosync-api, property: hostport }

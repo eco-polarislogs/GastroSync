@@ -7,15 +7,20 @@ export const ROLES = {
   WAREHOUSE: 'warehouse',
   ACCOUNTANT: 'accountant',
   FINANCIAL_ADVISOR: 'financial_advisor',
+  CASHIER: 'cashier',
 };
 
+/** Personel ekranında rol seçimi sırası */
+export const ROLE_ORDER = ['admin', 'manager', 'accountant', 'financial_advisor', 'cashier', 'chef', 'warehouse'];
+
 export const ROLE_LABELS = {
-  [ROLES.ADMIN]: 'Sistem Yöneticisi',
-  [ROLES.MANAGER]: 'İşletme Yöneticisi',
+  [ROLES.ADMIN]: 'Yönetici',
+  [ROLES.MANAGER]: 'İşletme Müdürü',
   [ROLES.CHEF]: 'Mutfak Şefi',
   [ROLES.WAREHOUSE]: 'Depo Sorumlusu',
-  [ROLES.ACCOUNTANT]: 'Muhasebeci (Kasa & Ödemeler)',
-  [ROLES.FINANCIAL_ADVISOR]: 'Mali Müşavir (Resmi Defter & Vergi)',
+  [ROLES.ACCOUNTANT]: 'Muhasebe',
+  [ROLES.FINANCIAL_ADVISOR]: 'Mali Müşavir',
+  [ROLES.CASHIER]: 'Kasiyer',
 };
 
 export const ROLE_COLORS = {
@@ -25,15 +30,18 @@ export const ROLE_COLORS = {
   [ROLES.WAREHOUSE]: '#0ea5e9',
   [ROLES.ACCOUNTANT]: '#8b5cf6',
   [ROLES.FINANCIAL_ADVISOR]: '#ec4899',
+  [ROLES.CASHIER]: '#14b8a6',
 };
 
+/** Rol görev tanımları (sunucudaki Permissions.ROLE_DESCRIPTIONS ile aynı) */
 export const ROLE_MODULES = {
-  [ROLES.ADMIN]: 'Tüm Sayfalar, Kullanıcı Yönetimi, Rol Atama, Sistem Logları',
-  [ROLES.MANAGER]: 'Dashboard, Finansal Raporlar, Satış Analizleri, Tüm Reçeteler',
-  [ROLES.ACCOUNTANT]: 'Muhasebe & Kasa, Gider ve Kira Ödemeleri, Fatura Girişleri',
-  [ROLES.FINANCIAL_ADVISOR]: 'Resmi Muhasebe Defteri, Vergi ve SGK Tahakkukları, Mali Raporlama',
-  [ROLES.CHEF]: 'Reçete Yönetimi, Üretim Planlama, Menü Tasarımı, Stok (Görüntüleme)',
-  [ROLES.WAREHOUSE]: 'Mal Kabul Terminali (Elle / Barkod Girişi), Zayiat Bildirimi, Sayım',
+  [ROLES.ADMIN]: 'Personel ve rol yönetimi, masa düzeni; raporları salt okunur izler.',
+  [ROLES.MANAGER]: 'Harcama onayı / reddi; iptal, ikram, indirim ve sayım farkı taleplerine onay / ret; menü fiyatı, masa düzeni.',
+  [ROLES.ACCOUNTANT]: 'Fatura, kira ve gider kaydı ve ödemesi; kasa mutabakatı, günlük/aylık/yıllık kasa raporu, belgeleri Mali Müşavire gönderme.',
+  [ROLES.FINANCIAL_ADVISOR]: 'Gönderilen belgeleri deftere işler veya gerekçeli reddeder; dönem kapatır.',
+  [ROLES.CASHIER]: 'Adisyon, sipariş, tahsilat, masa ekleme / taşıma, gün sonu kör kasa sayımı; iptal / ikram / indirim için Müdüre onay talebi.',
+  [ROLES.CHEF]: 'Reçete ve gramaj, mutfak ekranı, fire ve tedarik talebi.',
+  [ROLES.WAREHOUSE]: 'Mal kabul, stok kartı, sayım ve fire; tedarik talebi. Eşiği aşan sayım farkı Müdür onayıyla işlenir.',
 };
 
 export const DEMO_USERS = [

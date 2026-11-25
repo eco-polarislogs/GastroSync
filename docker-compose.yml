@@ -1,74 +1,129 @@
-version: '3.8'
+# GastroSync — Canlı ortam (tek sunucu)
+# Kullanım:
+#   1) cp .env.example .env   ve tüm değerleri doldurun (şifreler, JWT anahtarı, alan adı)
+#   2) docker compose up -d --build
+# Web + API + WebSocket tek kapıdan (80) sunulur; TLS'i önündeki reverse proxy sağlar.
 
 services:
-  # ── 1. DATABASE: PostgreSQL 16 ────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: gastrosync-db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gastrosync}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-EcReN12854700456.}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-gastrosync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env dosyasinda tanimlanmali}
+      TZ: Europe/Istanbul
+    # Veritabani disariya acilmaz; yalnizca backend erisir.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gastrosync}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gastrosync} -d ${POSTGRES_DB:-gastrosync}"]
       interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - gastrosync-net
+      retries: 10
+    networks: [gastrosync-net]
 
-  # ── 2. BACKEND: Spring Boot 3.x (Java 21) ─────────────────────
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
     container_name: gastrosync-backend
-    restart: always
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gastrosync}?useSSL=false&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-EcReN12854700456.}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      GASTROSYNC_JWT_SECRET: ${GASTROSYNC_JWT_SECRET:-GastroSyncEnterpriseSecretKeyForJwtAuthenticationMustBeAtLeast256BitsLong2026Secure}
-      GASTROSYNC_JWT_EXPIRATION: 86400000
-      CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:80,http://localhost:5173,http://localhost:3000
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/v3/api-docs > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 25s
-    networks:
-      - gastrosync-net
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gastrosync}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-gastrosync}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env dosyasinda tanimlanmali}
+      GASTROSYNC_JWT_SECRET: ${GASTROSYNC_JWT_SECRET:?GASTROSYNC_JWT_SECRET .env dosyasinda tanimlanmali (en az 32 bayt)}
+      GASTROSYNC_JWT_EXPIRATION: ${GASTROSYNC_JWT_EXPIRATION:-900000}
+      GASTROSYNC_REFRESH_EXPIRATION_DAYS: ${GASTROSYNC_REFRESH_EXPIRATION_DAYS:-7}
+      GASTROSYNC_SESSION_MAX_DAYS: ${GASTROSYNC_SESSION_MAX_DAYS:-30}
+      GASTROSYNC_EXPO_ACCESS_TOKEN: ${GASTROSYNC_EXPO_ACCESS_TOKEN:-}
+      GASTROSYNC_ADMIN_PASSWORD: ${GASTROSYNC_ADMIN_PASSWORD:-}
+      GASTROSYNC_SEED_DEMO_DATA: ${GASTROSYNC_SEED_DEMO_DATA:-false}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      GASTROSYNC_RESTAURANT_NAME: ${GASTROSYNC_RESTAURANT_NAME:-GastroSync Restoran}
+      GASTROSYNC_RECEIPT_FOOTER: ${GASTROSYNC_RECEIPT_FOOTER:-Afiyet olsun!}
+      GASTROSYNC_COMPANY_TITLE: ${GASTROSYNC_COMPANY_TITLE:-}
+      GASTROSYNC_COMPANY_VKN: ${GASTROSYNC_COMPANY_VKN:-}
+      GASTROSYNC_COMPANY_TAX_OFFICE: ${GASTROSYNC_COMPANY_TAX_OFFICE:-}
+      GASTROSYNC_COMPANY_ADDRESS: ${GASTROSYNC_COMPANY_ADDRESS:-}
+      GASTROSYNC_COMPANY_CITY: ${GASTROSYNC_COMPANY_CITY:-}
+      GASTROSYNC_FISCAL_PROVIDER: ${GASTROSYNC_FISCAL_PROVIDER:-NONE}
+      GASTROSYNC_EARSIV_PREFIX: ${GASTROSYNC_EARSIV_PREFIX:-GSA}
+      TZ: Europe/Istanbul
+    networks: [gastrosync-net]
 
-  # ── 3. FRONTEND: React Web Dashboard (Nginx Alpine) ───────────
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
     container_name: gastrosync-frontend
-    restart: always
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     ports:
+      - "${HTTP_PORT:-80}:80"
+    networks: [gastrosync-net]
+
+  # Gunluk veritabani yedegi (pg_dump + gzip), ./backups klasorune; BACKUP_KEEP_DAYS gunden eskiler temizlenir.
+  # Geri yukleme: gunzip -c backups/gastrosync-YYYYMMDD-HHMM.sql.gz | docker exec -i gastrosync-db psql -U <kullanici> <veritabani>
+  db-backup:
+    image: postgres:16-alpine
+    container_name: gastrosync-db-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-gastrosync}
+      PGUSER: ${POSTGRES_USER:-gastrosync}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env dosyasinda tanimlanmali}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: Europe/Istanbul
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          f=/backups/gastrosync-$$(date +%Y%m%d-%H%M).sql.gz
+          if pg_dump --no-owner --no-privileges | gzip > "$$f.partial" && mv "$$f.partial" "$$f"; then echo "Yedek alindi: $$f"; else echo "YEDEK BASARISIZ"; fi
+          find /backups \( -name 'gastrosync-*.sql.gz' -mtime +$$BACKUP_KEEP_DAYS \) -o \( -name '*.partial' -mtime +1 \) | xargs -r -n 50 unlink
+          sleep 86400
+        done
+    networks: [gastrosync-net]
+
+  # HTTPS (istege bagli profil): alan adi bu sunucuyu gosterdiginde Caddy otomatik Let's Encrypt sertifikasi alir.
+  # Calistirma: DOMAIN=panel.restoraniniz.com HTTP_PORT=8088 docker compose --profile tls up -d
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: gastrosync-caddy
+    restart: unless-stopped
+    profiles: ["tls"]
+    depends_on: [frontend]
+    ports:
       - "80:80"
-    networks:
-      - gastrosync-net
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [gastrosync-net]
 
 volumes:
   pgdata:
-    driver: local
+  caddy_data:
+  caddy_config:
 
 networks:
   gastrosync-net:

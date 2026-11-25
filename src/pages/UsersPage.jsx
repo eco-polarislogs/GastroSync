@@ -1,548 +1,334 @@
-import React, { useState, useMemo } from 'react'
-import { ROLES, ROLE_LABELS, ROLE_COLORS, useAuthStore, useNotificationStore } from '../store'
-import { 
-  useUsers, 
-  useCreateUser, 
-  useUpdateUserRole, 
-  useDeleteUser 
+import React, { useEffect, useMemo, useState } from 'react'
+import { FiUserPlus, FiSearch, FiEdit2, FiTrash2, FiKey, FiShield, FiCheck, FiSlash, FiSmartphone } from 'react-icons/fi'
+import { ROLES, ROLE_ORDER, ROLE_LABELS, ROLE_COLORS, useAuthStore } from '../store'
+import {
+  useUserSearch, useRoleCatalog, useCreateUser, useUpdateUserRole, useDeleteUser, useSetUserActive, useResetPassword, useRevokeSessions,
+  useUpdateUserProfile,
 } from '../hooks/useUserQuery'
-import { FiShield, FiMail, FiUserPlus, FiTrash2, FiEdit2, FiCheck, FiX, FiRefreshCw, FiSearch, FiFilter, FiAlertTriangle } from 'react-icons/fi'
-import { notifySuccess, notifyError } from '../utils/notify'
-import { TRANSLATIONS, getRoleLabel } from '../utils/translations'
-import '../styles/pages.css'
+import {
+  PageHeader, Card, Button, Modal, Field, Notice, Badge, DataTable, Pagination, serverPager, sortParam, Loading,
+  ErrorState, EmptyState, StatGrid, Stat,
+} from '../components/ui'
+import { SCREENS } from '../utils/routes'
+import { formatDateTime } from '../utils/format'
 
-const ROLE_MODULES = {
-  [ROLES.ADMIN]: 'Tüm Sayfalar, Kullanıcı Yönetimi, Rol Atama, Sistem Logları',
-  [ROLES.MANAGER]: 'Dashboard, Finansal Raporlar, Satış Analizleri, Tüm Reçeteler',
-  [ROLES.ACCOUNTANT]: 'Muhasebe & Kasa, Gider ve Kira Ödemeleri, Fatura Girişleri',
-  [ROLES.FINANCIAL_ADVISOR]: 'Resmi Muhasebe Defteri, Vergi ve SGK Tahakkukları, Mali Raporlama',
-  [ROLES.CHEF]: 'Reçete Yönetimi, Üretim Planlama, Menü Tasarımı, Stok (Görüntüleme)',
-  [ROLES.WAREHOUSE]: 'Mal Kabul Terminali (Elle / Barkod Girişi), Zayiat Bildirimi, Sayım',
+const passwordProblems = (p) => {
+  const e = []
+  if ((p || '').length < 8) e.push('en az 8 karakter')
+  if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(p || '')) e.push('en az bir harf')
+  if (!/\d/.test(p || '')) e.push('en az bir rakam')
+  return e
 }
 
-export default function UsersPage() {
-  const currentLanguage = useAuthStore((s) => s.currentLanguage) || 'tr'
-  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.tr
+const EMPTY_FORM = { name: '', username: '', email: '', role: ROLES.CASHIER, password: '', requirePasswordChange: false }
 
-  const currentUser = useAuthStore((s) => s.user)
-  const isSuperAdmin = currentUser?.role === ROLES.ADMIN
-  const { sendNotification } = useNotificationStore()
-
-  // ── TANSTACK QUERY HOOKS (Authoritative PostgreSQL State) ──────
-  const { data: users = [], isLoading: loading, isError, error, refetch: fetchUsers } = useUsers()
-  const createUserMutation = useCreateUser()
-  const updateRoleMutation = useUpdateUserRole()
-  const deleteUserMutation = useDeleteUser()
-
-  const [showAddModal, setShowAddModal] = useState(false)
-  const submitting = createUserMutation.isPending
-  const deleting = deleteUserMutation.isPending
-
-  // Custom confirmation modal (alert/confirm yerine modern message box)
-  const [userToDelete, setUserToDelete] = useState(null)
-
-  // New user form state
-  const [newUser, setNewUser] = useState({
-    name: '',
-    username: '',
-    email: '',
-    role: ROLES.MANAGER,
-    password: '123456',
-  })
-
-  // Role editing state
-  const [editingUserId, setEditingUserId] = useState(null)
-  const [selectedRole, setSelectedRole] = useState('')
-
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterRole, setFilterRole] = useState('all')
-
-  // Filtered users based on search and role filter
-  const filteredUsers = useMemo(() => {
-    let result = users
-    if (filterRole !== 'all') {
-      result = result.filter((u) => u.role === filterRole)
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      result = result.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.username.toLowerCase().includes(q)
-      )
-    }
-    return result
-  }, [users, searchQuery, filterRole])
-
-  const handleCreateUser = (e) => {
-    e.preventDefault()
-    if (!newUser.name || !newUser.username) {
-      notifyError('Lütfen ad soyad ve kullanıcı adı alanlarını doldurun')
-      return
-    }
-
-    createUserMutation.mutate({
-      name: newUser.name.trim(),
-      username: newUser.username.trim().toLowerCase(),
-      email: newUser.email.trim() || `${newUser.username.trim().toLowerCase()}@gastrosync.com`,
-      role: newUser.role.toUpperCase(),
-      password: newUser.password || '123456',
-    }, {
-      onSuccess: () => {
-        setShowAddModal(false)
-        setNewUser({ name: '', username: '', email: '', role: ROLES.MANAGER, password: '123456' })
-      }
-    })
-  }
-
-  const handleUpdateRole = (userId) => {
-    if (!selectedRole) return
-
-    updateRoleMutation.mutate({ id: userId, role: selectedRole.toUpperCase() }, {
-      onSuccess: () => {
-        const targetUser = users.find(u => u.id === userId)
-        sendNotification({
-          title: '👤 Personel Yetki / Rol Değişikliği',
-          message: `Sistem Yöneticisi tarafından "${targetUser?.name || 'Kullanıcı'}" unvanı "${ROLE_LABELS[selectedRole]}" olarak güncellendi. Sistem izinleri ve erişim ekranları anında senkronize edildi.`,
-          targetRole: 'ALL',
-          senderName: currentUser?.name || 'Sistem Yöneticisi',
-          type: 'ROLE_CHANGED',
-          relatedEntityId: userId
-        })
-        setEditingUserId(null)
-      }
-    })
-  }
-
-  const handleDeleteUser = (user) => {
-    if (user.role === ROLES.ADMIN || user.username === 'admin') {
-      notifyError('Ana yönetici hesabı sistemden silinemez!')
-      return
-    }
-    setUserToDelete(user)
-  }
-
-  const executeDeleteUser = () => {
-    if (!userToDelete) return
-    deleteUserMutation.mutate(userToDelete.id, {
-      onSuccess: () => {
-        setUserToDelete(null)
-      }
-    })
-  }
-
+function RoleBadge({ role }) {
   return (
-    <div className="page-container">
-      {/* Action Buttons Row */}
-      <div className="page-header-row" style={{ justifyContent: 'flex-end', marginBottom: '-8px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button
-            className="action-btn action-btn--secondary"
-            onClick={fetchUsers}
-            title="Yenile"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FiRefreshCw className={loading ? 'animate-spin' : ''} /> Listeyi Yenile
-          </button>
+    <span className="gs-badge" style={{ background: `${ROLE_COLORS[role]}1a`, color: ROLE_COLORS[role], borderColor: `${ROLE_COLORS[role]}55` }}>
+      {ROLE_LABELS[role] || role}
+    </span>
+  )
+}
 
-          {isSuperAdmin && (
-            <button
-              className="action-btn action-btn--primary"
-              onClick={() => setShowAddModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <FiUserPlus size={16} /> Yeni Kullanıcı / Rol Ata
-            </button>
+/** Seçilen rolün görev tanımı, göreceği ekranlar ve izinleri (sunucudaki yetki tablosundan) */
+function RoleScope({ catalog, role }) {
+  const entry = (catalog || []).find((r) => r.role.toLowerCase() === role)
+  if (!entry) return null
+  return (
+    <div className="gs-notice gs-notice--info" style={{ display: 'block' }}>
+      <strong>{ROLE_LABELS[role]}</strong>: {entry.description}
+      <div style={{ marginTop: 6 }}>
+        <span className="gs-muted">Göreceği ekranlar: </span>
+        {entry.screens.map((s) => SCREENS[s]?.label || s).join(', ')}
+      </div>
+      <details style={{ marginTop: 6 }}>
+        <summary style={{ cursor: 'pointer' }}>Yetkiler ({entry.permissions.length})</summary>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          {entry.permissions.map((p) => <li key={p.code}>{p.label}</li>)}
+        </ul>
+      </details>
+    </div>
+  )
+}
+
+/**
+ * Personel yönetimi (yalnızca Yönetici). Yöneticinin kaydettiği kişi, verilen kullanıcı adı / e-posta
+ * ve şifreyle giriş yapar; menüsü ve yetkileri sunucudaki rol tablosundan gelir.
+ */
+export default function UsersPage() {
+  const me = useAuthStore((s) => s.user)
+  const [search, setSearch] = useState('')
+  const [q, setQ] = useState('')
+  const [role, setRole] = useState('all')
+  const [status, setStatus] = useState('all')
+  const [sort, setSort] = useState({ key: 'name', dir: 'asc' })
+  const [page, setPage] = useState(0)
+  const [size, setSize] = useState(20)
+
+  useEffect(() => {
+    const t = setTimeout(() => setQ(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+  useEffect(() => { setPage(0) }, [q, role, status, sort, size])
+
+  const params = { q: q || undefined, role: role === 'all' ? undefined : role.toUpperCase(), status, sort: sortParam(sort), page, size }
+  const { data, isLoading, error, refetch } = useUserSearch(params)
+  const { data: catalog } = useRoleCatalog()
+  const meta = data?.meta || {}
+
+  const createM = useCreateUser()
+  const roleM = useUpdateUserRole()
+  const activeM = useSetUserActive()
+  const resetM = useResetPassword()
+  const revokeM = useRevokeSessions()
+  const profileM = useUpdateUserProfile()
+  const deleteM = useDeleteUser()
+
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [roleTarget, setRoleTarget] = useState(null)
+  const [resetTarget, setResetTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const pwErrors = passwordProblems(form.password)
+  const usernameOk = /^[a-zA-Z0-9._-]{3,50}$/.test(form.username)
+  const canSubmit = form.name.trim().length >= 2 && usernameOk && !pwErrors.length
+
+  const submitCreate = (e) => {
+    e?.preventDefault()
+    if (!canSubmit) return
+    createM.mutate({
+      name: form.name.trim(),
+      username: form.username.trim().toLowerCase(),
+      email: form.email.trim() || undefined,
+      role: form.role.toUpperCase(),
+      password: form.password,
+      requirePasswordChange: !!form.requirePasswordChange,
+    }, { onSuccess: () => { setCreateOpen(false); setForm(EMPTY_FORM) } })
+  }
+
+  const columns = useMemo(() => [
+    {
+      key: 'name', sortKey: 'name', title: 'Personel',
+      render: (u) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="gs-avatar" style={{ background: ROLE_COLORS[u.role] }}>{u.avatar}</span>
+          <div>
+            <div className="gs-cell-title">{u.name}{u.id === me?.id && <span className="gs-muted"> (siz)</span>}</div>
+            <div className="gs-cell-sub">@{u.username}{u.email ? ` · ${u.email}` : ''}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'role', sortKey: 'role', title: 'Rol', render: (u) => <RoleBadge role={u.role} /> },
+    {
+      key: 'active', sortKey: 'active', title: 'Durum',
+      render: (u) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+          <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Aktif' : 'Pasif'}</Badge>
+          {u.mustChangePassword && <Badge tone="warning">İlk girişte şifre değiştirecek</Badge>}
+        </div>
+      ),
+    },
+    { key: 'lastLoginAt', sortKey: 'lastLoginAt', title: 'Son giriş', render: (u) => (u.lastLoginAt ? formatDateTime(u.lastLoginAt) : <span className="gs-muted">Henüz yok</span>) },
+    {
+      key: 'actions', title: '', align: 'right',
+      render: (u) => (
+        <div className="gs-actions">
+          <Button size="sm" variant="ghost" title="Bilgileri düzenle" onClick={() => setEditTarget({ id: u.id, name: u.name, email: u.email })}><FiEdit2 /></Button>
+          <Button size="sm" variant="ghost" title="Rol değiştir" onClick={() => setRoleTarget({ id: u.id, name: u.name, role: u.role })}><FiShield /></Button>
+          <Button size="sm" variant="ghost" title="Geçici şifre belirle" onClick={() => setResetTarget({ id: u.id, name: u.name, password: '' })}><FiKey /></Button>
+          {u.id !== me?.id && (
+            <>
+              <Button size="sm" variant="ghost" title={u.active ? 'Pasife al' : 'Aktifleştir'} loading={activeM.isPending}
+                onClick={() => activeM.mutate({ id: u.id, active: !u.active })}>
+                {u.active ? <FiSlash /> : <FiCheck />}
+              </Button>
+              <Button size="sm" variant="ghost" title="Tüm cihaz oturumlarını sonlandır (kayıp telefon / işten ayrılma)" loading={revokeM.isPending && revokeM.variables === u.id}
+                onClick={() => revokeM.mutate(u.id)}><FiSmartphone /></Button>
+              <Button size="sm" variant="ghost" title="Arşivle" onClick={() => setDeleteTarget(u)}><FiTrash2 /></Button>
+            </>
           )}
         </div>
-      </div>
+      ),
+    },
+  ], [me?.id, activeM])
 
-      {/* Search & Filter Toolbar */}
-      <div className="users-toolbar">
-        <div className="users-search-wrapper">
-          <FiSearch className="users-search-icon" />
-          <input
-            type="text"
-            className="users-search-input"
-            placeholder="Personel adı, e-posta veya kullanıcı adı ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+  return (
+    <div className="gs-page animate-fade-in">
+      <PageHeader actions={<Button onClick={() => setCreateOpen(true)}><FiUserPlus /> Personel Ekle</Button>} />
 
-        <div className="users-filter-group">
-          <FiFilter className="users-filter-icon" size={15} />
-          <select
-            className="users-filter-select"
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-          >
-            <option value="all">{t.all} {t.roleAdmin.split(' ')[0]} / Roller</option>
-            <option value={ROLES.ADMIN}>{getRoleLabel(ROLES.ADMIN, currentLanguage)}</option>
-            <option value={ROLES.MANAGER}>{getRoleLabel(ROLES.MANAGER, currentLanguage)}</option>
-            <option value={ROLES.ACCOUNTANT}>{getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}</option>
-            <option value={ROLES.FINANCIAL_ADVISOR}>{getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}</option>
-            <option value={ROLES.CHEF}>{getRoleLabel(ROLES.CHEF, currentLanguage)}</option>
-            <option value={ROLES.WAREHOUSE}>{getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}</option>
+      <StatGrid>
+        <Stat label="Toplam personel" value={meta.total ?? '…'} hint={`${meta.activeCount ?? 0} aktif`} />
+        {ROLE_ORDER.filter((r) => r !== ROLES.ADMIN).slice(0, 5).map((r) => (
+          <Stat key={r} label={ROLE_LABELS[r]} value={meta.roleCounts?.[r.toUpperCase()] ?? 0} />
+        ))}
+      </StatGrid>
+
+      <Card padded>
+        <div className="gs-filterbar">
+          <div className="gs-search">
+            <FiSearch />
+            <input className="gs-input" placeholder="Ad, kullanıcı adı veya e-posta ara…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <select className="gs-select" value={role} onChange={(e) => setRole(e.target.value)} aria-label="Rol" style={{ maxWidth: 210 }}>
+            <option value="all">Tüm roller</option>
+            {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+          <select className="gs-select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Durum" style={{ maxWidth: 160 }}>
+            <option value="all">Tüm durumlar</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Pasif</option>
           </select>
         </div>
+        {isLoading ? <Loading /> : error ? <ErrorState message={error.message} onRetry={refetch} /> : (
+          <>
+            <DataTable
+              rows={data?.content || []}
+              columns={columns}
+              sort={sort}
+              onSortChange={(s) => setSort(s || { key: 'name', dir: 'asc' })}
+              empty={<EmptyState title="Personel bulunamadı" description="Arama veya filtreyi değiştirin." />}
+            />
+            <Pagination {...serverPager(data, setPage, setSize)} />
+          </>
+        )}
+      </Card>
 
-        <span className="users-result-count">
-          <strong>{filteredUsers.length}</strong> / {users.length} {t.recordsListed}
-        </span>
-      </div>
-
-      {/* Users Grid */}
-      <div className="users-grid">
-        {filteredUsers.map((user) => (
-          <div key={user.id} className="user-card animate-fade-in">
-            <div className="user-card-top">
-              <div
-                className="user-card-avatar"
-                style={{ backgroundColor: ROLE_COLORS[user.role] }}
-              >
-                {user.avatar}
-              </div>
-              <div className="user-card-info">
-                <h3 className="user-card-name">{user.name}</h3>
-                <span className="user-card-email">
-                  <FiMail size={12} /> {user.email}
-                </span>
-                <span className="user-card-uname" style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Kullanıcı Adı: <strong>{user.username}</strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Role Box & Inline Assignment */}
-            <div className="user-card-role" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FiShield size={15} style={{ color: ROLE_COLORS[user.role] }} />
-                {editingUserId === user.id ? (
-                  <select
-                    className="role-select-inline"
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                  >
-                    <option value={ROLES.ADMIN}>{getRoleLabel(ROLES.ADMIN, currentLanguage)}</option>
-                    <option value={ROLES.MANAGER}>{getRoleLabel(ROLES.MANAGER, currentLanguage)}</option>
-                    <option value={ROLES.ACCOUNTANT}>{getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}</option>
-                    <option value={ROLES.FINANCIAL_ADVISOR}>{getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}</option>
-                    <option value={ROLES.CHEF}>{getRoleLabel(ROLES.CHEF, currentLanguage)}</option>
-                    <option value={ROLES.WAREHOUSE}>{getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}</option>
-                  </select>
-                ) : (
-                  <span style={{ color: ROLE_COLORS[user.role], fontWeight: 700, fontSize: '0.9rem' }}>
-                    {getRoleLabel(user.role, currentLanguage)}
-                  </span>
-                )}
-              </div>
-
-              {isSuperAdmin && user.username !== 'admin' && (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {editingUserId === user.id ? (
-                    <>
-                      <button
-                        className="role-action-btn role-action-btn--confirm"
-                        onClick={() => handleUpdateRole(user.id)}
-                        title="Rolü Kaydet"
-                      >
-                        <FiCheck size={14} />
-                      </button>
-                      <button
-                        className="role-action-btn role-action-btn--cancel"
-                        onClick={() => setEditingUserId(null)}
-                        title="İptal"
-                      >
-                        <FiX size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      className="role-action-btn"
-                      onClick={() => {
-                        setEditingUserId(user.id)
-                        setSelectedRole(user.role)
-                      }}
-                      title="Görevi Değiştir / Rol Ata"
-                    >
-                      <FiEdit2 size={13} /> Rol Ata
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="user-card-modules">
-              <span className="user-card-modules-label">Erişim Modülleri:</span>
-              <span className="user-card-modules-text">{ROLE_MODULES[user.role]}</span>
-            </div>
-
-            <div className="user-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="user-card-login">Durum: {user.lastLogin}</span>
-
-              {isSuperAdmin && user.username !== 'admin' && (
-                <button
-                  className="user-dismiss-btn"
-                  onClick={() => handleDeleteUser(user)}
-                  title="Kullanıcıyı Görevden Al / Sil"
-                >
-                  <FiTrash2 size={13} /> Görevden Al
-                </button>
-              )}
-            </div>
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Yeni Personel"
+        width={620}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setCreateOpen(false)}>Vazgeç</Button>
+            <Button loading={createM.isPending} disabled={!canSubmit} onClick={submitCreate}>Kaydet</Button>
+          </>
+        )}
+      >
+        <form className="gs-form" onSubmit={submitCreate}>
+          <div className="gs-form-row">
+            <Field label="Ad soyad" required>
+              <input className="gs-input" value={form.name} maxLength={100} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </Field>
+            <Field label="Rol" required>
+              <select className="gs-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+            </Field>
           </div>
-        ))}
-      </div>
-
-      {/* RBAC Reference Table */}
-      <div className="table-card">
-        <div className="table-card-header">
-          <h3>{t.rbacMatrixTitle}</h3>
-        </div>
-        <div className="table-wrapper">
-          <table className="data-table-main">
-            <thead>
-              <tr>
-                <th>{t.colRole}</th>
-                <th>{t.colAccessibleModules}</th>
-                <th>{t.colCorePermissions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.ADMIN] }}>
-                    {getRoleLabel(ROLES.ADMIN, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.adminModules}</td>
-                <td>{t.adminPerms}</td>
-              </tr>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.MANAGER] }}>
-                    {getRoleLabel(ROLES.MANAGER, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.managerModules}</td>
-                <td>{t.managerPerms}</td>
-              </tr>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.ACCOUNTANT] }}>
-                    {getRoleLabel(ROLES.ACCOUNTANT, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.accountantModules}</td>
-                <td>{t.accountantPerms}</td>
-              </tr>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.FINANCIAL_ADVISOR] }}>
-                    {getRoleLabel(ROLES.FINANCIAL_ADVISOR, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.advisorModules}</td>
-                <td>{t.advisorPerms}</td>
-              </tr>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.CHEF] }}>
-                    {getRoleLabel(ROLES.CHEF, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.chefModules}</td>
-                <td>{t.chefPerms}</td>
-              </tr>
-              <tr>
-                <td>
-                  <span className="role-tag" style={{ backgroundColor: ROLE_COLORS[ROLES.WAREHOUSE] }}>
-                    {getRoleLabel(ROLES.WAREHOUSE, currentLanguage)}
-                  </span>
-                </td>
-                <td>{t.warehouseModules}</td>
-                <td>{t.warehousePerms}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="modal-overlay animate-fade-in" onClick={() => setShowAddModal(false)}>
-          <div className="modal-card animate-scale-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="modal-header" style={{
-              background: 'linear-gradient(135deg, #081c0f 0%, #0a1f11 30%, #153d24 70%, #1b4d30 100%)',
-              borderBottom: '3px solid #10b981',
-              padding: '24px 28px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)', borderRadius: '50%' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 1, position: 'relative' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.2)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FiUserPlus size={18} style={{ color: '#34d399' }} />
-                </div>
-                <div>
-                  <h3 style={{ color: '#ffffff', margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Yeni Kullanıcı Ekle & Rol Ata</h3>
-                  <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', marginTop: '2px', display: 'block' }}>Personel bilgilerini girin ve görev rolü atayın</span>
-                </div>
-              </div>
-              <button className="modal-close-btn" onClick={() => setShowAddModal(false)} style={{
-                zIndex: 1, position: 'relative',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: 'rgba(255,255,255,0.7)',
-                borderRadius: '8px',
-                width: '34px', height: '34px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer'
-              }}>
-                <FiX size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateUser} className="modal-form">
-              <div className="modal-field">
-                <label>Personel Adı Soyadı *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: Selin Aydın"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                />
-              </div>
-
-              <div className="modal-field">
-                <label>Kullanıcı Adı (Sisteme Giriş İçin) *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: selin.aydin"
-                  value={newUser.username}
-                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                />
-              </div>
-
-              <div className="modal-field">
-                <label>E-posta Adresi</label>
-                <input
-                  type="email"
-                  placeholder="selin@gastrosync.com"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                />
-              </div>
-
-              <div className="modal-field">
-                <label>Atanacak Görev Rolü *</label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                >
-                  <option value={ROLES.MANAGER}>{ROLE_LABELS[ROLES.MANAGER]}</option>
-                  <option value={ROLES.ACCOUNTANT}>{ROLE_LABELS[ROLES.ACCOUNTANT]}</option>
-                  <option value={ROLES.FINANCIAL_ADVISOR}>{ROLE_LABELS[ROLES.FINANCIAL_ADVISOR]}</option>
-                  <option value={ROLES.CHEF}>{ROLE_LABELS[ROLES.CHEF]}</option>
-                  <option value={ROLES.WAREHOUSE}>{ROLE_LABELS[ROLES.WAREHOUSE]}</option>
-                  <option value={ROLES.ADMIN}>{ROLE_LABELS[ROLES.ADMIN]}</option>
-                </select>
-              </div>
-
-              <div className="modal-field">
-                <label>Başlangıç Şifresi</label>
-                <input
-                  type="password"
-                  placeholder="Varsayılan: 123456"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                />
-                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
-                  Personel sisteme bu şifre ile giriş yapacaktır.
-                </span>
-              </div>
-
-              <div className="modal-actions" style={{ marginTop: '20px' }}>
-                <button
-                  type="button"
-                  className="action-btn action-btn--secondary"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="action-btn action-btn--primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Kaydediliyor...' : 'Kullanıcıyı Kaydet'}
-                </button>
-              </div>
-            </form>
+          <RoleScope catalog={catalog} role={form.role} />
+          <div className="gs-form-row">
+            <Field label="Kullanıcı adı" required hint={form.username && !usernameOk ? '3-50 karakter; harf, rakam, nokta, tire, alt çizgi' : 'Girişte kullanılır'}>
+              <input className="gs-input" value={form.username} maxLength={50} autoComplete="off"
+                onChange={(e) => setForm({ ...form, username: e.target.value.replace(/\s/g, '') })} />
+            </Field>
+            <Field label="E-posta" hint="İsteğe bağlı; girişte kullanıcı adı yerine kullanılabilir">
+              <input className="gs-input" type="email" value={form.email} maxLength={120} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </Field>
           </div>
-        </div>
-      )}
+          <Field label="Şifre" required hint={form.password && pwErrors.length ? `Eksik: ${pwErrors.join(', ')}` : 'En az 8 karakter, harf ve rakam'}>
+            <input className="gs-input" type="text" value={form.password} maxLength={100} autoComplete="new-password"
+              onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          </Field>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="checkbox" checked={form.requirePasswordChange} onChange={(e) => setForm({ ...form, requirePasswordChange: e.target.checked })} />
+            İlk girişte kendi şifresini belirlesin
+          </label>
+          <Notice tone="info">Kaydedilen kişi bu bilgilerle hemen giriş yapar ve yalnızca seçtiğiniz rolün ekranlarını görür.</Notice>
+        </form>
+      </Modal>
 
-      {/* Modern Silme / Görevden Alma Onay Kutusu (Message Box) */}
-      {userToDelete && (
-        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div className="modal animate-fade-in" style={{ maxWidth: '440px', padding: '24px', borderRadius: '16px', background: '#ffffff', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid #fee2e2' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FiAlertTriangle size={22} style={{ color: '#ef4444' }} />
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Kullanıcıyı Görevden Al</h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Erişim ve yetki iptali işlemi</span>
-              </div>
-            </div>
-
-            <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', lineHeight: 1.5 }}>
-                <strong style={{ color: '#0f172a' }}>{userToDelete.name}</strong> (<span style={{ fontFamily: 'monospace', color: '#64748b' }}>{userToDelete.username}</span>) kullanıcısının sistemdeki hesabı ve yetkileri silinecektir.
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 600 }}>
-                ⚠️ Bu işlem geri alınamaz. Devam etmek istiyor musunuz?
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                className="action-btn action-btn--secondary"
-                onClick={() => setUserToDelete(null)}
-                disabled={deleting}
-                style={{ padding: '9px 18px', borderRadius: '8px', fontWeight: 600 }}
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                className="action-btn"
-                onClick={executeDeleteUser}
-                disabled={deleting}
-                style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  border: '1px solid #dc2626',
-                  padding: '9px 20px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)'
-                }}
-              >
-                {deleting ? 'Siliniyor...' : 'Evet, Görevden Al'}
-              </button>
-            </div>
+      <Modal
+        open={!!roleTarget}
+        onClose={() => setRoleTarget(null)}
+        title={`Rol değiştir · ${roleTarget?.name || ''}`}
+        width={600}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setRoleTarget(null)}>Vazgeç</Button>
+            <Button loading={roleM.isPending} onClick={() => roleM.mutate({ id: roleTarget.id, role: roleTarget.role.toUpperCase() }, { onSuccess: () => setRoleTarget(null) })}>Rolü Kaydet</Button>
+          </>
+        )}
+      >
+        {roleTarget && (
+          <div className="gs-form">
+            <Field label="Yeni rol">
+              <select className="gs-select" value={roleTarget.role} onChange={(e) => setRoleTarget({ ...roleTarget, role: e.target.value })}>
+                {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+            </Field>
+            <RoleScope catalog={catalog} role={roleTarget.role} />
+            <Notice tone="warning">Değişiklik anında geçerlidir: kişinin açık oturumları (web ve mobil) yeni rolün ekranına taşınır.</Notice>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      <Modal
+        open={!!resetTarget}
+        onClose={() => setResetTarget(null)}
+        title={`Geçici şifre · ${resetTarget?.name || ''}`}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setResetTarget(null)}>Vazgeç</Button>
+            <Button loading={resetM.isPending} disabled={!!passwordProblems(resetTarget?.password).length}
+              onClick={() => resetM.mutate({ id: resetTarget.id, temporaryPassword: resetTarget.password }, { onSuccess: () => setResetTarget(null) })}>
+              Şifreyi Belirle
+            </Button>
+          </>
+        )}
+      >
+        {resetTarget && (
+          <div className="gs-form">
+            <Field label="Geçici şifre" hint="En az 8 karakter, harf ve rakam">
+              <input className="gs-input" value={resetTarget.password} onChange={(e) => setResetTarget({ ...resetTarget, password: e.target.value })} />
+            </Field>
+            <Notice tone="info">Kişinin açık oturumları kapanır; ilk girişte kendi şifresini belirler.</Notice>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Personel bilgileri"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setEditTarget(null)}>Vazgeç</Button>
+            <Button loading={profileM.isPending} disabled={(editTarget?.name || '').trim().length < 2}
+              onClick={() => profileM.mutate({ id: editTarget.id, name: editTarget.name.trim(), email: editTarget.email.trim() }, { onSuccess: () => setEditTarget(null) })}>
+              Kaydet
+            </Button>
+          </>
+        )}
+      >
+        {editTarget && (
+          <div className="gs-form">
+            <Field label="Ad soyad"><input className="gs-input" value={editTarget.name} onChange={(e) => setEditTarget({ ...editTarget, name: e.target.value })} /></Field>
+            <Field label="E-posta"><input className="gs-input" type="email" value={editTarget.email} onChange={(e) => setEditTarget({ ...editTarget, email: e.target.value })} /></Field>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Personeli arşivle"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Vazgeç</Button>
+            <Button variant="danger" loading={deleteM.isPending} onClick={() => deleteM.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}>Arşivle</Button>
+          </>
+        )}
+      >
+        {deleteTarget && (
+          <Notice tone="warning">
+            <strong>{deleteTarget.name}</strong> (@{deleteTarget.username}) arşivlenir ve giriş yapamaz. Geçmiş kayıtları ve denetim izi korunur; kullanıcı adı tekrar verilmez.
+          </Notice>
+        )}
+      </Modal>
     </div>
   )
 }

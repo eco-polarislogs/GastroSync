@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="420" viewBox="0 0 1760 420"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#064E3B"/><stop offset="0.55" stop-color="#047857"/><stop offset="1" stop-color="#10B981"/>
+</linearGradient></defs>
+  <g transform="translate(40 30)"><rect width="360" height="360" rx="82" fill="url(#g)"/><g transform="translate(180 184) scale(0.32)">
+    <g fill="none" stroke="#ECFDF5" stroke-width="60" stroke-linecap="round">
+      <path d="M-281.9 -102.6 A300 300 0 0 1 222.9 -200.7"/>
+      <path d="M281.9 102.6 A300 300 0 0 1 -222.9 200.7"/>
+    </g>
+    <path d="M284.5 -132.4 L168.2 -156.9 L272.3 -250.6 Z" fill="#FBBF24" stroke="#FBBF24" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M-284.5 132.4 L-168.2 156.9 L-272.3 250.6 Z" fill="#FBBF24" stroke="#FBBF24" stroke-width="10" stroke-linejoin="round"/>
+    <g fill="#FFFFFF">
+      <circle cx="0" cy="-122" r="27"/>
+      <path d="M-168 74 A168 168 0 0 1 168 74 Z"/>
+      <rect x="-214" y="88" width="428" height="42" rx="21"/>
+    </g>
+    <path d="M-112 32 A118 118 0 0 1 -38 -58" fill="none" stroke="#10B981" stroke-width="20" stroke-linecap="round" opacity="0.55"/>
+    <circle cx="0" cy="0" r="0" fill="none"/></g></g>
+  <text x="450" y="235" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="170" font-weight="800" letter-spacing="-4"
+        fill="#F8FAFC">Gastro<tspan fill="#10B981">Sync</tspan></text>
+  <text x="458" y="320" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="46" font-weight="600" letter-spacing="2"
+        fill="#94A3B8">RESTORAN İŞLETİM PANELİ · WEB &amp; ANDROID</text></svg>

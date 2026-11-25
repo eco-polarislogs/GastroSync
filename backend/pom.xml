@@ -123,6 +123,19 @@
             <version>${mapstruct.version}</version>
         </dependency>
 
+        <!-- Health probes for Docker / load balancers (only /actuator/health is exposed) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- In-memory database for isolated tests (never touches the real PostgreSQL data) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Spring Boot Starter Test (JUnit 5, Mockito, Spring Test Context) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -154,6 +167,17 @@
                             <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- Tests always run with the isolated "test" profile (H2) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
 

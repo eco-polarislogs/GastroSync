@@ -40,12 +40,13 @@ export const TRANSLATIONS = {
     recordsListed: 'kayıt listelendi',
 
     // Roller
-    roleAdmin: 'Yönetici (Super Admin)',
-    roleManager: 'Restoran Müdürü',
-    roleAccountant: 'Muhasebeci (Kasa)',
+    roleAdmin: 'Yönetici',
+    roleManager: 'İşletme Müdürü',
+    roleAccountant: 'Muhasebe',
     roleAdvisor: 'Mali Müşavir (SMMM)',
     roleChef: 'Mutfak Şefi',
     roleWarehouse: 'Depo Sorumlusu',
+    roleCashier: 'Kasiyer',
 
     // Dashboard Hero Banner & Kartlar
     heroBadge: 'RESTORAN İŞLETİM & MALİYET ZEKASI',
@@ -148,7 +149,7 @@ export const TRANSLATIONS = {
     // Muhasebe & Kasa
     dailyRevenue: 'GÜNLÜK KASA CİROSU (GELİR)',
     dailySalesTab: 'Günlük Satış',
-    operatingProfit: 'GÜNLÜK NET İŞLETME KÂRI',
+    operatingProfit: 'BU AY FAALİYET KÂRI',
     profitMargin: 'Kâr Marjı',
     unpaidDebt: 'Bekleyen Borç / Vadeli',
     rubricDiagnostic: 'Finansal Rubrik Soruları & Kasa Teşhisi',
@@ -302,7 +303,7 @@ export const TRANSLATIONS = {
     approveBtn: 'Onayla',
     rejectBtn: 'Reddet',
     ownedPropertyFree: '0 ₺ (Öz Mülk)',
-    rejectionReasonPrefix: 'Müşavir Ret Gerekçesi',
+    rejectionReasonPrefix: 'Ret Gerekçesi',
     recordLabel: 'Kayıt',
     periodLabel: 'Dönem',
     transactionLabel: 'İşlem',
@@ -583,6 +584,7 @@ export const TRANSLATIONS = {
     roleAdvisor: 'CPA (Financial Advisor)',
     roleChef: 'Executive Chef',
     roleWarehouse: 'Warehouse Specialist',
+    roleCashier: 'Cashier',
 
     // Dashboard Hero Banner & Cards
     heroBadge: 'RESTAURANT OPS & COST INTELLIGENCE',
@@ -685,7 +687,7 @@ export const TRANSLATIONS = {
     // Accounting & Cashier
     dailyRevenue: 'DAILY CASH REGISTER SALES (REVENUE)',
     dailySalesTab: 'Daily Sales',
-    operatingProfit: 'DAILY NET OPERATING PROFIT',
+    operatingProfit: 'OPERATING PROFIT (THIS MONTH)',
     profitMargin: 'Profit Margin',
     unpaidDebt: 'Outstanding Payable / Credit',
     rubricDiagnostic: 'Financial Rubric & Health Check',
@@ -839,7 +841,7 @@ export const TRANSLATIONS = {
     approveBtn: 'Approve',
     rejectBtn: 'Reject',
     ownedPropertyFree: '0 ₺ (Owned)',
-    rejectionReasonPrefix: 'CPA Rejection Reason',
+    rejectionReasonPrefix: 'Rejection Reason',
     recordLabel: 'Record',
     periodLabel: 'Period',
     transactionLabel: 'Tx',
@@ -1120,6 +1122,7 @@ export const TRANSLATIONS = {
     roleAdvisor: 'Steuerberater',
     roleChef: 'Küchenchef',
     roleWarehouse: 'Lagerverwalter',
+    roleCashier: 'Kassierer',
 
     // Dashboard Hero Banner & Cards
     heroBadge: 'RESTAURANTBETRIEB & KOSTENINTELLIGENZ',
@@ -1222,7 +1225,7 @@ export const TRANSLATIONS = {
     // Accounting & Cashier
     dailyRevenue: 'TÄGLICHER KASSENUMSATZ',
     dailySalesTab: 'Tagesverkäufe',
-    operatingProfit: 'TÄGLICHER BETRIEBSGEWINN',
+    operatingProfit: 'BETRIEBSGEWINN (MONAT)',
     profitMargin: 'Gewinnmarge',
     unpaidDebt: 'Offene Verbindlichkeiten',
     rubricDiagnostic: 'Finanzdiagnose & Kassenprüfung',
@@ -1376,7 +1379,7 @@ export const TRANSLATIONS = {
     approveBtn: 'Genehmigen',
     rejectBtn: 'Ablehnen',
     ownedPropertyFree: '0 ₺ (Eigentum)',
-    rejectionReasonPrefix: 'Ablehnungsgrund des Beraters',
+    rejectionReasonPrefix: 'Ablehnungsgrund',
     recordLabel: 'Buchung',
     periodLabel: 'Periode',
     transactionLabel: 'Vorgang',
@@ -1657,6 +1660,7 @@ export const TRANSLATIONS = {
     roleAdvisor: 'مستشار مالي معتمد',
     roleChef: 'رئيس الطهاة',
     roleWarehouse: 'أمين المستودع',
+    roleCashier: 'أمين الصندوق',
 
     // Dashboard Hero Banner & Cards
     heroBadge: 'إدارة عمليات المطاعم والذكاء المالي',
@@ -1759,7 +1763,7 @@ export const TRANSLATIONS = {
     // Accounting & Cashier
     dailyRevenue: 'إيراد الصندوق اليومي (المبيعات)',
     dailySalesTab: 'المبيعات اليومية',
-    operatingProfit: 'صافي الربح التشغيلي اليومي',
+    operatingProfit: 'الربح التشغيلي (هذا الشهر)',
     profitMargin: 'هامش الربح',
     unpaidDebt: 'الديون المستحقة / المؤجلة',
     rubricDiagnostic: 'معايير التقييم والتشخيص المالي',
@@ -1913,7 +1917,7 @@ export const TRANSLATIONS = {
     approveBtn: 'اعتماد',
     rejectBtn: 'رفض',
     ownedPropertyFree: '0 ₺ (مقر ملك)',
-    rejectionReasonPrefix: 'سبب رفض المستشار',
+    rejectionReasonPrefix: 'سبب الرفض',
     recordLabel: 'سجل',
     periodLabel: 'الفترة',
     transactionLabel: 'الحركة',
@@ -2169,6 +2173,7 @@ export const getRoleLabel = (role, lang = 'tr') => {
     case 'financial_advisor': return t.roleAdvisor
     case 'chef': return t.roleChef
     case 'warehouse': return t.roleWarehouse
+    case 'cashier': return t.roleCashier || 'Kasiyer'
     default: return role
   }
 }
@@ -2185,6 +2190,9 @@ const EXPENSE_LABELS = {
   INTERNET: { tr: 'İnternet & Ağ', en: 'Internet & Network', de: 'Internet & Netzwerk', ar: 'إنترنت وشبكة' },
   TAX: { tr: 'Vergi (KDV / Stopaj)', en: 'Tax (VAT / Withholding)', de: 'Steuern (MwSt)', ar: 'ضرائب ورسوم' },
   SGK: { tr: 'Sigorta (SGK Prim)', en: 'Social Security (SSI)', de: 'Sozialversicherung', ar: 'تأمينات اجتماعية' },
+  RAW_MATERIAL: { tr: 'Hammadde / Gıda Alımı', en: 'Raw Materials / Food Purchase', de: 'Rohstoffe / Lebensmitteleinkauf', ar: 'مواد خام / شراء أغذية' },
+  FOOD_SUPPLY: { tr: 'Gıda Tedarik Alımı', en: 'Food Supply Purchase', de: 'Lebensmittelbeschaffung', ar: 'شراء إمدادات غذائية' },
+  OTHER: { tr: 'Diğer Giderler', en: 'Other Expenses', de: 'Sonstige Ausgaben', ar: 'مصروفات أخرى' },
   CONSUMABLES: { tr: 'Sarf Malzeme', en: 'Consumables & Supplies', de: 'Verbrauchsmaterial', ar: 'مواد استهلاكية' },
   LOGISTICS: { tr: 'Lojistik & Nakliye', en: 'Logistics & Shipping', de: 'Logistik & Transport', ar: 'شحن ولوجستيات' },
   MARKETING: { tr: 'Reklam & Tanıtım', en: 'Marketing & Ads', de: 'Werbung & Marketing', ar: 'إعلانات وتسويق' },
@@ -2247,6 +2255,23 @@ export const getCategoryLabel = (categoryName, lang = 'tr') => {
 
 // Bildirim Metinlerini Seçilen Dile Çevirme Helper'ı
 const NOTIF_MAP = {
+  // Roller arası onay talepleri: başlık çevrilir; ayrıntı (masa, ürün, gerekçe) kullanıcı içeriği olduğundan özgün kalır
+  APPROVAL_REQUEST: {
+    title: { tr: 'Onay talebi', en: 'Approval request', de: 'Genehmigungsantrag', ar: 'طلب موافقة' },
+    message: {},
+  },
+  APPROVAL_DECIDED: {
+    title: { tr: 'Talebiniz sonuçlandı', en: 'Your request was decided', de: 'Über Ihren Antrag wurde entschieden', ar: 'تم البت في طلبك' },
+    message: {},
+  },
+  ACCOUNT_DELETION_REQUEST: {
+    title: { tr: 'Hesap silme talebi', en: 'Account deletion request', de: 'Kontolöschungsantrag', ar: 'طلب حذف حساب' },
+    message: {},
+  },
+  INVENTORY_ADJUSTMENT: {
+    title: { tr: 'Sayım farkı', en: 'Count variance', de: 'Inventurdifferenz', ar: 'فرق الجرد' },
+    message: {},
+  },
   EXPENSE_APPROVAL: {
     title: {
       tr: '🚀 Yeni Gider Defter Onayı Bekliyor',

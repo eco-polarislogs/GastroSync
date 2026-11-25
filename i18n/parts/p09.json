@@ -1,0 +1,32 @@
+{
+  "Muhasebe": [
+    "Accounting",
+    "Buchhaltung",
+    "المحاسبة"
+  ],
+  "Bu Ay ({0})": [
+    "This Month ({0})",
+    "Dieser Monat ({0})",
+    "هذا الشهر ({0})"
+  ],
+  "Hedef {0}": [
+    "Target {0}",
+    "Ziel {0}",
+    "الهدف {0}"
+  ],
+  "Marj {0}": [
+    "Margin {0}",
+    "Marge {0}",
+    "الهامش {0}"
+  ],
+  "Gıda maliyeti": [
+    "Cost of food sold",
+    "Wareneinsatz",
+    "تكلفة الطعام المباع"
+  ],
+  "{0} adisyon": [
+    "{0} checks",
+    "{0} Rechnungen",
+    "{0} فاتورة"
+  ]
+}

@@ -35,3 +35,6 @@ mobile/dist-test/
 mobile/.expo/
 .expo/
 .env
+
+# Veritabani yedekleri (docker compose db-backup)
+backups/

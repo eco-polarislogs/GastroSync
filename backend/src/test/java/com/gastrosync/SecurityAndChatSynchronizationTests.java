@@ -1,155 +1,258 @@
 package com.gastrosync;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.in;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.gastrosync.repository.ChatMessageRepository;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gastrosync.model.AppUser;
+import com.gastrosync.model.Notification;
+import com.gastrosync.repository.AppUserRepository;
+import com.gastrosync.repository.AuditLogRepository;
 import com.gastrosync.repository.NotificationRepository;
 import com.gastrosync.security.JwtTokenProvider;
+import com.gastrosync.support.TestAuth;
 
+/**
+ * HTTP seviyesinde yetkilendirme, oturum guvenligi, bildirim kapsami ve sohbet kanal izinleri.
+ */
 @SpringBootTest
+// IDE / test çalıştırıcısı surefire profilini atlasa da gerçek veritabanına asla yazılmaz (izole H2)
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class SecurityAndChatSynchronizationTests {
+class SecurityAndChatSynchronizationTests {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mvc;
+    @Autowired private JwtTokenProvider jwt;
+    @Autowired private AppUserRepository userRepository;
+    @Autowired private NotificationRepository notificationRepository;
+    @Autowired private AuditLogRepository auditLogRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private ObjectMapper objectMapper;
 
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
+    private String auth(String username) {
+        return TestAuth.bearer(userRepository, jwt, username);
+    }
 
-    @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private ChatMessageRepository chatMessageRepository;
+    private AppUser tempUser(String role) {
+        AppUser u = new AppUser("tmp" + System.nanoTime(), passwordEncoder.encode("Gecici2026"), "Gecici Personel", role, null);
+        return userRepository.save(u);
+    }
 
     @Test
-    @Order(1)
-    @DisplayName("GÜVENLİK TESTİ: Yetkisiz erişim 403 ile engellenmelidir")
-    void testUnauthorizedEndpointAccessIsBlocked() throws Exception {
-        String chefToken = jwtTokenProvider.generateToken(3L, "sef", "CHEF", "Fatma Kaya");
+    @DisplayName("Giris: dogru bilgilerle token doner, yanlis sifre 400")
+    void login() throws Exception {
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"manager\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.token").isNotEmpty())
+                .andExpect(jsonPath("$.data.role").value("MANAGER"));
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"manager\",\"password\":\"yanlis-sifre\"}"))
+                .andExpect(status().isBadRequest());
+    }
 
-        // Aşçı kullanıcısı satış özetine erişmeye çalışır (Yalnızca Admin, Müdür, Muhasebe ve Mali Müşavir yetkilidir)
-        mockMvc.perform(get("/api/sales/summary")
-                .header("Authorization", "Bearer " + chefToken))
+    @Test
+    @DisplayName("Kaba kuvvet korumasi: 5 hatali denemeden sonra 429")
+    void bruteForceLockout() throws Exception {
+        String body = "{\"username\":\"brute-force-hedef\",\"password\":\"yanlis1\"}";
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("Token olmadan korumali uclara erisim 401")
+    void unauthenticatedBlocked() throws Exception {
+        mvc.perform(get("/api/chat/messages")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/expenses")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/inventory").header("Authorization", "Bearer sahte.token.degeri")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Yetkisiz erisim 403 ve yoneticilere guvenlik bildirimi + denetim kaydi")
+    void forbiddenCreatesAlert() throws Exception {
+        long auditBefore = auditLogRepository.count();
+        mvc.perform(get("/api/sales/summary").header("Authorization", auth("warehouse")))
+                .andExpect(status().isForbidden());
+        assertTrue(auditLogRepository.count() > auditBefore);
+        assertTrue(notificationRepository.findAll().stream()
+                .anyMatch(n -> "SECURITY_ALERT".equals(n.getType()) && n.getTargetRole().contains("ADMIN")));
+    }
+
+    @Test
+    @DisplayName("Rol matrisi: yalnizca mali musavir deftere isler; yonetici ve muhasebe isleyemez")
+    void onlyAdvisorFinalizes() throws Exception {
+        mvc.perform(put("/api/expenses/999999/finalize").header("Authorization", auth("admin")))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/expenses/999999/finalize").header("Authorization", auth("accountant")))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/expenses/999999/finalize").header("Authorization", auth("advisor")))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/sales").header("Authorization", auth("chef")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productName\":\"Pizza Margherita\",\"quantity\":1}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/users").header("Authorization", auth("accountant")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Rol degisikligi mevcut token'a ANINDA yansir")
+    void roleChangeTakesEffectImmediately() throws Exception {
+        AppUser u = tempUser("CHEF");
+        String token = "Bearer " + jwt.generateToken(u.getId(), u.getUsername(), "CHEF", u.getName());
+        mvc.perform(get("/api/recipes").header("Authorization", token)).andExpect(status().isOk());
+
+        mvc.perform(put("/api/users/" + u.getId() + "/role").header("Authorization", auth("admin"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"WAREHOUSE\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/recipes").header("Authorization", token)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Pasife alinan hesabin token'i gecersiz olur")
+    void deactivatedUserLosesAccess() throws Exception {
+        AppUser u = tempUser("WAREHOUSE");
+        String token = "Bearer " + jwt.generateToken(u.getId(), u.getUsername(), "WAREHOUSE", u.getName());
+        mvc.perform(get("/api/inventory").header("Authorization", token)).andExpect(status().isOk());
+        mvc.perform(put("/api/users/" + u.getId() + "/status").header("Authorization", auth("admin"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/inventory").header("Authorization", token)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Ilk giriste sifre degistirme zorunlu; degisiklik sonrasi eski token gecersiz")
+    void mustChangePasswordFlow() throws Exception {
+        AppUser u = tempUser("CHEF");
+        u.setMustChangePassword(true);
+        userRepository.save(u);
+        String loginBody = "{\"username\":\"" + u.getUsername() + "\",\"password\":\"Gecici2026\"}";
+        String loginJson = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mustChangePassword").value(true))
+                .andReturn().getResponse().getContentAsString();
+        String oldToken = "Bearer " + objectMapper.readTree(loginJson).at("/data/token").asText();
+
+        mvc.perform(get("/api/inventory").header("Authorization", oldToken))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+        mvc.perform(get("/api/auth/me").header("Authorization", oldToken)).andExpect(status().isOk());
+
+        mvc.perform(post("/api/auth/change-password").header("Authorization", oldToken).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Gecici2026\",\"newPassword\":\"123\"}"))
+                .andExpect(status().isBadRequest());
+
+        Thread.sleep(1100);
+        String changed = mvc.perform(post("/api/auth/change-password").header("Authorization", oldToken).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Gecici2026\",\"newPassword\":\"YeniSifre2026\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String newToken = "Bearer " + objectMapper.readTree(changed).at("/data/token").asText();
+
+        mvc.perform(get("/api/inventory").header("Authorization", newToken)).andExpect(status().isOk());
+        mvc.perform(get("/api/inventory").header("Authorization", oldToken)).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @Order(2)
-    @DisplayName("İSTEMCİ GÜVENLİK BİLDİRİMİ: Mobil/Web rota engeli backend güvenlik alarm uç noktasına iletilmeli")
-    void testReportSecurityAlertEndpointSavesAlerts() throws Exception {
-        String warehouseToken = jwtTokenProvider.generateToken(4L, "depocu", "WAREHOUSE", "Ali Çelik");
+    @DisplayName("Son aktif yonetici silinemez / rolu dusurulemez; kullanici kendini silemez")
+    void lastAdminProtected() throws Exception {
+        AppUser admin = userRepository.findByUsernameIgnoreCase("admin").orElseThrow();
+        mvc.perform(put("/api/users/" + admin.getId() + "/role").header("Authorization", auth("admin"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"CHEF\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/users/" + admin.getId())
+                        .header("Authorization", auth("admin")))
+                .andExpect(status().isConflict());
+    }
 
-        String payload = """
-            {
-                "screen": "users",
-                "action": "MOBİL_NAVİGASYON_DENEMESİ"
+    @Test
+    @DisplayName("Bildirim kapsami: sef baska rolun bildirimlerini goremez ve okundu yapamaz (IDOR)")
+    void notificationScope() throws Exception {
+        Notification secret = notificationRepository.save(new Notification("Musavir Ozel", "Gizli", "FINANCIAL_ADVISOR",
+                "Test", "EXPENSE_APPROVAL", null, "EXPENSE_DETAIL", "/advisor-ledger", "INFO"));
+
+        String json = mvc.perform(get("/api/notifications?role=FINANCIAL_ADVISOR").header("Authorization", auth("chef")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode data = objectMapper.readTree(json).get("data");
+        for (JsonNode n : data) {
+            String target = n.get("targetRole").asText();
+            assertTrue(target.equals("ALL") || List.of(target.split(",")).contains("CHEF"), "Sef'e sizan bildirim: " + target);
+        }
+        mvc.perform(put("/api/notifications/" + secret.getId() + "/read").header("Authorization", auth("chef")))
+                .andExpect(status().isNotFound());
+        mvc.perform(put("/api/notifications/" + secret.getId() + "/read").header("Authorization", auth("advisor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isRead").value(true));
+        // Okundu bilgisi kullaniciya ozeldir: yonetici icin hala okunmamis
+        String mgr = mvc.perform(get("/api/notifications").header("Authorization", auth("manager")))
+                .andReturn().getResponse().getContentAsString();
+        for (JsonNode n : objectMapper.readTree(mgr).get("data")) {
+            if (n.get("id").asLong() == secret.getId()) {
+                assertTrue(!n.get("isRead").asBoolean());
             }
-        """;
-
-        mockMvc.perform(post("/api/notifications/security-alert")
-                .header("Authorization", "Bearer " + warehouseToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(payload))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        var alerts = notificationRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(n -> "SECURITY_ALERT".equals(n.getType()))
-                .filter(n -> n.getMessage().contains("depocu") && n.getMessage().contains("users"))
-                .toList();
-
-        assertFalse(alerts.isEmpty(), "depocu kullanıcısının yetkisiz ekran denemesi veritabanına kaydedilmiş olmalıdır!");
+        }
     }
 
     @Test
-    @Order(3)
-    @DisplayName("BİLDİRİM SENKRONİZASYONU: Yönetici ve Admin güvenlik alarmlarını bildirim listesinde görmelidir")
-    void testManagerAndAdminCanViewSecurityAlerts() throws Exception {
-        String managerToken = jwtTokenProvider.generateToken(2L, "mudur", "MANAGER", "Zeynep Demir");
-
-        mockMvc.perform(get("/api/notifications")
-                .header("Authorization", "Bearer " + managerToken))
+    @DisplayName("Duyuru olusturma yalnizca ADMIN/MANAGER; sef sahte guvenlik bildirimi uretemez")
+    void announcementsRestricted() throws Exception {
+        mvc.perform(post("/api/notifications").header("Authorization", auth("chef")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Sahte\",\"message\":\"x\",\"targetRole\":\"ALL\",\"type\":\"SECURITY_ALERT\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/notifications").header("Authorization", auth("manager")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Personel toplantisi\",\"message\":\"Saat 15:00\",\"targetRole\":\"ALL\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.type").value("ANNOUNCEMENT"));
     }
 
     @Test
-    @Order(4)
-    @DisplayName("MESAJLAŞMA ENTEGRASYONU: Personel mesaj gönderdiğinde veritabanına yazılmalı ve otomatik ekip bildirimi üretmeli")
-    void testChatMessagingPersistsAndProducesNotifications() throws Exception {
-        String chefToken = jwtTokenProvider.generateToken(3L, "sef", "CHEF", "Fatma Kaya");
+    @DisplayName("Sohbet: kanal izinleri uygulanir ve gonderen kimligi sunucuda belirlenir")
+    void chatChannelAclAndIdentity() throws Exception {
+        mvc.perform(get("/api/chat/messages?channelId=cashier").header("Authorization", auth("warehouse")))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/chat/messages").header("Authorization", auth("warehouse")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channelId\":\"management\",\"text\":\"merhaba\"}"))
+                .andExpect(status().isForbidden());
 
-        String chatPayload = """
-            {
-                "channelId": "kitchen",
-                "text": "Akşam VIP servis için acil 10 kg dana antrikot gerekiyor!",
-                "priority": "urgent"
-            }
-        """;
-
-        mockMvc.perform(post("/api/chat/messages")
-                .header("Authorization", "Bearer " + chefToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(chatPayload))
+        mvc.perform(post("/api/chat/messages").header("Authorization", auth("chef")).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"channelId\":\"kitchen\",\"text\":\"Domates bitti\",\"sender\":\"Sahte Mudur\",\"role\":\"admin\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.channelId").value("kitchen"))
-                .andExpect(jsonPath("$.data.priority").value("urgent"));
+                .andExpect(jsonPath("$.data.sender").value("Mehmet Sef"))
+                .andExpect(jsonPath("$.data.role").value("chef"));
 
-        // Mesaj veritabanında var mı kontrol et
-        var messages = chatMessageRepository.findByChannelIdOrderByCreatedAtAsc("kitchen");
-        boolean msgFound = messages.stream().anyMatch(m -> m.getText().contains("dana antrikot"));
-        assertTrue(msgFound, "Mutfak kanalına atılan mesaj veritabanında bulunmalıdır!");
-
-        // Otomatik CHAT bildirimi üretildi mi kontrol et
-        var chatNotifs = notificationRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(n -> "CHAT".equals(n.getType()))
-                .toList();
-        assertFalse(chatNotifs.isEmpty(), "Sohbet mesajı için otomatik CHAT bildirimi üretilmelidir!");
+        String all = mvc.perform(get("/api/chat/messages").header("Authorization", auth("warehouse")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].channelId", everyItem(in(List.of("general", "shift", "kitchen", "warehouse")))))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(all.contains("data"));
     }
 
     @Test
-    @Order(5)
-    @DisplayName("MESAJLAŞMA SENKRONİZASYONU: Kanala göre filtreleme ve anlık okuma kusursuz çalışmalıdır")
-    void testChatChannelFiltering() throws Exception {
-        String managerToken = jwtTokenProvider.generateToken(2L, "mudur", "MANAGER", "Zeynep Demir");
-
-        mockMvc.perform(get("/api/chat/messages?channelId=kitchen")
-                .header("Authorization", "Bearer " + managerToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray());
-    }
-
-    @Test
-    @Order(6)
-    @DisplayName("KİMLİK DOĞRULAMA KORUMASI: Token olmadan mesajlaşmaya ve bildirimlere erişim 401 Unauthorized ile engellenmeli")
-    void testUnauthenticatedChatIsBlocked() throws Exception {
-        mockMvc.perform(get("/api/chat/messages"))
-                .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(post("/api/chat/messages")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"channelId\":\"kitchen\",\"text\":\"sahte\"}"))
-                .andExpect(status().isUnauthorized());
+    @DisplayName("Saglik kontrolu kimlik dogrulamasiz erisilebilir")
+    void health() throws Exception {
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
     }
 }

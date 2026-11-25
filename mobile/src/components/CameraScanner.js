@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Modal, Dimensions } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
+} from 'react-native';
+import { Text } from '../i18n';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { THEME } from '../theme/tokens';
 

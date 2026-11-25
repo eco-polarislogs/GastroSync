@@ -1,0 +1,11 @@
+# GastroSync HTTPS ters proxy: otomatik Let's Encrypt sertifikası, HTTP -> HTTPS yönlendirme, HSTS.
+# DOMAIN ortam değişkeni alan adınızdır (örn. panel.restoraniniz.com).
+# Mobil uygulamanın EXPO_PUBLIC_API_URL değeri https://<DOMAIN>/api olmalıdır (eas.json).
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy frontend:80
+}

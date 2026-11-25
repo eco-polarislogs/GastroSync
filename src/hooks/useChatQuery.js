@@ -1,28 +1,39 @@
+import { useAuthStore } from '../store'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import chatApi from '../api/chatApi'
+import { chatApi } from '../api'
 
 export const CHAT_KEYS = {
   all: ['chat'],
-  messages: (channelId) => [...CHAT_KEYS.all, 'messages', channelId || 'all']
+  channels: ['chat', 'channels'],
+  messages: (channelId) => ['chat', 'messages', channelId || 'all'],
 }
 
-export function useChatMessages(channelId) {
+/** Rolün erişebildiği kanallar (sunucu belirler); rol değişince anahtar değiştiği için yeniden çekilir */
+export function useChatChannels(enabled = true) {
+  const role = useAuthStore((s) => s.user?.role)
+  return useQuery({ queryKey: [...CHAT_KEYS.channels, role], queryFn: chatApi.channels, enabled: enabled && !!role, staleTime: 300_000 })
+}
+
+/** Canlı akış WebSocket ile gelir; periyodik yenileme yalnızca bağlantı koparsa yedektir */
+export function useChatMessages(channelId, enabled = true) {
   return useQuery({
     queryKey: CHAT_KEYS.messages(channelId),
-    queryFn: () => chatApi.getMessages(channelId),
-    refetchInterval: 3000, // 3-second live background synchronization
-    staleTime: 1000 * 2
+    queryFn: () => chatApi.messages(channelId),
+    enabled: enabled && !!channelId,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   })
 }
 
 export function useSendChatMessage() {
-  const queryClient = useQueryClient()
-
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: (message) => chatApi.sendMessage(message),
+    mutationFn: ({ channelId, text, priority }) => chatApi.send(channelId, text, priority),
     onSuccess: (saved) => {
-      // Invalidate all channels so other tabs/views get immediate authoritative update
-      queryClient.invalidateQueries({ queryKey: CHAT_KEYS.all })
-    }
+      if (saved?.channelId) {
+        qc.setQueryData(CHAT_KEYS.messages(saved.channelId), (old = []) =>
+          (old.some((m) => m.id === saved.id) ? old : [...old, saved]))
+      }
+    },
   })
 }

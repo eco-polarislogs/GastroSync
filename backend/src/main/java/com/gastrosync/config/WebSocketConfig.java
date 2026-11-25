@@ -2,10 +2,10 @@ package com.gastrosync.config;
 
 import java.security.Principal;
 import java.util.List;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -24,14 +24,18 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
-import com.gastrosync.security.JwtTokenProvider;
+import com.gastrosync.security.AppRoles;
+import com.gastrosync.security.AuthenticatedUser;
+import com.gastrosync.security.SecurityConfig;
+import com.gastrosync.security.TokenAuthenticationService;
 
 /**
- * Enterprise Real-Time WebSocket & STOMP Message Broker Configuration.
- *
- * Implements RFC 6750 JWT Bearer validation upon CONNECT frames and
- * enforces strict RBAC topic routing policies across all restaurant channels.
+ * STOMP / WebSocket guvenligi:
+ *  1. CONNECT cercevesinde gecerli JWT ZORUNLU (anonim baglanti reddedilir).
+ *  2. Her SUBSCRIBE, AppRoles.canSubscribe politikasina gore denetlenir (varsayilan: kapali).
+ *  3. SEND yalnizca /app/chat.sendMessage hedefine yapilabilir; gonderen kimligi sunucuda belirlenir.
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -39,30 +43,36 @@ import com.gastrosync.security.JwtTokenProvider;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketConfig.class);
-    private final JwtTokenProvider jwtTokenProvider;
 
-    public WebSocketConfig(JwtTokenProvider jwtTokenProvider) {
-        this.jwtTokenProvider = jwtTokenProvider;
+    private final TokenAuthenticationService tokenAuthenticationService;
+    private final WebSocketSessionRegistry sessionRegistry;
+    private final List<String> allowedOrigins;
+
+    public WebSocketConfig(TokenAuthenticationService tokenAuthenticationService,
+                           WebSocketSessionRegistry sessionRegistry,
+                           @Value("${gastrosync.cors.allowed-origins:}") String allowedOrigins) {
+        this.tokenAuthenticationService = tokenAuthenticationService;
+        this.sessionRegistry = sessionRegistry;
+        this.allowedOrigins = SecurityConfig.parseOrigins(allowedOrigins);
+    }
+
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(sessionRegistry::decorate);
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Simple in-memory message broker for channels and queues
         config.enableSimpleBroker("/topic", "/queue");
-        // Application destination prefix for @MessageMapping methods
         config.setApplicationDestinationPrefixes("/app");
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Primary Enterprise STOMP endpoint for Web & Mobile
-        registry.addEndpoint("/ws/gastrosync", "/ws")
-                .setAllowedOriginPatterns("*");
-
-        // SockJS fallback endpoint
-        registry.addEndpoint("/ws/gastrosync", "/ws")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();
+        String[] origins = allowedOrigins.toArray(String[]::new);
+        registry.addEndpoint("/ws/gastrosync", "/ws").setAllowedOriginPatterns(origins);
+        registry.addEndpoint("/ws/sockjs").setAllowedOriginPatterns(origins).withSockJS();
     }
 
     @Override
@@ -70,98 +80,66 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registration.interceptors(new ChannelInterceptor() {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                StompHeaderAccessor accessor =
-                        MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-
-                if (accessor == null) {
+                StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+                if (accessor == null || accessor.getCommand() == null) {
                     return message;
                 }
+                StompCommand command = accessor.getCommand();
 
-                // 1. CONNECT FRAME - JWT Bearer Token Validation
-                if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    String authHeader = accessor.getFirstNativeHeader("Authorization");
-                    String token = null;
-
-                    if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-                        token = authHeader.substring(7);
-                    } else {
-                        // Query param fallback or pass-through
-                        token = accessor.getFirstNativeHeader("token");
-                    }
-
-                    if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
-                        String username = jwtTokenProvider.getUsername(token);
-                        String role = jwtTokenProvider.getRole(token);
-                        if (role != null) {
-                            role = role.toUpperCase();
-                        }
-
-                        Principal principal = new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                        );
-
-                        accessor.setUser(principal);
-                        if (accessor.getSessionAttributes() != null) {
-                            accessor.getSessionAttributes().put("username", username);
-                            accessor.getSessionAttributes().put("role", role);
-                        }
-                        log.info("🔐 STOMP WebSocket authenticated: user={}, role={}", username, role);
-                    } else {
-                        log.debug("ℹ️ STOMP WebSocket anonymous handshake connection initiated");
-                    }
-                }
-
-                // 2. SUBSCRIBE FRAME - Role-Based Channel Access Enforcement
-                if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+                if (StompCommand.CONNECT.equals(command)) {
+                    authenticateConnect(accessor);
+                } else if (StompCommand.SUBSCRIBE.equals(command)) {
+                    AuthenticatedUser user = requireUser(accessor);
                     String destination = accessor.getDestination();
-                    Principal user = accessor.getUser();
-                    String userRole = null;
-
-                    if (accessor.getSessionAttributes() != null && accessor.getSessionAttributes().containsKey("role")) {
-                        userRole = (String) accessor.getSessionAttributes().get("role");
+                    if (!AppRoles.canSubscribe(user.role(), destination)) {
+                        log.warn("STOMP abonelik reddedildi: kullanici={} rol={} hedef={}", user.username(), user.role(), destination);
+                        throw new AccessDeniedException("Bu kanala abone olma yetkiniz yok: " + destination);
                     }
-
-                    if (destination != null && userRole != null) {
-                        validateChannelAuthorization(destination, userRole);
+                } else if (StompCommand.SEND.equals(command)) {
+                    requireUser(accessor);
+                    String destination = accessor.getDestination();
+                    if (!"/app/chat.sendMessage".equals(destination)) {
+                        throw new AccessDeniedException("Bu hedefe mesaj gonderilemez: " + destination);
                     }
                 }
-
                 return message;
             }
         });
     }
 
-    /**
-     * Enforces granular channel routing according to GastroSync Tier-1 RBAC:
-     * - /topic/general: All staff
-     * - /topic/kitchen: CHEF, MANAGER, ADMIN
-     * - /topic/warehouse: WAREHOUSE, CHEF, MANAGER, ADMIN
-     * - /topic/management: ADMIN, MANAGER, ACCOUNTANT, FINANCIAL_ADVISOR
-     */
-    private void validateChannelAuthorization(String destination, String role) {
-        String cleanRole = role.toUpperCase();
-
-        if (destination.startsWith("/topic/kitchen")) {
-            Set<String> allowed = Set.of("CHEF", "MANAGER", "ADMIN");
-            if (!allowed.contains(cleanRole)) {
-                log.warn("⛔ STOMP Subscription Rejected: Role {} attempted to join {}", cleanRole, destination);
-                throw new AccessDeniedException("Erişim Reddedildi: Mutfak kanalına sadece Şef ve Yönetici katılabilir.");
-            }
-        } else if (destination.startsWith("/topic/warehouse")) {
-            Set<String> allowed = Set.of("WAREHOUSE", "CHEF", "MANAGER", "ADMIN");
-            if (!allowed.contains(cleanRole)) {
-                log.warn("⛔ STOMP Subscription Rejected: Role {} attempted to join {}", cleanRole, destination);
-                throw new AccessDeniedException("Erişim Reddedildi: Depo kanalına sadece Depo Sorumlusu, Şef ve Yönetici katılabilir.");
-            }
-        } else if (destination.startsWith("/topic/management")) {
-            Set<String> allowed = Set.of("ADMIN", "MANAGER", "ACCOUNTANT", "FINANCIAL_ADVISOR");
-            if (!allowed.contains(cleanRole)) {
-                log.warn("⛔ STOMP Subscription Rejected: Role {} attempted to join {}", cleanRole, destination);
-                throw new AccessDeniedException("Erişim Reddedildi: Yönetim kanalına sadece yetkili idari kadro katılabilir.");
-            }
+    private void authenticateConnect(StompHeaderAccessor accessor) {
+        String authHeader = accessor.getFirstNativeHeader("Authorization");
+        String token = null;
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7).trim();
+        } else if (StringUtils.hasText(accessor.getFirstNativeHeader("token"))) {
+            token = accessor.getFirstNativeHeader("token");
         }
+
+        var session = tokenAuthenticationService.resolve(token);
+        if (session.isEmpty() || session.get().mustChangePassword()) {
+            log.debug("STOMP CONNECT reddedildi: gecersiz veya eksik JWT");
+            throw new AccessDeniedException("WebSocket baglantisi icin gecerli oturum gereklidir");
+        }
+        AuthenticatedUser user = session.get().user();
+        accessor.setUser(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + user.role()))));
+        if (accessor.getSessionAttributes() != null) {
+            accessor.getSessionAttributes().put("user", user);
+        }
+        sessionRegistry.bind(accessor.getSessionId(), user.username());
+    }
+
+    private AuthenticatedUser requireUser(StompHeaderAccessor accessor) {
+        Principal principal = accessor.getUser();
+        if (principal instanceof UsernamePasswordAuthenticationToken token
+                && token.getPrincipal() instanceof AuthenticatedUser user) {
+            return user;
+        }
+        if (accessor.getSessionAttributes() != null
+                && accessor.getSessionAttributes().get("user") instanceof AuthenticatedUser user) {
+            return user;
+        }
+        throw new AccessDeniedException("WebSocket oturumu dogrulanmamis");
     }
 }
-

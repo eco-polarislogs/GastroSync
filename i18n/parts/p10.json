@@ -1,0 +1,16 @@
+{
+  "Temizle": ["Clear", "Leeren", "مسح"],
+  "Filtreleri temizle": ["Clear filters", "Filter zurücksetzen", "مسح عوامل التصفية"],
+  "Kısmi": ["Partial", "Teilweise", "جزئي"],
+  "Dönem {0}": ["Period {0}", "Periode {0}", "الفترة {0}"],
+  "Varsayılan": ["Default", "Standard", "الافتراضي"],
+  "Ödenen {0} ₺": ["Paid {0} ₺", "Bezahlt {0} ₺", "المدفوع {0} ₺"],
+  "Gönderen {0}": ["Sent by {0}", "Gesendet von {0}", "أرسله {0}"],
+  "Kaydet ve Dene": ["Save and test", "Speichern und testen", "حفظ واختبار"],
+  "{0} kayıt · {1}/{2}": ["{0} records · {1}/{2}", "{0} Einträge · {1}/{2}", "{0} سجل · {1}/{2}"],
+  "Sunucuya bağlanıldı.": ["Connected to the server.", "Mit dem Server verbunden.", "تم الاتصال بالخادم."],
+  "Veritabanından yenile": ["Refresh from database", "Aus Datenbank aktualisieren", "تحديث من قاعدة البيانات"],
+  "Bu filtrelerle eşleşen ürün yok.": ["No items match these filters.", "Keine Artikel entsprechen diesen Filtern.", "لا توجد أصناف تطابق عوامل التصفية هذه."],
+  "192.168.1.36 veya https://panel.restoraniniz.com": ["192.168.1.36 or https://panel.yourrestaurant.com", "192.168.1.36 oder https://panel.ihrrestaurant.de", "192.168.1.36 أو https://panel.restaurant.com"],
+  "Sunucuya ulaşılamadı. Adresi ve ağ bağlantısını kontrol edin.": ["Server unreachable. Check the address and network connection.", "Server nicht erreichbar. Adresse und Netzwerkverbindung prüfen.", "تعذّر الوصول إلى الخادم. تحقق من العنوان واتصال الشبكة."]
+}
