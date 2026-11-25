@@ -1462,6 +1462,7 @@
 "Otomatik Barkod": ["Automatic Barcode","Automatischer Barcode","باركود تلقائي"],
 "Otomatik kritik eşik kontrolü": ["Automated critical threshold check","Automatische Mindestbestandskontrolle","التحكم الآلي في الحد الأدنى الحرج"],
 "Oturum": ["Session","Sitzung","الجلسة"],
+"Oturum açılıyor…": ["Signing in…","Anmeldung läuft…","جارٍ تسجيل الدخول…"],
 "Oturum doğrulanıyor…": ["Verifying session…","Sitzung wird geprüft…","جارٍ التحقق من الجلسة…"],
 "Oturum yenileme bilgisi yok": ["No session renewal data","Keine Daten zur Sitzungserneuerung","لا توجد بيانات تجديد الجلسة"],
 "Oturum yenilenemedi": ["Session could not be renewed","Sitzung konnte nicht erneuert werden","تعذّر تجديد الجلسة"],

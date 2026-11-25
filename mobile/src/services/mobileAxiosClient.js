@@ -129,6 +129,14 @@ export const clearMobileAuthToken = () => {
       // depolama erişilemez
     }
   }
+  if (AsyncStorage) AsyncStorage.removeItem(REFRESH_KEY).catch(() => {});
+};
+
+/** Telefonun kalıcı deposundaki yenileme token'ını belleğe alır (uygulama açılışı) */
+export const loadPersistedRefresh = async () => {
+  if (inMemoryRefresh || !AsyncStorage) return inMemoryRefresh;
+  try { inMemoryRefresh = (await AsyncStorage.getItem(REFRESH_KEY)) || null; } catch (_) { inMemoryRefresh = null; }
+  return inMemoryRefresh;
 };
 
 // ── Oturum yenileme ────────────────────────────────────────────
@@ -162,6 +170,8 @@ export const setMobileSession = (auth) => {
     if (storage) {
       try { storage.setItem(REFRESH_KEY, auth.refreshToken); } catch (_) { /* depolama erişilemez */ }
     }
+    // Telefonda kalıcı saklama: uygulama arka planda kapatılsa da oturum açılışta geri yüklenir
+    if (AsyncStorage) AsyncStorage.setItem(REFRESH_KEY, auth.refreshToken).catch(() => {});
   }
   accessExpiresAt = auth.expiresIn ? Date.now() + Number(auth.expiresIn) * 1000 : 0;
   scheduleMobileRefresh();
@@ -177,7 +187,8 @@ export const refreshMobileSession = () => {
   if (!refreshToken) return Promise.resolve(null);
   refreshPromise = (async () => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    // Ücretsiz bulut sunucusu uykudan uyanırken ~1 dk sürebilir
+    const timer = setTimeout(() => controller.abort(), 70000);
     try {
       const res = await fetch(`${getMobileApiBaseUrl()}/auth/refresh`, {
         method: 'POST',

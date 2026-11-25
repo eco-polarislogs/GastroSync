@@ -9,7 +9,7 @@
 
 import {
   getMobileAuthToken, clearMobileAuthToken, getMobileApiBaseUrl, notifySessionExpired,
-  setMobileSession, refreshMobileSession, getMobileRefreshToken,
+  setMobileSession, refreshMobileSession, getMobileRefreshToken, loadPersistedRefresh, loadServerOverride,
 } from './mobileAxiosClient';
 import mobileWebSocketService from './websocketService';
 import { unregisterRemotePush } from './pushNotifications';
@@ -158,6 +158,24 @@ export const apiChangePassword = async (currentPassword, newPassword) => {
   setOfflineOwner(currentUser.username);
   mobileWebSocketService.disconnect();
   return { success: true, user: currentUser };
+};
+
+/**
+ * Uygulama açılışında kayıtlı oturumu geri yükler: kalıcı depodaki yenileme token'ıyla yeni erişim
+ * token'ı alınır. Dönüş: kullanıcı | null (kayıtlı oturum yok / sunucu reddetti / ağ yok).
+ */
+export const apiRestoreSession = async () => {
+  await loadServerOverride();
+  const refresh = await loadPersistedRefresh();
+  if (!refresh) return null;
+  const renewed = await refreshMobileSession();
+  if (!renewed || !renewed.token) {
+    if (renewed === null) clearMobileAuthToken();
+    return null;
+  }
+  currentUser = mapUser(renewed);
+  setOfflineOwner(currentUser.username);
+  return currentUser;
 };
 
 /** Sunucudaki güncel rol / ad / hesap durumu (rol değişikliği senkronu için) */

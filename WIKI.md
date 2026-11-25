@@ -264,3 +264,25 @@ Telefon ve web paneli sunucuya bağlanır. Sunucu geliştirici bilgisayarında �
 GASTROSYNC_URL=https://gastrosync-web.onrender.com/api GASTROSYNC_USER=yazici GASTROSYNC_PASSWORD=... node scripts/print-bridge.mjs
 ```
 Köprü hesabı yazdırma işlerini görebilen (Kasiyer gibi) bir personel hesabıdır. Yazıcı ekranında bağlantı türü "Köprü" seçilir.
+
+### Google Play paketi (imzalı AAB) — yerel derleme
+
+Windows'ta React Native'in C++ derleme yolları 260 karakter sınırını aştığı için derleme kısa bir klasörde yapılır (`C:\gs`).
+Yükleme anahtarı masaüstündeki **GastroSync İmza Anahtarı** klasöründedir; `mobile/plugins/withReleaseSigning.js` imza bilgisini
+ortam değişkenlerinden okur (anahtar ve şifre depoya girmez).
+
+```bash
+# mobile/ içeriği C:\gs'e kopyalandıktan sonra (src, App.js, app.json, app.config.js, plugins)
+cd /c/gs && npx expo prebuild --platform android --no-install
+cd android && rm -rf app/build/generated/assets/createBundleReleaseJsAndAssets   # JS paketini yeniden üret
+export NODE_ENV=production EXPO_PUBLIC_API_URL=https://gastrosync-api-moo5.onrender.com/api   GASTROSYNC_UPLOAD_KEYSTORE="C:/Users/<kullanıcı>/OneDrive/Desktop/GastroSync İmza Anahtarı/gastrosync-upload.jks"   GASTROSYNC_UPLOAD_PROPERTIES="C:/Users/<kullanıcı>/OneDrive/Desktop/GastroSync İmza Anahtarı/key.properties"
+./gradlew bundleRelease assembleRelease
+# çıktı: app/build/outputs/bundle/release/app-release.aab ve apk/release/app-release.apk
+```
+
+Notlar:
+- Ortam değişkeni değişse bile Gradle JS paketini "güncel" sayabilir; sunucu adresi değiştiyse `createBundleReleaseJsAndAssets` klasörünü silin.
+- Mağaza derlemesinde `GASTROSYNC_LOCAL_DEMO` tanımlanmaz: uygulama yalnızca HTTPS sunucuya bağlanır, `allowBackup` kapalıdır,
+  mikrofon / üstte gösterme / depolama izinleri kaldırılmıştır.
+- Yeni sürümde `mobile/app.json` → `version` ve `android.versionCode` artırılır.
+- Mağaza metinleri, görseller ve form cevapları: masaüstündeki **GastroSync Mağaza** klasörü (`PLAY_CONSOLE_ADIMLARI.md`).

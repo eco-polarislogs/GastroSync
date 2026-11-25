@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Text } from './src/i18n';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,11 +14,23 @@ import AndroidApp from './src/android/AndroidApp';
 import MobileLogin from './src/components/MobileLogin';
 import { THEME } from './src/theme/tokens';
 
-import { apiLogout } from './src/services/api';
+import { apiLogout, apiRestoreSession } from './src/services/api';
 import { onSessionExpired } from './src/services/mobileAxiosClient';
 
 function MainApp() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  const [restoring, setRestoring] = useState(true);
+
+  // Açılışta kayıtlı oturumu geri yükle: Android uygulamayı arka planda kapatsa da yeniden giriş gerekmez
+  useEffect(() => {
+    let alive = true;
+    apiRestoreSession()
+      .then((user) => { if (alive && user && !user.mustChangePassword) handleLoginSuccess(user); })
+      .catch(() => {})
+      .finally(() => { if (alive) setRestoring(false); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = () => {
     apiLogout();
@@ -45,7 +58,12 @@ function MainApp() {
 
       {/* Uygulama Ekranı */}
       <View style={styles.appContainer}>
-        {!authenticatedUser ? (
+        {restoring && !authenticatedUser ? (
+          <View style={styles.restoring}>
+            <ActivityIndicator size="large" color="#047857" />
+            <Text style={styles.restoringText}>Oturum açılıyor…</Text>
+          </View>
+        ) : !authenticatedUser ? (
           <MobileLogin onLoginSuccess={handleLoginSuccess} />
         ) : isIOS ? (
           <IOSApp initialUser={authenticatedUser} onLogout={handleLogout} />
@@ -79,6 +97,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  restoring: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2f9f5', gap: 12 },
+  restoringText: { color: '#475569', fontSize: 15, fontWeight: '600' },
   root: {
     flex: 1,
     backgroundColor: THEME.colors.headerBg,

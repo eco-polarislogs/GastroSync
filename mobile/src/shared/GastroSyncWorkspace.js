@@ -5,11 +5,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
-  Modal,
   Image,
   Share,
   AppState,
 } from 'react-native';
+import Modal from '../components/SafeModal';
 import { Text, TextInput, setI18nLang, getI18nLang, useI18nLang } from '../i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {

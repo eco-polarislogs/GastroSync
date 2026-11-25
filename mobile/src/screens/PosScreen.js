@@ -2,10 +2,10 @@ import React from 'react';
 import {
   View,
   TouchableOpacity,
-  Modal,
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import Modal from '../components/SafeModal';
 import { Text } from '../i18n';
 import {
   apiPosTables, apiPosMenu, apiPosSummary, apiPosOpenCheck, apiPosCheck, apiPosAddItems, apiPosItemStatus,

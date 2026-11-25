@@ -9,5 +9,7 @@ module.exports = ({ config }) => {
   );
   const localDemo = process.env.GASTROSYNC_LOCAL_DEMO === '1';
   plugins.push(['expo-build-properties', { android: { usesCleartextTraffic: localDemo } }]);
+  // Google Play yükleme anahtarıyla release imzası (anahtar yolu ortam değişkeninden okunur)
+  plugins.push('./plugins/withReleaseSigning');
   return { ...config, plugins };
 };
