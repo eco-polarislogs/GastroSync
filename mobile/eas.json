@@ -13,12 +13,12 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.ORNEK-RESTORAN.com/api" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://gastrosync-api-moo5.onrender.com/api" }
     },
     "production": {
       "autoIncrement": true,
       "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.ORNEK-RESTORAN.com/api" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://gastrosync-api-moo5.onrender.com/api" }
     }
   },
   "submit": {
