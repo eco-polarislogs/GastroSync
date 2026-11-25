@@ -6,18 +6,12 @@
 # Bu dosya ÜCRETSİZ DEMO planıyla gelir (kredi kartı gerekmez):
 #  - Sunucu 15 dk kullanılmazsa uyur; ilk istekte ~1 dk içinde uyanır (sunuma başlamadan önce
 #    https://gastrosync-api-moo5.onrender.com/actuator/health adresini bir kez açın).
-#  - Ücretsiz veritabanı 30 gün sonra silinir. Gerçek restoran için plan: starter / basic-256mb seçin
-#    ve GASTROSYNC_SEED_DEMO_DATA=false yapın.
+#  - Veritabanı Neon'un ücretsiz PostgreSQL'idir (süre sınırı yok, 0,5 GB). Bağlantı bilgileri koda yazılmaz:
+#    Render panelinde gastrosync-api → Environment altında SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD girilir.
+#  - Gerçek restoran için GASTROSYNC_SEED_DEMO_DATA=false yapın.
 #
 # Mobil uygulamanın sunucu adresi: https://gastrosync-api-moo5.onrender.com/api
 # Web paneli: https://gastrosync-web.onrender.com
-
-databases:
-  - name: gastrosync-db
-    databaseName: gastrosync
-    user: gastrosync
-    plan: free
-    region: frankfurt
 
 services:
   - type: web
@@ -36,16 +30,13 @@ services:
       # Ücretsiz plan 512 MB bellek: JVM'i bu sınıra göre ayarla
       - key: JAVA_OPTS
         value: "-XX:+UseSerialGC -XX:MaxRAMPercentage=60 -XX:MaxMetaspaceSize=160m -Xss512k -XX:+ExitOnOutOfMemoryError -XX:TieredStopAtLevel=1 -Duser.timezone=Europe/Istanbul"
-      - key: DB_HOST
-        fromDatabase: { name: gastrosync-db, property: host }
-      - key: DB_PORT
-        fromDatabase: { name: gastrosync-db, property: port }
-      - key: DB_NAME
-        fromDatabase: { name: gastrosync-db, property: database }
-      - key: DB_USERNAME
-        fromDatabase: { name: gastrosync-db, property: user }
-      - key: DB_PASSWORD
-        fromDatabase: { name: gastrosync-db, property: password }
+      # Neon PostgreSQL (değerler Render panelinde girilir, depoda tutulmaz)
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
       - key: GASTROSYNC_JWT_SECRET
         generateValue: true
       # Demo: örnek restoran verisi ve giriş ekranındaki demo hesap düğmeleri
